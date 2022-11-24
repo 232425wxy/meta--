@@ -181,13 +181,13 @@ func (l Lvl) AlignedString() string {
 	case LvlDebug:
 		return "DEBUG"
 	case LvlInfo:
-		return "INFO "
+		return "INFO*"
 	case LvlWarn:
-		return "WARN "
+		return "WARN*"
 	case LvlError:
 		return "ERROR"
 	case LvlCrit:
-		return "CRIT "
+		return "CRITICAL"
 	default:
 		panic("bad level")
 	}
@@ -207,17 +207,17 @@ func (l Lvl) AlignedString() string {
 func (l Lvl) String() string {
 	switch l {
 	case LvlTrace:
-		return "trce"
+		return "trace"
 	case LvlDebug:
-		return "dbug"
+		return "debug"
 	case LvlInfo:
-		return "info"
+		return "info*"
 	case LvlWarn:
-		return "warn"
+		return "warn*"
 	case LvlError:
-		return "eror"
+		return "error"
 	case LvlCrit:
-		return "crit"
+		return "critical"
 	default:
 		panic("bad level")
 	}
@@ -231,7 +231,7 @@ const (
 	timeKey  = "time"
 	lvlKey   = "level"
 	msgKey   = "msg"
-	errorKey = "LOG15_ERROR"
+	errorKey = "LOG_ERROR"
 )
 const skipLevel = 2
 

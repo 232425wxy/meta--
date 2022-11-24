@@ -1,0 +1,6 @@
+TRACE[01-01|00:00:00.000] trace logger                             blockchain=meta--
+DEBUG[01-01|00:00:00.000] debug logger                             blockchain=meta--
+INFO*[01-01|00:00:00.000] info logger                              blockchain=meta--
+WARN*[01-01|00:00:00.000] warn logger                              blockchain=meta--
+ERROR[01-01|00:00:00.000] error logger                             blockchain=meta--
+CRITICAL[01-01|00:00:00.000] crit logger                              blockchain=meta--

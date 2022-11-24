@@ -44,7 +44,7 @@ l.Info("start service")
 
 >输出：
 >
->INFO [01-01|00:00:00.000] start service                            blockchain=meta--
+>INFO*[01-01|00:00:00.000] start service                            blockchain=meta--
 >
 >ERROR[01-01|00:00:00.000] start service                            blockchain=meta--
 
@@ -61,9 +61,9 @@ l.Error("start service")
 
 >输出
 >
->{"blockchain":"meta--","lvl":"info","msg":"start service","t":"0001-01-01T00:00:00Z"}
+>{"blockchain":"meta--","level":"info*","msg":"start service","time":"0001-01-01T00:00:00Z"}
 >
->{"blockchain":"meta--","lvl":"eror","msg":"start service","t":"0001-01-01T00:00:00Z"}
+>{"blockchain":"meta--","level":"error","msg":"start service","time":"0001-01-01T00:00:00Z"}
 
 ### 普通日志格式
 
@@ -77,7 +77,7 @@ l.Trace("trace logger")
 
 >输出：
 >
-> t=0001-01-01T00:00:00Z lvl=trce msg="trace logger" blockchain=meta--
+> time=0001-01-01T00:00:00Z level=trace msg="trace logger" blockchain=meta--
 
 ### 将日志信息打印到文件里
 
@@ -91,7 +91,7 @@ l.Error("start service")
 
 结果：
 
-![image-20221124143154963](https://gitee.com/Sagaya815/assets/raw/master/image-20221124143154963.png)
+![image-20221124212439854](https://gitee.com/Sagaya815/assets/raw/master/image-20221124212439854.png)
 
 ### 设置打印日志的级别
 
@@ -107,7 +107,7 @@ l.Error("error logger")
 
 >输出：
 >
->WARN [01-01|00:00:00.000] warn logger                              blockchain=meta--
+>WARN*[01-01|00:00:00.000] warn logger                              blockchain=meta--
 >
 >ERROR[01-01|00:00:00.000] error logger                             blockchain=meta--
 
