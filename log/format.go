@@ -1,15 +1,15 @@
 // format.go
 // 这个文件定义了打印日志的几种格式：控制台格式、JSON格式以及普通日志格式，它们的格式样例分别如下所示：
 
-// 控制台格式：INFO [01-01|00:00:00.000] start service                            blockchain=meta+
+// 控制台格式：INFO [01-01|00:00:00.000] start service                            blockchain=meta--
 
-// JSON格式：{"blockchain":"meta+","lvl":"info","msg":"start service","t":"0001-01-01T00:00:00Z"}
+// JSON格式：{"blockchain":"meta--","lvl":"info","msg":"start service","t":"0001-01-01T00:00:00Z"}
 
-// 普通日志格式：t=0001-01-01T00:00:00Z lvl=trce msg="trace logger" blockchain=meta+
+// 普通日志格式：t=0001-01-01T00:00:00Z lvl=trce msg="trace logger" blockchain=meta--
 
 // 此外，还支持在调试项目时定位到代码的位置，如果有这个需求，那么只能在以控制台格式打印日志信息时有效：
 
-// TRACE[01-01|00:00:00.000|/log/log_test.go:24] trace logger                             blockchain=meta+
+// TRACE[01-01|00:00:00.000|/log/log_test.go:24] trace logger                             blockchain=meta--
 
 package log
 
@@ -47,7 +47,7 @@ func PrintOrigins(enabled bool) {
 //
 // TerminalFormat 控制台打印格式：
 //
-//	INFO [01-01|00:00:00.000] start service                            blockchain=meta+
+//	INFO [01-01|00:00:00.000] start service                            blockchain=meta--
 func TerminalFormat(useColor bool) formatter {
 	return formatFunc(func(record *Record) []byte {
 		var color = 0
@@ -469,8 +469,8 @@ var locationLength uint32
 // locationTrims ♏ | (o゜▽゜)o☆吴翔宇
 //
 // locationTrims 如果我们在输出日志信息时，要求定位到输出日志信息的文件位置，具体来说就是在哪个代码文件的
-// 第多少行输出了[DEBUG]消息，如果显式的位置含有"github.com/232425wxy/meta+"字符串，则将其去除掉。
-var locationTrims = []string{"github.com/232425wxy/meta+"}
+// 第多少行输出了[DEBUG]消息，如果显式的位置含有"github.com/232425wxy/meta--"字符串，则将其去除掉。
+var locationTrims = []string{"github.com/232425wxy/meta--"}
 
 // locationEnabled ♏ | (o゜▽゜)o☆吴翔宇
 //

@@ -1,4 +1,4 @@
-module meta+
+module github.com/232425wxy/meta--
 
 go 1.19
 

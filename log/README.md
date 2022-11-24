@@ -31,11 +31,11 @@
 如果我们是在包外使用本包中定义的日志记录器，首先需要导入本包，然后按照下面的代码实例化一个日志记录器：
 
 ```go
-l := log.New("blockchain", "ethereum")
+l := log.New("blockchain", "meta--")
 l.SetHandler(StreamHandler(os.Stdout, TerminalFormat(true)))
 ```
 
-上面代码里的`"blockchain"`和`"ethereum"`作为是一对键值对，以后每次使用`logger`输出日志时，都会打印这对键值对，然后第二行代码是用来设置输出
+上面代码里的`"blockchain"`和`"meta+"`作为是一对键值对，以后每次使用`logger`输出日志时，都会打印这对键值对，然后第二行代码是用来设置输出
 日志的处理器，这里我们设置将日志信息输出到操作系统的标准输出里，并且以控制台显示的格式输出，然后对于不同日志等级还会显式不同的颜色：
 
 ```go
@@ -44,16 +44,16 @@ l.Info("start service")
 
 >输出：
 >
->INFO [01-01|00:00:00.000] start service                            blockchain=ethereum
+>INFO [01-01|00:00:00.000] start service                            blockchain=meta--
 >
->ERROR[01-01|00:00:00.000] start service                            blockchain=ethereum
+>ERROR[01-01|00:00:00.000] start service                            blockchain=meta--
 
 ### JSON格式输出日志
 
 实例化一个以JSON格式输出日志信息的日志记录器：
 
 ```go
-l := New("blockchain", "ethereum")
+l := New("blockchain", "meta--")
 l.SetHandler(StreamHandler(os.Stdout, JSONFormat()))
 l.Info("start service")
 l.Error("start service")
@@ -61,28 +61,28 @@ l.Error("start service")
 
 >输出
 >
->{"blockchain":"ethereum","lvl":"info","msg":"start service","t":"0001-01-01T00:00:00Z"}
+>{"blockchain":"meta--","lvl":"info","msg":"start service","t":"0001-01-01T00:00:00Z"}
 >
->{"blockchain":"ethereum","lvl":"eror","msg":"start service","t":"0001-01-01T00:00:00Z"}
+>{"blockchain":"meta--","lvl":"eror","msg":"start service","t":"0001-01-01T00:00:00Z"}
 
 ### 普通日志格式
 
 `LogfmtFormat()`函数定义了将日志信息按照普通日志格式打印的逻辑：
 
 ```go
-l := New("blockchain", "ethereum")
+l := New("blockchain", "meta--")
 l.SetHandler(StreamHandler(os.Stdout, LogfmtFormat()))
 l.Trace("trace logger")
 ```
 
 >输出：
 >
-> t=0001-01-01T00:00:00Z lvl=trce msg="trace logger" blockchain=ethereum
+> t=0001-01-01T00:00:00Z lvl=trce msg="trace logger" blockchain=meta--
 
 ### 将日志信息打印到文件里
 
 ```go
-l := New("blockchain", "ethereum")
+l := New("blockchain", "meta--")
 file, _ := os.OpenFile("text.log", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0664)
 l.SetHandler(StreamHandler(file, TerminalFormat(false)))
 l.Info("start service")
@@ -98,7 +98,7 @@ l.Error("start service")
 在下面的例子里，我们要求最多只打印`Warn`这一级别的日志，也就是说，`Trace Debug Info`这三个级别的日志不会被打印
 
 ```go
-l := New("blockchain", "ethereum")
+l := New("blockchain", "meta--")
 l.SetHandler(LvlFilterHandler(LvlWarn, StreamHandler(os.Stdout, TerminalFormat(true))))
 l.Info("info logger")
 l.Warn("warn logger")
@@ -107,9 +107,9 @@ l.Error("error logger")
 
 >输出：
 >
->WARN [01-01|00:00:00.000] warn logger                              blockchain=ethereum
+>WARN [01-01|00:00:00.000] warn logger                              blockchain=meta--
 >
->ERROR[01-01|00:00:00.000] error logger                             blockchain=ethereum
+>ERROR[01-01|00:00:00.000] error logger                             blockchain=meta--
 
 ### 调试代码时输出日志
 
@@ -117,7 +117,7 @@ l.Error("error logger")
 
 ```go
 PrintOrigins(true)
-l := New("blockchain", "ethereum")
+l := New("blockchain", "meta--")
 l.SetHandler(StreamHandler(os.Stdout, TerminalFormat(true)))
 l.Trace("trace logger")
 ```
@@ -126,4 +126,4 @@ l.Trace("trace logger")
 
 >输出：
 >
-> TRACE[01-01|00:00:00.000|/log/log_test.go:24] trace logger                             blockchain=ethereum
+> TRACE[01-01|00:00:00.000|/log/log_test.go:24] trace logger                             blockchain=meta--
