@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-	"unicode"
 )
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
@@ -75,6 +74,11 @@ type fieldInfo struct {
 
 // 不可导出的工具函数
 
+// makeStructInfo ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// makeStructInfo 方法接受一个struct的reflect.Type，然后对其进行解析，获取该struct对应的structInfo。
 func makeStructInfo(rTyp reflect.Type) *structInfo {
 	if rTyp.Kind() != reflect.Struct {
 		panic(fmt.Sprintf("can't make struct info for non-struct value %v", rTyp))
@@ -89,7 +93,8 @@ func makeStructInfo(rTyp reflect.Type) *structInfo {
 		info := &fieldInfo{
 			jsonName:  fieldI.Name,
 			omitEmpty: false,
-			ignored:   fieldI.Name == "" || !unicode.IsUpper(rune(fieldI.Name[0])),
+			// 不可导出的字段会被忽略掉
+			ignored: !fieldI.IsExported(),
 		}
 		tag := fieldI.Tag.Get("json")
 		if tag == "-" {
