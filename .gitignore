@@ -1,5 +1,0 @@
-#ignore directories
-.idea/
-
-#ignore files
-.gitignore
