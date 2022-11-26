@@ -4,7 +4,10 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="5acbd470-0e9a-42a5-856e-d9f45010b587" name="Changes" comment="" />
+    <list default="true" id="5acbd470-0e9a-42a5-856e-d9f45010b587" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/crypto/merkle/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -56,7 +59,8 @@
     "configurable.GoLibrariesConfigurable.is.expanded": "true",
     "go.import.settings.migrated": "true",
     "go.sdk.automatically.set": "true",
-    "last_opened_file_path": "/home/cosmic"
+    "last_opened_file_path": "/home/cosmic",
+    "nodejs_package_manager_path": "npm"
   }
 }]]></component>
   <component name="RunManager">
