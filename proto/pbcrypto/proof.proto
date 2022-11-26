@@ -2,4 +2,11 @@ syntax = "proto3";
 
 package pbcrypto;
 
-option go_package = 
+message Proof {
+  uint64    total = 1;
+  uint64    index = 2;
+  bytes     leaf_hash = 3;
+  repeated  bytes aunts = 4; // repeated bytes -> [][]byte{}
+}
+
+// protoc --gogofaster_out=. *.proto

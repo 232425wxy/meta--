@@ -3,6 +3,7 @@ module github.com/232425wxy/meta--
 go 1.19
 
 require (
+	github.com/cosmos/gogoproto v1.4.3
 	github.com/go-stack/stack v1.8.1
 	github.com/stretchr/testify v1.8.1
 )

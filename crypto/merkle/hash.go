@@ -30,8 +30,8 @@ func leafHash(leaf []byte) []byte {
 // 接结果的哈希值。
 //
 //	sha256.Sum(append([]byte{1}, append(right, left...)...))
-func innerHash(right, left []byte) []byte {
-	h := sha256.Sum(append(innerPrefix, append(right, left...)...))
+func innerHash(left, right []byte) []byte {
+	h := sha256.Sum(append(innerPrefix, append(left, right...)...))
 	return h[:]
 }
 
