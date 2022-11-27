@@ -91,9 +91,11 @@ func encodeAll(w io.Writer, rVal reflect.Value) error {
 	case reflect.Struct:
 		return encodeStruct(w, rVal)
 	case reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8, reflect.Int:
-		return writeStr(w, `"`+strconv.FormatInt(rVal.Int(), 10)+`"`)
+		return writeStr(w, strconv.FormatInt(rVal.Int(), 10))
 	case reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8, reflect.Uint:
-		return writeStr(w, `"`+strconv.FormatUint(rVal.Uint(), 10)+`"`)
+		return writeStr(w, strconv.FormatUint(rVal.Uint(), 10))
+	case reflect.Float64, reflect.Float32:
+		return writeStr(w, strconv.FormatFloat(rVal.Float(), 'E', -1, 32<<int(rVal.Type().Kind()-reflect.Float32)))
 	default:
 		return encodeStdlib(w, rVal.Interface())
 	}
@@ -163,6 +165,9 @@ func encodeMap(w io.Writer, rVal reflect.Value) error {
 	if rVal.Type().Key().Kind() != reflect.String {
 		return fmt.Errorf("encode map, needs string key, but got %v", rVal.Type().Key().Kind())
 	}
+	if rVal.IsNil() {
+		return writeStr(w, "null")
+	}
 	if err := writeStr(w, "{"); err != nil {
 		return err
 	}
@@ -201,10 +206,16 @@ func encodeStruct(w io.Writer, rVal reflect.Value) error {
 		return err
 	}
 	length := len(sInfo.fields)
+	writeComma := false
 	for i := 0; i < length; i++ {
 		field := rVal.Field(i)
 		if sInfo.fields[i].ignored || (sInfo.fields[i].omitEmpty && field.IsZero()) {
 			continue
+		}
+		if writeComma {
+			if err := writeStr(w, ","); err != nil {
+				return err
+			}
 		}
 		if err := encodeStdlib(w, sInfo.fields[i].jsonName); err != nil {
 			return err
@@ -215,11 +226,7 @@ func encodeStruct(w io.Writer, rVal reflect.Value) error {
 		if err := encodeAll(w, field); err != nil {
 			return err
 		}
-		if i < length-1 {
-			if err := writeStr(w, ","); err != nil {
-				return err
-			}
-		}
+		writeComma = true
 	}
 	return writeStr(w, "}")
 }
