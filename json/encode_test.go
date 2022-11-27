@@ -2,30 +2,50 @@ package json
 
 import (
 	"fmt"
-	"reflect"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func f(x interface{}) {
-	rVal := reflect.ValueOf(x)
-	rTyp := reflect.TypeOf(x)
-
-	fmt.Println("val is ptr:", rVal.Kind() == reflect.Ptr)
-	fmt.Println("typ is ptr:", rTyp.Kind() == reflect.Ptr)
+func init() {
+	RegisterType(&Cat{}, "Animal/Cat")
+	RegisterType(Dog{}, "Animal/Dog")
 }
 
-func TestReflectPtr(t *testing.T) {
-	ptrA := &structJSON{}
-	f(ptrA)
-
-	elemA := structJSON{}
-	f(elemA)
+type Animal interface {
+	Eat(food string)
 }
 
-func TestReflectArray(t *testing.T) {
-	s := [3]string{"1", "2", "3"}
-	rVal := reflect.ValueOf(s)
-	if rVal.IsNil() { // panic: reflect: call of reflect.Value.IsNil on array Value [recovered]
-		t.Log("true")
+type Cat struct {
+	Name string
+	Age  uint8
+}
+
+func (c *Cat) Eat(f string) {
+	fmt.Printf("%s eats %s.\n", c.Name, f)
+}
+
+type Dog struct {
+	Name string
+	Age  int64
+}
+
+func (d Dog) Eat(f string) {
+	fmt.Printf("%s eats %s.\n", d.Name, f)
+}
+
+func TestEncode(t *testing.T) {
+	testCases := map[string]struct {
+		value  interface{}
+		output string
+	}{
+		"nil": {nil, "null"},
+	}
+
+	for name, test := range testCases {
+		t.Run(name, func(t *testing.T) {
+			bz, err := Marshal(test.value)
+			assert.Nil(t, err)
+			assert.JSONEq(t, test.output, string(bz))
+		})
 	}
 }
