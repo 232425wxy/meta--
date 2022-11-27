@@ -103,7 +103,11 @@ func TestEncode(t *testing.T) {
 		"Cat interface":      {Animal(&Cat{Name: "tom", Age: 12}), `{"type":"Animal/Cat","value":Cat{"Name":"tom","Age":12}}`},
 		"Dog interface":      {Animal(Dog{Name: "tick", Age: 3}), `{"type":"Animal/Dog","value":Dog{"Name":"tick","Age":3}}`},
 		"Tags empty":         {Tags{}, `Tags{"name":""}`},
-		"Tags":               {Tags{Name: "name", OmitEmpty: "foo", Ignored: "no", Tags: &Tags{Name: "child"}}, ``},
+		"Tags":               {Tags{Name: "name", OmitEmpty: "foo", Ignored: "no", Tags: &Tags{Name: "child"}}, `Tags{"name":"name","OmitEmpty":"foo","tags":Tags{"name":"child"}}`},
+		"Animal slice":       {[]Animal{&Cat{Name: "tom", Age: 12}, Dog{Name: "tick", Age: 3}}, `[{"type":"Animal/Cat","value":Cat{"Name":"tom","Age":12}},{"type":"Animal/Dog","value":Dog{"Name":"tick","Age":3}}]`},
+		"Animal array":       {[2]Animal{&Cat{Name: "tom", Age: 12}, Dog{Name: "tick", Age: 3}}, `[{"type":"Animal/Cat","value":Cat{"Name":"tom","Age":12}},{"type":"Animal/Dog","value":Dog{"Name":"tick","Age":3}}]`},
+		"bool false":         {false, `false`},
+		"bool true":          {true, `true`},
 	}
 
 	for name, test := range testCases {
