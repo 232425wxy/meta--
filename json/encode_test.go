@@ -11,6 +11,7 @@ import (
 func init() {
 	RegisterType(&Cat{}, "Animal/Cat")
 	RegisterType(Dog{}, "Animal/Dog")
+	//RegisterType(Tags{}, "Tags")
 }
 
 type Animal interface {
@@ -36,10 +37,16 @@ func (d Dog) Eat(f string) {
 }
 
 type CustomValue struct {
+	X string `json:"x"`
 }
 
 func (c CustomValue) MarshalJSON() ([]byte, error) {
 	return []byte(`"CustomValue"`), nil
+}
+
+func (c CustomValue) UnmarshalJSON(bz []byte) error {
+	c.X = "CustomValue"
+	return nil
 }
 
 type CustomValuePtr struct {
@@ -48,6 +55,11 @@ type CustomValuePtr struct {
 
 func (c *CustomValuePtr) MarshalJSON() ([]byte, error) {
 	return []byte(`"CustomValuePtr"`), nil
+}
+
+func (c *CustomValuePtr) UnmarshalJSON(bz []byte) error {
+	c.X = "CustomValuePtr"
+	return nil
 }
 
 type Tags struct {
@@ -86,9 +98,9 @@ func TestEncode(t *testing.T) {
 		"time":               {time.Time{}, `"0001-01-01T00:00:00Z"`},
 		"CustomValue":        {CustomValue{}, `"CustomValue"`},
 		"CustomValue Ptr":    {&CustomValue{}, `"CustomValue"`},
-		"CustomValuePtr":     {CustomValuePtr{X: "abc"}, `CustomValuePtr{"X":"abc"}`},
+		"CustomValuePtr":     {CustomValuePtr{X: "abc"}, `{"X":"abc"}`},
 		"CustomValuePtr Ptr": {&CustomValuePtr{X: "abc"}, `"CustomValuePtr"`},
-		"slice nil":          {[]int(nil), `null`},
+		"slice nil":          {[]int(nil), `[]`},
 		"slice empty":        {[]int{}, `[]`},
 		"slice bytes":        {[]byte{1, 2, 3}, `[1,2,3]`},
 		"slice int64":        {[]int64{1, 2, 3}, `[1,2,3]`},
@@ -100,19 +112,20 @@ func TestEncode(t *testing.T) {
 		"map empty":          {map[string]int{}, `{}`},
 		"map nil":            {map[string]int(nil), `null`},
 		"map string int":     {map[string]int{"abc": 2, "def": 3}, `{"abc":2,"def":3}`},
-		"Cat interface":      {Animal(&Cat{Name: "tom", Age: 12}), `{"type":"Animal/Cat","value":Cat{"Name":"tom","Age":12}}`},
-		"Dog interface":      {Animal(Dog{Name: "tick", Age: 3}), `{"type":"Animal/Dog","value":Dog{"Name":"tick","Age":3}}`},
-		"Tags empty":         {Tags{}, `Tags{"name":""}`},
-		"Tags":               {Tags{Name: "name", OmitEmpty: "foo", Ignored: "no", Tags: &Tags{Name: "child"}}, `Tags{"name":"name","OmitEmpty":"foo","tags":Tags{"name":"child"}}`},
-		"Animal slice":       {[]Animal{&Cat{Name: "tom", Age: 12}, Dog{Name: "tick", Age: 3}}, `[{"type":"Animal/Cat","value":Cat{"Name":"tom","Age":12}},{"type":"Animal/Dog","value":Dog{"Name":"tick","Age":3}}]`},
-		"Animal array":       {[2]Animal{&Cat{Name: "tom", Age: 12}, Dog{Name: "tick", Age: 3}}, `[{"type":"Animal/Cat","value":Cat{"Name":"tom","Age":12}},{"type":"Animal/Dog","value":Dog{"Name":"tick","Age":3}}]`},
+		"Cat interface":      {Animal(&Cat{Name: "tom", Age: 12}), `{"type":"Animal/Cat","value":{"Name":"tom","Age":12}}`},
+		"Dog interface":      {Animal(Dog{Name: "tick", Age: 3}), `{"type":"Animal/Dog","value":{"Name":"tick","Age":3}}`},
+		"Tags empty":         {Tags{}, `{"name":""}`},
+		"Tags":               {Tags{Name: "name", OmitEmpty: "foo", Ignored: "no", Tags: &Tags{Name: "child"}}, `{"name":"name","OmitEmpty":"foo","tags":{"name":"child"}}`},
+		"Animal slice":       {[]Animal{&Cat{Name: "tom", Age: 12}, Dog{Name: "tick", Age: 3}}, `[{"type":"Animal/Cat","value":{"Name":"tom","Age":12}},{"type":"Animal/Dog","value":{"Name":"tick","Age":3}}]`},
+		"Animal array":       {[2]Animal{&Cat{Name: "tom", Age: 12}, Dog{Name: "tick", Age: 3}}, `[{"type":"Animal/Cat","value":{"Name":"tom","Age":12}},{"type":"Animal/Dog","value":{"Name":"tick","Age":3}}]`},
 		"bool false":         {false, `false`},
 		"bool true":          {true, `true`},
+		"struct Cat":         {value: Cat{Name: "tom", Age: 10}, output: `{"type":"Animal/Cat","value":{"Name":"tom","Age":10}}`},
 	}
 
 	for name, test := range testCases {
 		t.Run(name, func(t *testing.T) {
-			bz, err := Marshal(test.value)
+			bz, err := Encode(test.value)
 			assert.Nil(t, err)
 			assert.Equal(t, test.output, string(bz))
 		})

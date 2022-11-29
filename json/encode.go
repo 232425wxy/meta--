@@ -15,40 +15,30 @@ import (
 
 // API项目级全局函数
 
-// Marshal ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+// Encode ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------
 //
-// Marshal 方法接受一个变量对象，对该变量进行序列化，如果是自定义的结构体，需要先调用 RegisterType
+// Encode 方法接受一个变量对象，对该变量进行序列化，如果是自定义的结构体，需要先调用 RegisterType
 // 方法注册该结构体。
-func Marshal(x interface{}) ([]byte, error) {
+func Encode(x interface{}) ([]byte, error) {
 	buffer := new(bytes.Buffer)
-	err := encode(buffer, x)
-	if err != nil {
-		return nil, err
+	if x == nil {
+		err := writeStr(buffer, "null")
+		return buffer.Bytes(), err
 	}
+	rVal := reflect.ValueOf(x)
+	if typeRegister.name(rVal.Type()) != "" {
+		err := encodeInterface(buffer, rVal)
+		return buffer.Bytes(), err
+	}
+	err := encodeAll(buffer, rVal)
 	return buffer.Bytes(), err
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
 // 不可导出的工具函数
-
-// encode ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
-//
-//	---------------------------------------------------------
-//
-// encode
-func encode(w io.Writer, x interface{}) error {
-	if x == nil {
-		return writeStr(w, "null")
-	}
-	rVal := reflect.ValueOf(x)
-	if typeRegister.name(rVal.Type()) != "" {
-		return encodeInterface(w, rVal)
-	}
-	return encodeAll(w, rVal)
-}
 
 // encodeAll ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
@@ -135,7 +125,7 @@ func encodeInterface(w io.Writer, rVal reflect.Value) error {
 func encodeArrayOrSlice(w io.Writer, rVal reflect.Value) error {
 	// array不能调用IsNil()方法
 	if rVal.Kind() == reflect.Slice && rVal.IsNil() {
-		return writeStr(w, "null")
+		return writeStr(w, "[]")
 	}
 
 	length := rVal.Len()
@@ -202,7 +192,7 @@ func encodeMap(w io.Writer, rVal reflect.Value) error {
 // 字段所存储的值由于类型无法确定，需要在运行期间递归地找到对应的序列化方法。
 func encodeStruct(w io.Writer, rVal reflect.Value) error {
 	sInfo := makeStructInfo(rVal.Type())
-	if err := writeStr(w, fmt.Sprintf("%s{", rVal.Type().Name())); err != nil {
+	if err := writeStr(w, "{"); err != nil {
 		return err
 	}
 	length := len(sInfo.fields)
@@ -235,7 +225,7 @@ func encodeStruct(w io.Writer, rVal reflect.Value) error {
 //
 //	---------------------------------------------------------
 //
-// encodeStdlib 方法接受两个参数：(io.Writer, interface{})，该方法利用golang官方的 json.Marshal
+// encodeStdlib 方法接受两个参数：(io.Writer, interface{})，该方法利用golang官方的 json.Encode
 // 方法对给定的第二个入参进行序列化，然后将序列化的结果写入到给定的第一个入参中。
 func encodeStdlib(w io.Writer, x interface{}) error {
 	bz, err := json.Marshal(x)
