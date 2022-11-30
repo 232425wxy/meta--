@@ -51,3 +51,22 @@ func TestSignAndVerify(t *testing.T) {
 	b := public.Verify(sig, h)
 	assert.True(t, b)
 }
+
+func TestThreshold(t *testing.T) {
+	private1, err := GeneratePrivateKey()
+	assert.Nil(t, err)
+
+	private2, err := GeneratePrivateKey()
+	assert.Nil(t, err)
+
+	private3, err := GeneratePrivateKey()
+	assert.Nil(t, err)
+
+	private4, err := GeneratePrivateKey()
+	assert.Nil(t, err)
+
+	msg := []byte("Let's test threshold signature!")
+	h := sha256.Sum(msg)
+
+	sig1 := private1.Sign()
+}
