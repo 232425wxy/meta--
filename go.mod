@@ -6,6 +6,7 @@ require (
 	github.com/cosmos/gogoproto v1.4.3
 	github.com/go-stack/stack v1.8.1
 	github.com/stretchr/testify v1.8.1
+	golang.org/x/sys v0.2.0
 )
 
 require (
