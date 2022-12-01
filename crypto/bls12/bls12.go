@@ -7,6 +7,7 @@ import (
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12/bls12381"
 	"github.com/232425wxy/meta--/crypto/hash/sha256"
+	"github.com/232425wxy/meta--/json"
 	"go.uber.org/multierr"
 	"math/big"
 	"sync"
@@ -15,6 +16,9 @@ import (
 func init() {
 	lib = new(pubLeyLib)
 	lib.keys = make(map[crypto.ID]*PublicKey)
+
+	json.RegisterType(PublicKey{}, PublicKeyFileType)
+	json.RegisterType(PrivateKey{}, PrivateKeyFileType)
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
