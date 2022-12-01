@@ -1,5 +1,7 @@
 package crypto
 
+import "github.com/232425wxy/meta--/crypto/hash/sha256"
+
 type ThresholdSignature interface {
 	Type() string
 	ToBytes() []byte
@@ -16,7 +18,14 @@ type PublicKey interface {
 	Type() string
 	ToBytes() []byte
 	FromBytes(bz []byte) error
-	Verify(sig Signature, h [32]byte) bool
+	Verify(sig Signature, h sha256.Hash) bool
+}
+
+type PrivateKey interface {
+	Type() string
+	ToBytes() []byte
+	FromBytes(bz []byte) error
+	Sign(h sha256.Hash) (Signature, error)
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
