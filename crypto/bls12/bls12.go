@@ -413,7 +413,7 @@ func VerifyThresholdSignature(signature crypto.ThresholdSignature, h sha256.Hash
 	if err != nil {
 		return false
 	}
-	
+
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
