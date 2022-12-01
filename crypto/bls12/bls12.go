@@ -7,6 +7,7 @@ import (
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12/bls12381"
 	"github.com/232425wxy/meta--/crypto/hash/sha256"
+	"go.uber.org/multierr"
 	"math/big"
 	"sync"
 )
@@ -395,9 +396,11 @@ func (cb *CryptoBLS12) Verify(sig crypto.Signature, h [32]byte) bool {
 }
 
 // VerifyThresholdSignature ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
-//  ---------------------------------------------------------
+//
+//	---------------------------------------------------------
+//
 // VerifyThresholdSignature 验证聚合签名。
-func VerifyThresholdSignature(signature crypto.ThresholdSignature, h sha256.Hash) bool {
+func (cb *CryptoBLS12) VerifyThresholdSignature(signature crypto.ThresholdSignature, h sha256.Hash, quorumSize int) bool {
 	sig, ok := signature.(*AggregateSignature)
 	if !ok {
 		panic(fmt.Sprintf("bls12: need bls12-381 threshold signature, but got %q", signature.Type()))
@@ -413,6 +416,81 @@ func VerifyThresholdSignature(signature crypto.ThresholdSignature, h sha256.Hash
 	if err != nil {
 		return false
 	}
+
+	if len(pubKeys) < quorumSize {
+		return false
+	}
+	engine := bls12381.NewEngine()
+	engine.AddPairInv(&bls12381.G1One, &sig.sig)
+	for _, key := range pubKeys {
+		engine.AddPair(key.key, ps)
+	}
+	return engine.Result().IsOne()
+}
+
+// VerifyThresholdSignatureForMessageSet ♏ |作者：吴翔宇| 🍁 |日期：2022/11/30|
+//
+// VerifyThresholdSignatureForMessageSet 根据给定的聚合签名和不同消息的哈希值，验证聚合签名是否合法。
+func (cb *CryptoBLS12) VerifyThresholdSignatureForMessageSet(signature crypto.ThresholdSignature, hashes map[crypto.ID]sha256.Hash, quorumSize int) bool {
+	sig, ok := signature.(*AggregateSignature)
+	if !ok {
+		panic(fmt.Sprintf("bls12: need bls12-381 threshold signature, but got %q", signature.Type()))
+	}
+	hashSet := make(map[sha256.Hash]struct{})
+	engine := bls12381.NewEngine()
+	engine.AddPairInv(&bls12381.G1One, &sig.sig)
+	for id, hash := range hashes {
+		if _, ok = hashSet[hash]; ok {
+			continue
+		}
+		hashSet[hash] = struct{}{}
+		pubKey := GetBLSPublicKey(id)
+		if pubKey == nil {
+			return false
+		}
+		p2, err := bls12381.NewG2().HashToCurve(hash[:], domain)
+		if err != nil {
+			return false
+		}
+		engine.AddPair(pubKey.key, p2)
+	}
+	if !engine.Result().IsOne() {
+		return false
+	}
+	return len(hashSet) >= quorumSize
+}
+
+// CreateThresholdSignature ♏ |作者：吴翔宇| 🍁 |日期：2022/11/30|
+//
+// CreateThresholdSignature 根据给定的部分签名创建聚合签名。
+func (cb *CryptoBLS12) CreateThresholdSignature(partialSignatures []crypto.Signature, _ sha256.Hash, quorumSize int) (_ crypto.ThresholdSignature, err error) {
+	if len(partialSignatures) < quorumSize {
+		return nil, fmt.Errorf("bls12: not reach quorum size: %q", quorumSize)
+	}
+	sigs := make(map[crypto.ID]*Signature, len(partialSignatures))
+	for _, sig := range partialSignatures {
+		if _, ok := sigs[sig.Signer()]; ok {
+			err = multierr.Append(err, fmt.Errorf("bls12: duplicate partial signature from ID: %q", sig.Signer()))
+			continue
+		}
+		s, ok := sig.(*Signature)
+		if !ok {
+			err = multierr.Append(err, fmt.Errorf("bls12: need bls12-381 signature, but got %q from ID: %q", sig.Type(), sig.Signer()))
+			continue
+		}
+		sigs[sig.Signer()] = s
+	}
+	if len(sigs) < quorumSize {
+		return nil, multierr.Combine(err, fmt.Errorf("bls12: not reach quorum size: %q, only got %q", quorumSize, len(sigs)))
+	}
+	return cb.aggregateSignatures(sigs), nil
+}
+
+// CreateThresholdSignatureForMessageSet ♏ |作者：吴翔宇| 🍁 |日期：2022/11/30|
+//
+// CreateThresholdSignatureForMessageSet 将若干个为不同消息签名的签名聚合成聚合签名。
+func (cb *CryptoBLS12) CreateThresholdSignatureForMessageSet(partialSignatures []crypto.Signature, hashes map[crypto.ID]sha256.Hash, quorumSize int) (crypto.ThresholdSignature, error) {
+	return cb.CreateThresholdSignature(partialSignatures, sha256.Hash{}, quorumSize)
 
 }
 

@@ -20,7 +20,7 @@ func New() hash.Hash {
 // Sum ♏ | (o゜▽゜)o☆吴翔宇
 //
 // Sum 方法接受一个字节切片bz，然后返回该切片的sha256哈希值，哈希值的长度为32字节。
-func Sum(bz []byte) [32]byte {
+func Sum(bz []byte) Hash {
 	return sha256.Sum256(bz)
 }
 
