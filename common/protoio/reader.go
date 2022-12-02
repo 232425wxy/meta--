@@ -18,7 +18,7 @@ import (
 //
 // NewDelimitedReader 给定一个具有能够从底层数据池读取数据的io.Reader，例如net.Conn，然后根据它
 // 新建一个reader，这个reader可以从底层数据池里读取数据，将其构造成一个proto.Message数据。
-func NewDelimitedReader(r io.Reader, maxSize int) *reader {
+func NewDelimitedReader(r io.Reader, maxSize int) Reader {
 	return &reader{r: r, maxSize: maxSize, bytesRead: 0}
 }
 
@@ -39,6 +39,11 @@ func DelimitedReadFromData(data []byte, msg proto.Message) error {
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
 // 定义一个reader，可以实现ReadByte函数
+
+type Reader interface {
+	ReadMsg(msg proto.Message) (int, error)
+	Close() error
+}
 
 // reader ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //

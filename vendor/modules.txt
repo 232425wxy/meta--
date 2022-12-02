@@ -1,6 +1,12 @@
 # github.com/cosmos/gogoproto v1.4.3
 ## explicit; go 1.19
+github.com/cosmos/gogoproto/gogoproto
 github.com/cosmos/gogoproto/proto
+github.com/cosmos/gogoproto/protoc-gen-gogo/descriptor
+github.com/cosmos/gogoproto/sortkeys
+github.com/cosmos/gogoproto/test
+github.com/cosmos/gogoproto/test/custom
+github.com/cosmos/gogoproto/test/custom-dash-type
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
