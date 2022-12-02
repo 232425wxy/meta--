@@ -126,3 +126,5 @@ query2.Matches(map[string][]string{"block.date": []string{"2022-11-08"}})
 4. 数字、时间、日期可以作："<=" | ">=" | ">" | "<" | "="这五种比较。
 5. 字符串可以作："=" | "CONTAINS" 两种比较。
 6. "EXISTS" 用来判断属性是否存在。
+
+**peg工具在这里：** https://github.com/pointlander/peg
