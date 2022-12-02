@@ -8,6 +8,8 @@ package log
 //
 // New 方法接受若干对键值对作为新日志记录器的背景信息，每调用一次该方法，都会重新分配ctx，不会继承
 // 之前的ctx，该方法返回一个全新的日志记录器。
+//
+//	注意，默认情况下，New出来的日志记录器使用的日志处理器是 DiscardHandler。
 func New(ctx ...interface{}) Logger {
 	return root.New(ctx...)
 }
