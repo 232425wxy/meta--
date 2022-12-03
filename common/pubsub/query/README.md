@@ -48,7 +48,8 @@ query.Matches(map[string][]string{"validator1.power": []string{"12"}, "validator
 query, err := New("block.validator1 EXISTS AND block.height = 12")
 ```
 
-根据库里给的信息判断高度12的区块的验证者节点集合中是否存在验证者节点validator1，同样的，给的数据类型必须是`map[string][]string`类型的，例如：
+根据库里给的信息判断高度12的区块的验证者节点集合中是否存在验证者节点validator1，同样的，给的数据类型必须是`map[string][]string`
+类型的，例如：
 
 ```go
 query.Matches(map[string][]string{"block.validator1": []string{"10.0"}, "block.height": []string{"12"}})
