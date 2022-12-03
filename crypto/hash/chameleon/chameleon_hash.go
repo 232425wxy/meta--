@@ -13,8 +13,8 @@ func run() {
 
 	keygen(128, &p, &q, &g, &hk, &tk)
 
-	msg1 = []byte("YES")
-	msg2 = []byte("NO")
+	msg1 = []byte("C罗")
+	msg2 = []byte("梅西")
 
 	r1 = randgen(&q)
 	s1 = randgen(&q)
