@@ -1,6 +1,24 @@
 package pubsub
 
-import "sync"
+import (
+	"sync"
+)
+
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
+
+// API 创建订阅
+
+// NewSubscription ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// NewSubscription 根据给定的缓冲区大小数值创建一个新的订阅，新订阅中管理消息的缓冲区大小由给定的参数确定。
+func NewSubscription(outCapacity int) *Subscription {
+	return &Subscription{
+		msgChan:   make(chan Message, outCapacity),
+		cancelled: make(chan struct{}),
+	}
+}
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 

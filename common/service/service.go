@@ -40,7 +40,7 @@ var (
 type Service interface {
 	Start() error
 	Stop() error
-	WaitStop()
+	WaitStop() <-chan struct{}
 }
 
 // BaseService ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -128,6 +128,6 @@ func (bs *BaseService) Stop() error {
 //	---------------------------------------------------------
 //
 // WaitStop 等待服务的关闭，调用该方法会被阻塞，直到服务被关闭为止。
-func (bs *BaseService) WaitStop() {
-	<-bs.quit
+func (bs *BaseService) WaitStop() <-chan struct{} {
+	return bs.quit
 }
