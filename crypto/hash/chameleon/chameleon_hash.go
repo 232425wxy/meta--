@@ -7,217 +7,89 @@ import (
 	"math/big"
 )
 
-func run() {
-	// Generate the parameters.
-	var p, q, g, hk, tk, hash1, hash2, r1, s1, r2, s2, msg1, msg2 []byte
+var p, _ = new(big.Int).SetString("c0a0f171e583d4efb262c1783a6ed6d995fc1d4eea476149cf8ea40078d27ad7", 16)
 
-	keygen(128, &p, &q, &g, &hk, &tk)
+var g, _ = new(big.Int).SetString("3e446bf8e43afebc6b49bc7220d19a415c9bda8cbbcc25189c67d27b33df73cf", 16)
 
-	msg1 = []byte("C罗")
-	msg2 = []byte("梅西")
+var q = new(big.Int).Div(new(big.Int).Sub(p, new(big.Int).SetInt64(1)), new(big.Int).SetInt64(2))
 
-	r1 = randgen(&q)
-	s1 = randgen(&q)
+var (
+	hk *big.Int = new(big.Int)
+	tk *big.Int = new(big.Int)
+)
 
-	fmt.Printf("CHAMELEON HASH PARAMETERS:"+
-		"\np: %s1"+
-		"\nq: %s1"+
-		"\ng: %s1"+
-		"\nhk: %s1"+
-		"\ntk: %s1"+
-		"\nDONE!", p, q, g, hk, tk)
-
-	// First we generate a chameleon hash.
-	chameleonHash(&hk, &p, &q, &g, &msg1, &r1, &s1, &hash1)
-
-	fmt.Printf("\n\nROUND 1:"+
-		"\nmsg1: %s"+
-		"\nr1: %s1"+
-		"\ns1: %s1"+
-		"\nhash1: %x\n",
-		msg1, r1, s1, hash1)
-
-	fmt.Printf("\n\nGENERATING COLLISION...\n\n")
-
-	// Now we need to generate a collision.
-	generateCollision(&hk, &tk, &p, &q, &g, &msg1, &msg2, &r1, &s1, &r2, &s2)
-
-	chameleonHash(&hk, &p, &q, &g, &msg2, &r2, &s2, &hash2)
-
-	fmt.Printf("\nROUND 2:"+
-		"\nmsg2: %s"+
-		"\nr2: %s"+
-		"\ns2: %s"+
-		"\nhash2: %x\n",
-		msg2, r2, s2, hash2)
+func randGen(upper *big.Int) *big.Int {
+	randomBig, err := rand.Int(rand.Reader, upper)
+	if err != nil {
+		panic(err)
+	}
+	return randomBig
 }
 
-// Returns a random hex number within the bounds of 0 and upperBoundHex.
-func randgen(upperBoundHex *[]byte) []byte {
-	upperBoundBig := new(big.Int)
-	upperBoundBig, success := upperBoundBig.SetString(string(*upperBoundHex), 16)
-	if success != true {
-		fmt.Printf("Conversion from hex: %s to bigInt failed.", upperBoundHex)
-	}
-
-	randomBig, err := rand.Int(rand.Reader, upperBoundBig)
+func keyGen() {
+	var err error
+	tk = randGen(q)
 	if err != nil {
-		fmt.Printf("Generation of random bigInt in bounds [0...%v] failed.", upperBoundBig)
+		panic(err)
 	}
-
-	return []byte(fmt.Sprintf("%x", randomBig))
+	hk.Exp(g, tk, p)
 }
 
-func keygen(bits int, p *[]byte, q *[]byte, g *[]byte, hk *[]byte, tk *[]byte) {
-	gBig := new(big.Int)
-	qBig := new(big.Int)
-	hkBig := new(big.Int)
-	tkBig := new(big.Int)
-	oneBig := new(big.Int)
-	twoBig := new(big.Int)
+func hash(message []byte, r, s *big.Int) []byte {
+	// 生成 message || r.Bytes() 的哈希值
+	h := sha256.New()
+	h.Write(message)
+	h.Write(r.Bytes())
+	eBig := new(big.Int).SetBytes(h.Sum(nil))
 
-	oneBig.SetInt64(1) // oneBig = 1
-	twoBig.SetInt64(2) // twoBig = 2
-
-	pBig, err := rand.Prime(rand.Reader, bits) // pBig is a random prime of length bits
-	if err != nil {
-		fmt.Printf("Generation of random prime number failed.")
-	}
-	qBig.Sub(pBig, oneBig) // qBig = pBig - 1
-	qBig.Div(qBig, twoBig) // qBig = (pBig - 1) / 2
-
-	gBig, err = rand.Int(rand.Reader, pBig)
-	if err != nil {
-		fmt.Printf("Generation of random bigInt in bounds [0...%v] failed.", pBig)
-	}
-
-	gBig.Exp(gBig, twoBig, pBig) // gBig = gBig ^ 2 % pBig
-
-	// Choosing hk and tk
-	tkBig, err = rand.Int(rand.Reader, qBig)
-	if err != nil {
-		fmt.Printf("Generation of random bigInt in bounds [0...%v] failed.", qBig)
-	}
-
-	hkBig.Exp(gBig, tkBig, pBig) // hkBig = gBig ^ tkBig % pBig
-
-	*p = []byte(fmt.Sprintf("%x", pBig))
-	*q = []byte(fmt.Sprintf("%x", qBig))
-	*g = []byte(fmt.Sprintf("%x", gBig))
-	*hk = []byte(fmt.Sprintf("%x", hkBig))
-	*tk = []byte(fmt.Sprintf("%x", tkBig))
+	// 计算 hk**eBig mod p
+	hk_eBig := new(big.Int).Exp(hk, eBig, p)
+	// 计算 g**s mod p
+	g_s := new(big.Int).Exp(g, s, p)
+	// 计算 hk**eBig * g**s mod p
+	tmpBig := new(big.Int).Mul(hk_eBig, g_s)
+	tmpBig.Mod(tmpBig, p)
+	// 计算r - hk**eBig * g**s mod p
+	hBig := new(big.Int).Sub(r, tmpBig)
+	hBig.Mod(hBig, q)
+	return hBig.Bytes()
 }
 
-func chameleonHash(
-	hk *[]byte,
-	p *[]byte,
-	q *[]byte,
-	g *[]byte,
-	message *[]byte,
-	r *[]byte,
-	s *[]byte,
-	hashOut *[]byte,
-) {
-	hkeBig := new(big.Int)
-	gsBig := new(big.Int)
-	tmpBig := new(big.Int)
-	eBig := new(big.Int)
-	pBig := new(big.Int)
-	qBig := new(big.Int)
-	gBig := new(big.Int)
-	rBig := new(big.Int)
-	sBig := new(big.Int)
-	hkBig := new(big.Int)
-	hBig := new(big.Int)
+func forge(originHash []byte, message2 []byte) (*big.Int, *big.Int) {
+	kBig := randGen(q)
+	hBig := new(big.Int).SetBytes(originHash)
 
-	// Converting from hex to bigInt
-	pBig.SetString(string(*p), 16)
-	qBig.SetString(string(*q), 16)
-	gBig.SetString(string(*g), 16)
-	hkBig.SetString(string(*hk), 16)
-	rBig.SetString(string(*r), 16)
-	sBig.SetString(string(*s), 16)
+	// 计算g**k + h
+	tmpBig := new(big.Int).Exp(g, kBig, p)
+	r2Big := new(big.Int).Add(hBig, tmpBig)
+	r2Big.Mod(r2Big, q)
 
-	// Generate the hashOut with message || rBig
-	hash := sha256.New()
-	hash.Write([]byte(*message))
-	hash.Write([]byte(fmt.Sprintf("%x", rBig)))
-
-	eBig.SetBytes(hash.Sum(nil))
-
-	hkeBig.Exp(hkBig, eBig, pBig)
-	gsBig.Exp(gBig, sBig, pBig)
-	tmpBig.Mul(hkeBig, gsBig)
-	tmpBig.Mod(tmpBig, pBig)
-	hBig.Sub(rBig, tmpBig)
-	hBig.Mod(hBig, qBig)
-
-	*hashOut = hBig.Bytes() // Return hBig in big endian encoding as string
-}
-
-func generateCollision(
-	hk *[]byte,
-	tk *[]byte,
-	p *[]byte,
-	q *[]byte,
-	g *[]byte,
-	msg1 *[]byte,
-	msg2 *[]byte,
-	r1 *[]byte,
-	s1 *[]byte,
-	r2 *[]byte,
-	s2 *[]byte,
-) {
-	hkBig := new(big.Int)
-	tkBig := new(big.Int)
-	pBig := new(big.Int)
-	qBig := new(big.Int)
-	gBig := new(big.Int)
-	r1Big := new(big.Int)
-	s1Big := new(big.Int)
-	kBig := new(big.Int)
-	hBig := new(big.Int)
-	eBig := new(big.Int)
-	tmpBig := new(big.Int)
-	r2Big := new(big.Int)
-	s2Big := new(big.Int)
-
-	pBig.SetString(string(*p), 16)
-	qBig.SetString(string(*q), 16)
-	gBig.SetString(string(*g), 16)
-	r1Big.SetString(string(*r1), 16)
-	s1Big.SetString(string(*s1), 16)
-	hkBig.SetString(string(*hk), 16)
-	tkBig.SetString(string(*tk), 16)
-
-	// Generate random k
-	kBig, err := rand.Int(rand.Reader, qBig)
-	if err != nil {
-		fmt.Printf("Generation of random bigInt in bounds [0...%v] failed.", qBig)
-	}
-
-	// Get chameleon hash of (msg1, r1, s1)
-	var hash []byte
-	chameleonHash(hk, p, q, g, msg1, r1, s1, &hash)
-	hBig.SetBytes(hash) // Convert the big endian encoded hash into bigInt.
-
-	// Compute the new r1
-	tmpBig.Exp(gBig, kBig, pBig)
-	r2Big.Add(hBig, tmpBig)
-	r2Big.Mod(r2Big, qBig)
-
-	// Compute e'
+	// 生成 message2 || r2.Bytes() 的哈希
 	newHash := sha256.New()
-	newHash.Write([]byte(*msg2))
-	newHash.Write([]byte(fmt.Sprintf("%x", r2Big)))
-	eBig.SetBytes(newHash.Sum(nil))
+	newHash.Write(message2)
+	newHash.Write(r2Big.Bytes())
 
-	// Compute s2
-	tmpBig.Mul(eBig, tkBig)
-	tmpBig.Mod(tmpBig, qBig)
-	s2Big.Sub(kBig, tmpBig)
-	s2Big.Mod(s2Big, qBig)
+	// 计算新的 e
+	eBig := new(big.Int).SetBytes(newHash.Sum(nil))
 
-	*r2 = []byte(fmt.Sprintf("%x", r2Big))
-	*s2 = []byte(fmt.Sprintf("%x", s2Big))
+	tmpBig.Mul(eBig, tk)
+	tmpBig.Mod(tmpBig, q)
+	s2Big := new(big.Int).Sub(kBig, tmpBig)
+	s2Big.Mod(s2Big, q)
+
+	return r2Big, s2Big
+}
+
+func run() {
+	keyGen()
+	r1 := randGen(q)
+	s1 := randGen(q)
+	message1 := []byte("太难了！")
+	h := hash(message1, r1, s1)
+	fmt.Println("origin hash value:", h)
+
+	message2 := []byte("给我成！")
+	r2, s2 := forge(h, message2)
+	newHash := hash(message2, r2, s2)
+	fmt.Println("current hash value:", newHash)
 }

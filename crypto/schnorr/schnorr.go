@@ -8,138 +8,119 @@ import (
 	"math/big"
 )
 
-var (
-	p *big.Int
-	q *big.Int
-	g *big.Int
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
-	sk *big.Int
-	pk *big.Int
-	k  *big.Int
-)
+// API 项目级全局函数
 
-func setup() {
+func GenerateKey() (*PublicKey, *PrivateKey) {
 	var err error
-	p, _ = rand.Prime(rand.Reader, 512)
-	one := new(big.Int).SetInt64(1)
-	two := new(big.Int).SetInt64(2)
-	q = new(big.Int)
-	q.Sub(p, one)
-	q.Div(q, two) // qq = (pp-1)/2
-	g, err = rand.Int(rand.Reader, p)
-	if err != nil {
-		fmt.Printf("Generation of random g in bounds [0...%v] failed.", p)
-	}
-	g.Exp(g, two, p) // g = g**2 mod pp
-}
+	privateKey := new(PrivateKey)
+	publicKey := new(PublicKey)
 
-func keyGen() {
-	var err error
-	sk, err = rand.Int(rand.Reader, q)
+	privateKey.key = randGen(p)
 	if err != nil {
-		fmt.Printf("Generation of random sk in bounds [0...%v] failed.", q)
+		panic(fmt.Sprintf("Schnorr: failed to generate private key: %q", err))
 	}
-	pk = new(big.Int)
-	pk.Exp(g, sk, p) // pk = g**sk mod pp
-	k, err = rand.Int(rand.Reader, q)
-	if err != nil {
-		fmt.Printf("Generation of random k in bounds [0...%v] failed.", q)
-	}
-}
-
-func sigGen(msg []byte) ([]byte, []byte) {
-	K := new(big.Int).Exp(g, k, p) // K = g**k mod pp
-	hash := sha256.New()
-	KBytes := K.Bytes()
-	hash.Write(KBytes)
-	hash.Write(msg)
-	h := hash.Sum(nil)
-	c := new(big.Int).SetBytes(h)
-	sig := add(k, mul(sk, c, p), p)
-	fmt.Printf("签名：(%v, %v)\n", c.String(), sig.String())
-	return c.Bytes(), sig.Bytes()
-}
-
-func verify(c, sig, msg []byte) bool {
-	cBig := new(big.Int).SetBytes(c)
-	sigBig := new(big.Int).SetBytes(sig)
-	fmt.Printf("签名：(%v, %v)\n", cBig.String(), sigBig.String())
-	inverseC := sub(new(big.Int).SetInt64(0), cBig)
-	res1 := new(big.Int).Exp(pk, inverseC, p)
-	res2 := new(big.Int).Exp(g, sigBig, p)
-	m := mul(res1, res2, p)
-	hash := sha256.New()
-	hash.Write(m.Bytes())
-	hash.Write(msg)
-	return bytes.Equal(c, hash.Sum(nil))
+	publicKey.key = new(big.Int).Exp(g, privateKey.key, p)
+	return publicKey, privateKey
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
-// 利用扩展欧几里得算法求逆元
+// 定义公私钥
 
-// ax + by = 1，求a mod b 的逆元
-func exgcd(a, b, x, y *big.Int) *big.Int {
-	var d *big.Int
-	if b.Cmp(new(big.Int).SetInt64(0)) == 0 {
-		x.SetInt64(1)
-		y.SetInt64(0)
-		return new(big.Int).Set(a)
+// PublicKey ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// PublicKey
+type PublicKey struct {
+	key *big.Int
+}
+
+// PrivateKey ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// PrivateKey
+type PrivateKey struct {
+	key *big.Int
+}
+
+// Signature ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// Signature
+type Signature struct {
+	sig     *big.Int
+	sum     []byte
+	message []byte
+}
+
+// Sign ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// Sign 签名算法，给定的输入有：私钥sk，消息msg，哈希函数H。现在依次执行以下步骤来计算签名：
+//  1. 选取随机值k mod p，计算：K=g**k；
+//  2. 计算哈希值：sum=H(K,msg)
+//  3. 用私钥计算签名：sig=k-sk*sum
+//  4. 组装签名：<sig, sum, msg>
+func (key *PrivateKey) Sign(message []byte) (*Signature, error) {
+	k := randGen(p)
+	K := new(big.Int).Exp(g, k, p)
+	sum := hash(K.Bytes(), message)
+	e := new(big.Int).SetBytes(sum)
+	xe := new(big.Int).Mul(e, key.key)
+	sig := e.Sub(k, xe)
+	return &Signature{sig: sig, sum: sum, message: message}, nil
+}
+
+// Verify ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// Verify 验签算法，给定的输入有：公钥pk，签名<sig, sum, msg>。现在依次执行以下步骤来验证签名：
+//  1. 解析签名，计算：x=pk**sum
+//  2. 计算：y=g**sig
+//  3. 计算：z=x*y，然后求哈希值sum'=H(z,msg)，比较sum'和sum一不一样。
+func (key *PublicKey) Verify(signature *Signature) bool {
+	sum_ := new(big.Int).SetBytes(signature.sum)
+	g_sig := new(big.Int).Exp(g, signature.sig, p)
+	ye := new(big.Int).Exp(key.key, sum_, p)
+	rv := new(big.Int).Mul(g_sig, ye)
+	rv.Mod(rv, p)
+	ha := hash(rv.Bytes(), signature.message)
+	return bytes.Equal(ha, signature.sum)
+}
+
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
+
+// 定义群的生成元和阶：群的阶是256比特长
+
+var p, _ = new(big.Int).SetString("c0a0f171e583d4efb262c1783a6ed6d995fc1d4eea476149cf8ea40078d27ad7", 16)
+
+var q = new(big.Int).Div(new(big.Int).Sub(p, new(big.Int).SetInt64(1)), new(big.Int).SetInt64(2))
+
+var g, _ = new(big.Int).SetString("3e446bf8e43afebc6b49bc7220d19a415c9bda8cbbcc25189c67d27b33df73cf", 16)
+
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
+
+// 定义不可导出的工具函数
+
+func randGen(upper *big.Int) *big.Int {
+	randomBig, err := rand.Int(rand.Reader, upper)
+	if err != nil {
+		panic(err)
 	}
-	m := mod(a, b)
-	d = exgcd(b, m, y, x)
-	di := div(a, b)
-	di.Mul(di, x)
-	y.Sub(y, di)
-	return new(big.Int).Set(d)
+	return randomBig
 }
 
-// ax + by = 1，求a mod b 的逆元
-func calcInverseElem(a, b *big.Int) *big.Int {
-	var d, x, y *big.Int
-	x = new(big.Int)
-	y = new(big.Int)
-	d = exgcd(a, b, x, y)
-	if d.Cmp(new(big.Int).SetInt64(1)) == 0 {
-		xmod := mod(x, b)
-		if xmod.Cmp(new(big.Int).SetInt64(0)) == -1 || xmod.Cmp(new(big.Int).SetInt64(0)) == 0 {
-			return xmod.Add(xmod, b)
-		} else {
-			return xmod
-		}
-	} else {
-		return new(big.Int).SetInt64(-1)
+func hash(bzs ...[]byte) []byte {
+	h := sha256.New()
+	for _, bz := range bzs {
+		h.Write(bz)
 	}
-}
-
-func mod(a, b *big.Int) *big.Int {
-	res := new(big.Int)
-	return res.Mod(a, b)
-}
-
-func div(a, b *big.Int) *big.Int {
-	res := new(big.Int)
-	return res.Div(a, b)
-}
-
-func mul(a, b, m *big.Int) *big.Int {
-	res := new(big.Int).Mul(a, b)
-	res = mod(res, m)
-	return res
-}
-
-func add(a, b, m *big.Int) *big.Int {
-	res := new(big.Int).Add(a, b)
-	res = mod(res, m)
-	return res
-}
-
-func exp(a, b, m *big.Int) *big.Int {
-	//ex := mod(b, m)
-	res := new(big.Int).Exp(a, b, m)
-	return res
-}
-
-func sub(a, b *big.Int) *big.Int {
-	return new(big.Int).Sub(a, b)
+	return h.Sum(nil)
 }

@@ -7,6 +7,7 @@ require (
 	github.com/go-stack/stack v1.8.1
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/multierr v1.8.0
+	golang.org/x/crypto v0.3.0
 	golang.org/x/sys v0.2.0
 )
 
