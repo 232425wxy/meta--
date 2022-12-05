@@ -5,8 +5,10 @@ import "fmt"
 func main() {
 	var s int
 	var n int
-	fmt.Scan(&s)
-	fmt.Scan(&n)
+	//fmt.Scan(&s)
+	//fmt.Scan(&n)
+	s = 4
+	n = 7
 	var x, y *int
 	x = new(int)
 	y = new(int)
