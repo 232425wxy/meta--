@@ -19,6 +19,7 @@ type PublicKey interface {
 	ToBytes() []byte
 	FromBytes(bz []byte) error
 	Verify(sig Signature, h sha256.Hash) bool
+	ToID() ID
 }
 
 type PrivateKey interface {
@@ -26,6 +27,7 @@ type PrivateKey interface {
 	ToBytes() []byte
 	FromBytes(bz []byte) error
 	Sign(h sha256.Hash) (Signature, error)
+	PublicKey() PublicKey
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/

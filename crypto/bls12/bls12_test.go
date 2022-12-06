@@ -11,7 +11,7 @@ func TestGeneratePrivateKey(t *testing.T) {
 	private, err := GeneratePrivateKey()
 	assert.Nil(t, err)
 
-	public := private.Public()
+	public := private.PublicKey()
 
 	t.Log("private key bytes:", private.ToBytes())
 	t.Log("private key bytes:", len(private.ToBytes()))
@@ -41,7 +41,7 @@ func TestBls12Crypto_Sign(t *testing.T) {
 func TestSignAndVerify(t *testing.T) {
 	private, err := GeneratePrivateKey()
 	assert.Nil(t, err)
-	public := private.Public()
+	public := private.PublicKey()
 
 	msg := []byte("welcome to china!")
 	h := sha256.Sum(msg)
@@ -55,19 +55,19 @@ func TestSignAndVerify(t *testing.T) {
 
 func TestThreshold(t *testing.T) {
 	private1, err := GeneratePrivateKey()
-	public1 := private1.Public()
+	public1 := private1.PublicKey()
 	assert.Nil(t, err)
 
 	private2, err := GeneratePrivateKey()
-	public2 := private2.Public()
+	public2 := private2.PublicKey()
 	assert.Nil(t, err)
 
 	private3, err := GeneratePrivateKey()
-	public3 := private3.Public()
+	public3 := private3.PublicKey()
 	assert.Nil(t, err)
 
 	private4, err := GeneratePrivateKey()
-	public4 := private4.Public()
+	public4 := private4.PublicKey()
 	assert.Nil(t, err)
 
 	err = AddBLSPublicKey(public1.ToBytes())

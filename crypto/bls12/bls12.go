@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	lib = new(pubLeyLib)
+	lib = new(pubKeyLib)
 	lib.keys = make(map[crypto.ID]*PublicKey)
 
 	json.RegisterType(PublicKey{}, PublicKeyFileType)
@@ -72,12 +72,12 @@ func AddBLSPublicKey(bz []byte) error {
 	return nil
 }
 
-// GetBLSPublicKey ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+// GetBLSPublicKeyFromLib ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------
 //
-// GetBLSPublicKey 给定一个节点的ID，从库里获取该节点的公钥。
-func GetBLSPublicKey(id crypto.ID) *PublicKey {
+// GetBLSPublicKeyFromLib 给定一个节点的ID，从库里获取该节点的公钥。
+func GetBLSPublicKeyFromLib(id crypto.ID) *PublicKey {
 	lib.mu.RLock()
 	defer lib.mu.RUnlock()
 	if key, ok := lib.keys[id]; ok {
@@ -181,7 +181,7 @@ func (private *PrivateKey) Sign(h sha256.Hash) (sig crypto.Signature, err error)
 		return nil, fmt.Errorf("bls12: hash to curve failed: %q", err)
 	}
 	bls12381.NewG2().MulScalarBig(p, p, private.key)
-	return &Signature{signer: private.Public().ToID(), sig: p}, nil
+	return &Signature{signer: private.PublicKey().ToID(), sig: p}, nil
 }
 
 // ToBytes ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -204,12 +204,12 @@ func (private *PrivateKey) FromBytes(bz []byte) error {
 	return nil
 }
 
-// Public ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+// PublicKey ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------
 //
-// Public 返回与当前私钥关联的公钥。
-func (private *PrivateKey) Public() *PublicKey {
+// PublicKey 返回与当前私钥关联的公钥。
+func (private *PrivateKey) PublicKey() crypto.PublicKey {
 	key := &bls12381.PointG1{}
 	return &PublicKey{key: bls12381.NewG1().MulScalarBig(key, &bls12381.G1One, private.key)}
 }
@@ -329,8 +329,8 @@ func (agg *AggregateSignature) Type() string {
 //
 // CryptoBLS12 实现了bls12-381聚合签名的的签名和验证功能。
 type CryptoBLS12 struct {
-	private *PrivateKey
-	public  *PublicKey
+	private crypto.PrivateKey
+	public  crypto.PublicKey
 	id      crypto.ID
 }
 
@@ -350,7 +350,7 @@ func NewCryptoBLS12() *CryptoBLS12 {
 //
 // Init 初始化，给 *blsCrypto 设置私钥和节点ID。
 func (cb *CryptoBLS12) Init(private *PrivateKey) {
-	public := private.Public()
+	public := private.PublicKey()
 
 	cb.private = private
 	cb.public = public
@@ -392,7 +392,7 @@ func (cb *CryptoBLS12) aggregateSignatures(signatures map[crypto.ID]*Signature) 
 //
 // Verify 给定一个签名，签名中包含签名者的ID，根据这个ID去找到这个签名者的公钥，然后验证这个签名是否合法。
 func (cb *CryptoBLS12) Verify(sig crypto.Signature, h [32]byte) bool {
-	signerPubKey := GetBLSPublicKey(sig.Signer())
+	signerPubKey := GetBLSPublicKeyFromLib(sig.Signer())
 	if signerPubKey == nil {
 		return false
 	}
@@ -411,7 +411,7 @@ func (cb *CryptoBLS12) VerifyThresholdSignature(signature crypto.ThresholdSignat
 	}
 	pubKeys := make([]*PublicKey, 0)
 	for _, participant := range sig.Participants().IDs {
-		pubKey := GetBLSPublicKey(participant)
+		pubKey := GetBLSPublicKeyFromLib(participant)
 		if pubKey != nil {
 			pubKeys = append(pubKeys, pubKey)
 		}
@@ -448,7 +448,7 @@ func (cb *CryptoBLS12) VerifyThresholdSignatureForMessageSet(signature crypto.Th
 			continue
 		}
 		hashSet[hash] = struct{}{}
-		pubKey := GetBLSPublicKey(id)
+		pubKey := GetBLSPublicKeyFromLib(id)
 		if pubKey == nil {
 			return false
 		}
@@ -530,12 +530,12 @@ var domain = []byte("BLS12-381-SIG:REDACTABLE-BLOCKCHAIN")
 //	---------------------------------------------------------
 //
 // pubKeyLib 存储系统中其他节点的公钥库。
-type pubLeyLib struct {
+type pubKeyLib struct {
 	mu   sync.RWMutex
 	keys map[crypto.ID]*PublicKey
 }
 
-var lib *pubLeyLib
+var lib *pubKeyLib
 
 // curveOrder ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
