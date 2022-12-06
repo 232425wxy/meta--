@@ -1,68 +1,53 @@
 package chameleon
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
 	"math/big"
 )
-
-var p, _ = new(big.Int).SetString("c0a0f171e583d4efb262c1783a6ed6d995fc1d4eea476149cf8ea40078d27ad7", 16)
-
-var g, _ = new(big.Int).SetString("3e446bf8e43afebc6b49bc7220d19a415c9bda8cbbcc25189c67d27b33df73cf", 16)
-
-var q = new(big.Int).Div(new(big.Int).Sub(p, new(big.Int).SetInt64(1)), new(big.Int).SetInt64(2))
 
 var (
 	hk *big.Int = new(big.Int)
 	tk *big.Int = new(big.Int)
 )
 
-func randGen(upper *big.Int) *big.Int {
-	randomBig, err := rand.Int(rand.Reader, upper)
-	if err != nil {
-		panic(err)
-	}
-	return randomBig
-}
-
 func keyGen() {
 	var err error
-	tk = randGen(q)
+	tk = randGen(Q)
 	if err != nil {
 		panic(err)
 	}
-	hk.Exp(g, tk, p)
+	hk.Exp(G, tk, P)
 }
 
-func hash(message []byte, r, s *big.Int) []byte {
+func Hash(message []byte, r, s *big.Int) []byte {
 	// 生成 message || r.Bytes() 的哈希值
 	h := sha256.New()
 	h.Write(message)
 	h.Write(r.Bytes())
 	eBig := new(big.Int).SetBytes(h.Sum(nil))
 
-	// 计算 hk**eBig mod p
-	hk_eBig := new(big.Int).Exp(hk, eBig, p)
-	// 计算 g**s mod p
-	g_s := new(big.Int).Exp(g, s, p)
-	// 计算 hk**eBig * g**s mod p
+	// 计算 hk**eBig mod P
+	hk_eBig := new(big.Int).Exp(hk, eBig, P)
+	// 计算 G**s mod P
+	g_s := new(big.Int).Exp(G, s, P)
+	// 计算 hk**eBig * G**s mod P
 	tmpBig := new(big.Int).Mul(hk_eBig, g_s)
-	tmpBig.Mod(tmpBig, p)
-	// 计算r - hk**eBig * g**s mod p
+	tmpBig.Mod(tmpBig, P)
+	// 计算r - hk**eBig * G**s mod P
 	hBig := new(big.Int).Sub(r, tmpBig)
-	hBig.Mod(hBig, q)
+	hBig.Mod(hBig, Q)
 	return hBig.Bytes()
 }
 
-func forge(originHash []byte, message2 []byte) (*big.Int, *big.Int) {
-	kBig := randGen(q)
+func Forge(originHash []byte, message2 []byte) (*big.Int, *big.Int) {
+	kBig := randGen(Q)
 	hBig := new(big.Int).SetBytes(originHash)
 
 	// 计算g**k + h
-	tmpBig := new(big.Int).Exp(g, kBig, p)
+	tmpBig := new(big.Int).Exp(G, kBig, P)
 	r2Big := new(big.Int).Add(hBig, tmpBig)
-	r2Big.Mod(r2Big, q)
+	r2Big.Mod(r2Big, Q)
 
 	// 生成 message2 || r2.Bytes() 的哈希
 	newHash := sha256.New()
@@ -73,23 +58,23 @@ func forge(originHash []byte, message2 []byte) (*big.Int, *big.Int) {
 	eBig := new(big.Int).SetBytes(newHash.Sum(nil))
 
 	tmpBig.Mul(eBig, tk)
-	tmpBig.Mod(tmpBig, q)
+	tmpBig.Mod(tmpBig, Q)
 	s2Big := new(big.Int).Sub(kBig, tmpBig)
-	s2Big.Mod(s2Big, q)
+	s2Big.Mod(s2Big, Q)
 
 	return r2Big, s2Big
 }
 
 func run() {
 	keyGen()
-	r1 := randGen(q)
-	s1 := randGen(q)
+	r1 := randGen(Q)
+	s1 := randGen(Q)
 	message1 := []byte("太难了！")
-	h := hash(message1, r1, s1)
-	fmt.Println("origin hash value:", h)
+	h := Hash(message1, r1, s1)
+	fmt.Println("origin Hash value:", h)
 
 	message2 := []byte("给我成！")
-	r2, s2 := forge(h, message2)
-	newHash := hash(message2, r2, s2)
-	fmt.Println("current hash value:", newHash)
+	r2, s2 := Forge(h, message2)
+	newHash := Hash(message2, r2, s2)
+	fmt.Println("current Hash value:", newHash)
 }
