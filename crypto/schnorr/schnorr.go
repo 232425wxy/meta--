@@ -17,11 +17,11 @@ func GenerateKey() (*PublicKey, *PrivateKey) {
 	privateKey := new(PrivateKey)
 	publicKey := new(PublicKey)
 
-	privateKey.key = randGen(p)
+	privateKey.key = randGen(q)
 	if err != nil {
 		panic(fmt.Sprintf("Schnorr: failed to generate private key: %q", err))
 	}
-	publicKey.key = new(big.Int).Exp(g, privateKey.key, p)
+	publicKey.key = new(big.Int).Exp(g, privateKey.key, q)
 	return publicKey, privateKey
 }
 
@@ -68,8 +68,8 @@ type Signature struct {
 //  3. 用私钥计算签名：sig=k-sk*sum
 //  4. 组装签名：<sig, sum, msg>
 func (key *PrivateKey) Sign(message []byte) (*Signature, error) {
-	k := randGen(p)
-	K := new(big.Int).Exp(g, k, p)
+	k := randGen(q)
+	K := new(big.Int).Exp(g, k, q)
 	sum := hash(K.Bytes(), message)
 	e := new(big.Int).SetBytes(sum)
 	xe := new(big.Int).Mul(e, key.key)
@@ -87,10 +87,10 @@ func (key *PrivateKey) Sign(message []byte) (*Signature, error) {
 //  3. 计算：z=x*y，然后求哈希值sum'=H(z,msg)，比较sum'和sum一不一样。
 func (key *PublicKey) Verify(signature *Signature) bool {
 	sum_ := new(big.Int).SetBytes(signature.sum)
-	g_sig := new(big.Int).Exp(g, signature.sig, p)
-	ye := new(big.Int).Exp(key.key, sum_, p)
+	g_sig := new(big.Int).Exp(g, signature.sig, q)
+	ye := new(big.Int).Exp(key.key, sum_, q)
 	rv := new(big.Int).Mul(g_sig, ye)
-	rv.Mod(rv, p)
+	rv.Mod(rv, q)
 	ha := hash(rv.Bytes(), signature.message)
 	return bytes.Equal(ha, signature.sum)
 }
