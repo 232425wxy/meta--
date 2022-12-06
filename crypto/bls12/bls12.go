@@ -17,8 +17,8 @@ func init() {
 	lib = new(pubKeyLib)
 	lib.keys = make(map[crypto.ID]*PublicKey)
 
-	json.RegisterType(PublicKey{}, PublicKeyFileType)
-	json.RegisterType(PrivateKey{}, PrivateKeyFileType)
+	json.RegisterType(&PublicKey{}, PublicKeyFileType)
+	json.RegisterType(&PrivateKey{}, PrivateKeyFileType)
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
@@ -30,12 +30,12 @@ func init() {
 //	---------------------------------------------------------
 //
 // GeneratePrivateKey 根据定义的椭圆曲线G1群的阶 curveOrder 随机生成一个数作为私钥。
-func GeneratePrivateKey() (*PrivateKey, error) {
+func GeneratePrivateKey() (crypto.PrivateKey, error) {
 	key, err := rand.Int(rand.Reader, curveOrder)
 	if err != nil {
-		return nil, fmt.Errorf("bls12: failed to generate private key: %q", err)
+		return nil, fmt.Errorf("bls12: failed to generate private Key: %q", err)
 	}
-	return &PrivateKey{key: key}, nil
+	return &PrivateKey{Key: key}, nil
 }
 
 // RestoreAggregateSignature ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -65,7 +65,7 @@ func AddBLSPublicKey(bz []byte) error {
 	public := new(PublicKey)
 	err := public.FromBytes(bz)
 	if err != nil {
-		return fmt.Errorf("bls12: add public key failed: %q", err)
+		return fmt.Errorf("bls12: add public Key failed: %q", err)
 	}
 	id := public.ToID()
 	lib.keys[id] = public
@@ -96,7 +96,7 @@ func GetBLSPublicKeyFromLib(id crypto.ID) *PublicKey {
 //
 // PublicKey 是bls12-381的公钥。
 type PublicKey struct {
-	key *bls12381.PointG1
+	Key *bls12381.PointG1
 }
 
 // Verify ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -115,7 +115,7 @@ func (pub *PublicKey) Verify(sig crypto.Signature, h sha256.Hash) bool {
 	}
 	engine := bls12381.NewEngine()
 	engine.AddPairInv(&bls12381.G1One, s.sig)
-	engine.AddPair(pub.key, p)
+	engine.AddPair(pub.Key, p)
 	return engine.Result().IsOne()
 }
 
@@ -136,7 +136,7 @@ func (pub *PublicKey) ToID() crypto.ID {
 //
 // ToBytes 将公钥序列化成字节切片。
 func (pub *PublicKey) ToBytes() []byte {
-	return bls12381.NewG1().ToCompressed(pub.key)
+	return bls12381.NewG1().ToCompressed(pub.Key)
 }
 
 // FromBytes ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -145,9 +145,9 @@ func (pub *PublicKey) ToBytes() []byte {
 //
 // FromBytes 给定一个公钥的字节切片，对其进行反序列化，得到公钥对象。
 func (pub *PublicKey) FromBytes(bz []byte) (err error) {
-	pub.key, err = bls12381.NewG1().FromCompressed(bz)
+	pub.Key, err = bls12381.NewG1().FromCompressed(bz)
 	if err != nil {
-		return fmt.Errorf("bls12: failed to decompress public key: %q", err)
+		return fmt.Errorf("bls12: failed to decompress public Key: %q", err)
 	}
 	return nil
 }
@@ -167,7 +167,7 @@ func (pub *PublicKey) Type() string {
 //
 // PrivateKey 是bls12-381的私钥，实际上私钥用 *big.Int 表示。
 type PrivateKey struct {
-	key *big.Int
+	Key *big.Int
 }
 
 // Sign ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -180,7 +180,7 @@ func (private *PrivateKey) Sign(h sha256.Hash) (sig crypto.Signature, err error)
 	if err != nil {
 		return nil, fmt.Errorf("bls12: hash to curve failed: %q", err)
 	}
-	bls12381.NewG2().MulScalarBig(p, p, private.key)
+	bls12381.NewG2().MulScalarBig(p, p, private.Key)
 	return &Signature{signer: private.PublicKey().ToID(), sig: p}, nil
 }
 
@@ -190,7 +190,7 @@ func (private *PrivateKey) Sign(h sha256.Hash) (sig crypto.Signature, err error)
 //
 // ToBytes 返回私钥的字节切片内容，其实就是返回 *big.Int 的字节切片内容。
 func (private *PrivateKey) ToBytes() []byte {
-	return private.key.Bytes()
+	return private.Key.Bytes()
 }
 
 // FromBytes ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -199,8 +199,8 @@ func (private *PrivateKey) ToBytes() []byte {
 //
 // FromBytes 根据给定的字节切片，将其转换成私钥，其实就是将字节切片转换为 *big.Int。
 func (private *PrivateKey) FromBytes(bz []byte) error {
-	private.key = new(big.Int)
-	private.key.SetBytes(bz)
+	private.Key = new(big.Int)
+	private.Key.SetBytes(bz)
 	return nil
 }
 
@@ -211,7 +211,7 @@ func (private *PrivateKey) FromBytes(bz []byte) error {
 // PublicKey 返回与当前私钥关联的公钥。
 func (private *PrivateKey) PublicKey() crypto.PublicKey {
 	key := &bls12381.PointG1{}
-	return &PublicKey{key: bls12381.NewG1().MulScalarBig(key, &bls12381.G1One, private.key)}
+	return &PublicKey{Key: bls12381.NewG1().MulScalarBig(key, &bls12381.G1One, private.Key)}
 }
 
 // Type ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -221,6 +221,15 @@ func (private *PrivateKey) PublicKey() crypto.PublicKey {
 // Type 返回私钥类型："BLS12-381 PRIVATE KEY"。
 func (private *PrivateKey) Type() string {
 	return "BLS12-381 PRIVATE KEY"
+}
+
+// String ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// String 返回BLS12-381私钥的字符串格式："BLS12-381 PRIVATE KEY":{33184469658132716532202857962421420469965768660734559330213063713395516800091}
+func (private *PrivateKey) String() string {
+	return fmt.Sprintf(`"%s":{%s}`, private.Type(), private.Key)
 }
 
 // Signature ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -349,7 +358,7 @@ func NewCryptoBLS12() *CryptoBLS12 {
 //	---------------------------------------------------------
 //
 // Init 初始化，给 *blsCrypto 设置私钥和节点ID。
-func (cb *CryptoBLS12) Init(private *PrivateKey) {
+func (cb *CryptoBLS12) Init(private crypto.PrivateKey) {
 	public := private.PublicKey()
 
 	cb.private = private
@@ -427,7 +436,7 @@ func (cb *CryptoBLS12) VerifyThresholdSignature(signature crypto.ThresholdSignat
 	engine := bls12381.NewEngine()
 	engine.AddPairInv(&bls12381.G1One, &sig.sig)
 	for _, key := range pubKeys {
-		engine.AddPair(key.key, ps)
+		engine.AddPair(key.Key, ps)
 	}
 	return engine.Result().IsOne()
 }
@@ -456,7 +465,7 @@ func (cb *CryptoBLS12) VerifyThresholdSignatureForMessageSet(signature crypto.Th
 		if err != nil {
 			return false
 		}
-		engine.AddPair(pubKey.key, p2)
+		engine.AddPair(pubKey.Key, p2)
 	}
 	if !engine.Result().IsOne() {
 		return false

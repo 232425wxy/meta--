@@ -2,6 +2,7 @@ package os
 
 import (
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -64,8 +65,42 @@ func MustWriteFile(filePath string, content []byte, mode os.FileMode) {
 	}
 }
 
+// ReadFile ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// ReadFile 给定文件的地址，从中读取数据出来。
+func ReadFile(filePath string) ([]byte, error) {
+	return os.ReadFile(filePath)
+}
+
 // CopyFile ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------
 //
-// CopyFile
+// CopyFile 将给定的文件复制到指定的地方去。
+func CopyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	defer func() {
+		_ = srcFile.Close()
+	}()
+	if err != nil {
+		return fmt.Errorf("os.CopyFile: failed to open source file %q for %q", src, err)
+	}
+	info, err := srcFile.Stat()
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return fmt.Errorf("os.CopyFile: cannot copy directory %q", src)
+	}
+	dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_APPEND|os.O_TRUNC, info.Mode())
+	if err != nil {
+		return fmt.Errorf("os.CopyFile: failed to open destination file %q for %q", dst, err)
+	}
+	defer func() {
+		_ = dstFile.Close()
+	}()
+	_, err = io.Copy(dstFile, srcFile)
+	return err
+}

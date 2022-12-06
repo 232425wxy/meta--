@@ -13,10 +13,10 @@ func TestGeneratePrivateKey(t *testing.T) {
 
 	public := private.PublicKey()
 
-	t.Log("private key bytes:", private.ToBytes())
-	t.Log("private key bytes:", len(private.ToBytes()))
-	t.Log("public key bytes:", public.ToBytes())
-	t.Log("public key bytes:", len(public.ToBytes()))
+	t.Log("private Key bytes:", private.ToBytes())
+	t.Log("private Key bytes:", len(private.ToBytes()))
+	t.Log("public Key bytes:", public.ToBytes())
+	t.Log("public Key bytes:", len(public.ToBytes()))
 
 	id := public.ToID()
 	t.Log(id, len(id))

@@ -28,6 +28,7 @@ type PrivateKey interface {
 	FromBytes(bz []byte) error
 	Sign(h sha256.Hash) (Signature, error)
 	PublicKey() PublicKey
+	String() string
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
