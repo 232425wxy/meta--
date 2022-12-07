@@ -1,3 +1,5 @@
+// 学习用的区块链平台，不需要对网络地址有那么严格的要求
+
 package p2p
 
 import (
@@ -7,7 +9,14 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 )
+
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
+
+// 定义常量
+
+const EmptyNetAddress = "<nil-NetAddress>"
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
@@ -113,6 +122,19 @@ func (addr *NetAddress) ToProto() pbp2p.NetAddress {
 	}
 }
 
+// NetAddressesToProto ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// NetAddressesToProto 将一批NetAddress转换成protobuf形式。
+func NetAddressesToProto(addrs []*NetAddress) []pbp2p.NetAddress {
+	result := make([]pbp2p.NetAddress, 0)
+	for _, addr := range addrs {
+		result = append(result, addr.ToProto())
+	}
+	return result
+}
+
 // NetAddressFromProto ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------
@@ -124,4 +146,82 @@ func NetAddressFromProto(pbAddr pbp2p.NetAddress) *NetAddress {
 		IP:   net.ParseIP(pbAddr.IP),
 		Port: int(pbAddr.Port),
 	}
+}
+
+// NetAddressesFromProto ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// NetAddressesFromProto 将一批protobuf形式的NetAddress转换成自定义的 NetAddress。
+func NetAddressesFromProto(pbAddrs []pbp2p.NetAddress) []*NetAddress {
+	result := make([]*NetAddress, 0)
+	for _, pbAddr := range pbAddrs {
+		result = append(result, NetAddressFromProto(pbAddr))
+	}
+	return result
+}
+
+// DialString ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// DialString 返回NetAddress的拨号地址：ip:port。
+func (addr *NetAddress) DialString() string {
+	if addr == nil {
+		return EmptyNetAddress
+	}
+	return net.JoinHostPort(addr.IP.String(), strconv.FormatInt(int64(addr.Port), 10))
+}
+
+// String ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// String 返回NetAddress的字符串形式：id@ip:port。
+func (addr *NetAddress) String() string {
+	return fmt.Sprintf("%s@%s", addr.ID, addr.DialString())
+}
+
+// Equals ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// Equals 判断两个NetAddress是否完全相同，包括ID。
+func (addr *NetAddress) Equals(other *NetAddress) bool {
+	return addr.String() == other.String()
+}
+
+// Same ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// Same 不同于 Equals 方法，Same方法先判断两个NetAddress的网络地址是否一样，如果一样返回true，如果
+// 不一样，则继续判断ID是否相同，如果相同则返回true，否则返回false。
+func (addr *NetAddress) Same(other *NetAddress) bool {
+	if addr.DialString() == other.DialString() {
+		return true
+	} else {
+		if addr.ID == other.ID {
+			return true
+		}
+	}
+	return false
+}
+
+// Dial ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// Dial 方法给定指定的NetAddress拨号建立连接。
+func (addr *NetAddress) Dial() (net.Conn, error) {
+	return net.Dial("tcp", addr.DialString())
+}
+
+// DialTimeout ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// DialTimeout 尝试给指定的地址拨号建立连接，如果在超时时间内没能建立连接，则返回错误。
+func (addr *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
+	return net.DialTimeout("tcp", addr.DialString(), timeout)
 }

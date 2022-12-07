@@ -20,6 +20,7 @@ func main() {
 	fmt.Println(m)
 }
 func Exgcd(a, b int, x, y *int) int {
+
 	var d int
 	if b == 0 {
 		*x = 1

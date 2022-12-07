@@ -37,7 +37,7 @@ func (bz *HexBytes) Unmarshal(data []byte) error {
 // MarshalJSON 方法将字节切片编码成16进制字符串，然后在字符串两端加上双引号，就得到了JSON格式的字节切片，
 // 编码之后数据长度会增加一倍以上。
 func (bz HexBytes) MarshalJSON() ([]byte, error) {
-	dst := make([]byte, len(bz)+2)
+	dst := make([]byte, 2*len(bz)+2)
 	dst[0] = '"'
 	s := hex.EncodeToString(bz)
 	copy(dst[1:], s)
@@ -79,4 +79,21 @@ func (bz HexBytes) Bytes() []byte {
 // String 返回字节切片的16进制编码字符串。
 func (bz HexBytes) String() string {
 	return hex.EncodeToString(bz)
+}
+
+// CompatibleWith ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// CompatibleWith 判断两个字节切片中是否存在相同的字节，哪怕只是存在一个相同的字节，该方法都会
+// 返回true。
+func (bz HexBytes) CompatibleWith(other HexBytes) bool {
+	for _, ch1 := range bz {
+		for _, ch2 := range other {
+			if ch1 == ch2 {
+				return true
+			}
+		}
+	}
+	return false
 }
