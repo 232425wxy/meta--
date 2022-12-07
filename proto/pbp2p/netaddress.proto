@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package pbp2p;
+
+import "gogoproto-1.4.3/gogoproto/gogo.proto";
+
+message NetAddress {
+  string id   = 1 [(gogoproto.customname) = "ID"];
+  string ip   = 2 [(gogoproto.customname) = "IP"];
+  int64  port = 3;
+}
+
+// protoc --gogofaster_out=. -I=. -I=$GOPATH/src netaddress.proto
