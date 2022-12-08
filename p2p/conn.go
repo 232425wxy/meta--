@@ -2,14 +2,20 @@ package p2p
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"github.com/232425wxy/meta--/common/flowrate"
 	"github.com/232425wxy/meta--/common/flusher"
+	"github.com/232425wxy/meta--/common/number"
+	"github.com/232425wxy/meta--/common/protoio"
 	"github.com/232425wxy/meta--/common/service"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbp2p"
 	"github.com/cosmos/gogoproto/proto"
+	"io"
+	"math"
 	"net"
+	"reflect"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
@@ -132,9 +138,11 @@ func NewConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRece
 //
 // SetLogger 为每个信道都设置日志记录器。
 func (c *Connection) SetLogger(logger log.Logger) {
-	c.BaseService.SetLogger(logger)
+	child := logger.New("conn", c.String())
+	c.BaseService.SetLogger(child)
 	for _, ch := range c.channels {
-		ch.Logger = logger
+		channelLogger := child.New("channel id", ch.desc.ID)
+		ch.Logger = channelLogger
 	}
 }
 
@@ -214,10 +222,10 @@ func (c *Connection) String() string {
 //
 // flush 将数据写入底层的网络连接net.Conn里。
 func (c *Connection) flush() {
-	c.Logger.Debug("flush message to the other side", "receiver", c.String())
+	c.Logger.Debug("flush message to the other side")
 	err := c.bufConnWriter.Flush()
 	if err != nil {
-		c.Logger.Error("failed to flush message to the other side", "conn", c.String(), "err", err)
+		c.Logger.Error("failed to flush message to the other side", "err", err)
 	}
 }
 
@@ -240,7 +248,7 @@ func (c *Connection) recover() {
 // stopForError 因为某种严重错误才会导致网络连接停止。
 func (c *Connection) stopForError(err error) {
 	if e := c.Stop(); e != nil {
-		c.Logger.Error("failed to stop connection", "conn", c.String(), "err", e)
+		c.Logger.Error("failed to stop connection", "err", e)
 	}
 	if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
 		if c.onError != nil {
@@ -261,19 +269,287 @@ func (c *Connection) Send(chID byte, msg []byte) bool {
 	channel, ok := c.channelsIdx[chID]
 	if !ok {
 		c.Logger.Error("want to send message to the specified channel, but cannot find this channel", "channel id", chID)
+		return false
 	}
 	success := channel.sendBytes(msg)
 	if success {
-		c.Logger.Debug("send message to the specified channel", "channel id", chID, "conn", c.String(), "msg", fmt.Sprintf("%X", msg))
+		c.Logger.Debug("send message to the specified channel", "channel id", chID, "msg", fmt.Sprintf("%X", msg))
 		select {
 		case c.sendChan <- struct{}{}:
 		// 告诉sendRoutine来活了，有数据需要发送
 		default:
 		}
 	} else {
-		c.Logger.Warn("send message failed", "channel id", chID, "conn", c.String())
+		c.Logger.Warn("send message failed", "channel id", chID)
 	}
 	return success
+}
+
+// TrySend ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// TrySend 尝试向指定的信道发送数据。
+func (c *Connection) TrySend(chID byte, msg []byte) bool {
+	if !c.IsRunning() {
+		return false
+	}
+	channel, ok := c.channelsIdx[chID]
+	if !ok {
+		c.Logger.Error("try to send message to the specified channel, but cannot find this channel", "channel id", chID)
+		return false
+	}
+	success := channel.trySendBytes(msg)
+	if success {
+		c.Logger.Debug("successfully try to send message to the specified channel", "channel id", chID)
+		select {
+		case c.sendChan <- struct{}{}:
+		// 提醒sendRoutine协程有数据需要发送
+		default:
+		}
+	}
+	return success
+}
+
+// CanSend ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// CanSend 询问指定的信道能否发送数据。
+func (c *Connection) CanSend(chID byte) bool {
+	if !c.IsRunning() {
+		return false
+	}
+	channel, ok := c.channelsIdx[chID]
+	if !ok {
+		c.Logger.Error("cannot find the specified channel", "channel id", chID)
+		return false
+	}
+	return channel.canSend()
+}
+
+func (c *Connection) sendRoutine() {
+	defer c.recover()
+	protoWriter := protoio.NewDelimitedWriter(c.bufConnWriter)
+LOOP:
+	for {
+		var err error
+	SELECTION:
+		select {
+		case <-c.flusher.Ch:
+			// flusher.fireRoutine被启动了，common/flusher那个地方发送了信号过来，让我们把数据刷新到网络连接里。
+			c.flush()
+		case <-c.chStatsTicker.C:
+			// 该更新每个信道的状态了
+			for _, channel := range c.channels {
+				channel.updateStats()
+			}
+		case <-c.pingTicker.C:
+			// 该给对方发送ping消息了
+			if err = c.sendPing(protoWriter); err != nil {
+				break SELECTION
+			}
+		case timeout := <-c.pongTimeoutCh:
+			if timeout {
+				c.Logger.Warn("failed to wait for a pong message within the timeout period")
+				err = errors.New("failed to wait for a pong message within the timeout period")
+			} else {
+				c.stopPongTimer()
+			}
+		case <-c.pong:
+			if err = c.sendPong(protoWriter); err != nil {
+				break SELECTION
+			}
+		case <-c.quitSendRoutine:
+			break LOOP
+		case <-c.sendChan:
+			eof := c.sendSomePacketMsgs()
+			if !eof {
+				select {
+				case c.sendChan <- struct{}{}:
+					// 实现自举，继续发送信号告诉自己还有数据未发送完。
+				default:
+				}
+			}
+		}
+		if !c.IsRunning() {
+			break LOOP
+		}
+		if err != nil {
+			c.Logger.Error("connection failed @ sendRoutine", "err", err)
+			c.stopForError(err)
+			break LOOP
+		}
+	}
+	c.stopPongTimer()
+	close(c.doneSendRoutine)
+}
+
+func (c *Connection) sendSomePacketMsgs() bool {
+	c.sendMonitor.Limit()
+	for i := 0; i < numBatchPacketMsgs; i++ {
+		if c.sendPacketMsg() {
+			return true // 没有数据要发送了
+		}
+	}
+	return false // 还有数据要发送
+}
+
+func (c *Connection) sendPacketMsg() bool {
+	var leastRatio float64 = math.MaxFloat64
+	var chosenChannel *Channel
+	for _, channel := range c.channels {
+		if !channel.isSendPending() {
+			continue
+		}
+		// 最近发送的数据越少，信道级别越高，ratio就越小，就越可能选择这个信道来发送数据
+		ratio := float64(channel.recentlySent) / float64(channel.desc.Priority)
+		if ratio < leastRatio {
+			leastRatio = ratio
+			chosenChannel = channel
+		}
+	}
+	if chosenChannel == nil {
+		// 所有信道都没有数据要发送
+		return true
+	}
+	n, err := chosenChannel.writePacketMsgTo(c.bufConnWriter)
+	if err != nil {
+		c.Logger.Error("failed to write PacketMsg in the specified channel", "channel id", chosenChannel.desc.ID, "err", err)
+		c.stopForError(err)
+		return true
+	}
+	c.sendMonitor.Update(n)
+	c.flusher.Set()
+	return false // 返回false表明还有信道等着发送数据
+}
+
+// sendPing ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// sendPing 向对方发送ping消息。
+func (c *Connection) sendPing(writer protoio.Writer) error {
+	c.Logger.Debug("send ping")
+	n, err := writer.WriteMsg(wrapPacket(&pbp2p.PacketPing{}))
+	if err != nil {
+		c.Logger.Error("failed to send ping", "err", err)
+		return err
+	}
+	c.sendMonitor.Update(n)
+	c.Logger.Debug("wait for pong message from the peer", "wait time", c.config.PongTimeout)
+	c.pongTimer = time.AfterFunc(c.config.PongTimeout, func() {
+		select {
+		case c.pongTimeoutCh <- true:
+			// 超时时间到了还没收到pong消息，那么就往通道里发送true信号
+		default:
+		}
+	})
+	c.flush()
+	return nil
+}
+
+// sendPong ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// sendPong 向对方回复pong消息。
+func (c *Connection) sendPong(writer protoio.Writer) error {
+	c.Logger.Debug("send pong")
+	n, err := writer.WriteMsg(wrapPacket(&pbp2p.PacketPong{}))
+	if err != nil {
+		c.Logger.Error("failed to send pong message")
+		return err
+	}
+	c.sendMonitor.Update(n)
+	c.flush()
+	return nil
+}
+
+func (c *Connection) recvRoutine() {
+	defer c.recover()
+	protoReader := protoio.NewDelimitedReader(c.bufConnReader, c._maxPacketMsgSize)
+LOOP:
+	for {
+		c.recvMonitor.Limit()
+		var packet pbp2p.Packet
+		n, err := protoReader.ReadMsg(&packet)
+		c.recvMonitor.Update(n)
+		if err != nil {
+			select {
+			case <-c.quitRecvRoutine:
+				break LOOP
+			default:
+			}
+			if c.IsRunning() {
+				if err == io.EOF {
+					c.Logger.Info("connection is closed @ recvRoutine by the other side")
+				} else {
+					c.Logger.Error("connection failed @ recvRoutine", "err", err)
+				}
+				c.stopForError(err)
+			}
+			break LOOP
+		}
+		switch pkt := packet.Sum.(type) {
+		case *pbp2p.Packet_PacketPing:
+			c.Logger.Debug("receive ping")
+			select {
+			case c.pong <- struct{}{}:
+			default:
+			}
+		case *pbp2p.Packet_PacketPong:
+			c.Logger.Debug("receive pong")
+			select {
+			case c.pongTimeoutCh <- false:
+			default:
+			}
+		case *pbp2p.Packet_PacketMsg:
+			if err = c.handlePacketMsg(pkt.PacketMsg); err != nil {
+				c.stopForError(err)
+				break LOOP
+			}
+		default:
+			err = fmt.Errorf("unknown message type %q", reflect.TypeOf(packet))
+			c.Logger.Error("connection failed @ recvRoutine", "err", err)
+			c.stopForError(err)
+			break LOOP
+		}
+	}
+}
+
+func (c *Connection) handlePacketMsg(msg *pbp2p.PacketMsg) (err error) {
+	channelID := byte(msg.ChannelID)
+	channel, ok := c.channelsIdx[channelID]
+	if !ok {
+		err = fmt.Errorf("no channel %X can handle this packet message", channelID)
+		c.Logger.Error("connection failed @ recvRoutine", "err", err)
+		return err
+	}
+	msgBytes, err := channel.recvPacketMsg(*msg)
+	if err != nil {
+		if c.IsRunning() {
+			c.Logger.Error("connection failed @ recvRoutine", "err", err)
+		}
+		return err
+	}
+	if msgBytes != nil {
+		c.Logger.Debug("receive packet message from channel", "channel id", channelID)
+		c.onReceive(channelID, msgBytes)
+	}
+	return nil
+}
+
+// stopPongTimer ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// stopPongTimer 一般在收到对方发来的pong消息后关闭该计时器。
+func (c *Connection) stopPongTimer() {
+	if c.pongTimer != nil {
+		_ = c.pongTimer.Stop()
+		c.pongTimer = nil
+	}
 }
 
 // maxPacketMsgSize ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -336,6 +612,127 @@ func (des *ChannelDescriptor) FillDefaults() {
 	}
 }
 
+// sendBytes ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// sendBytes 往信道里发送数据，如果信道里数据是满的，则等待10秒，如果10秒后信道里还是满的，则超时，直接退出。
+func (ch *Channel) sendBytes(bz []byte) bool {
+	select {
+	case ch.sendQueue <- bz:
+		// 往发送队列里推送数据，然后队列的长度相应的也要加一
+		atomic.AddInt32(&ch.sendQueueSize, 1)
+		return true
+	case <-time.After(defaultSendTimeout):
+		return false
+	}
+}
+
+// trySendBytes ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// trySendBytes 尝试往信道里发送数据，如果信道里是满的，则直接退出。
+func (ch *Channel) trySendBytes(bz []byte) bool {
+	select {
+	case ch.sendQueue <- bz:
+		atomic.AddInt32(&ch.sendQueueSize, 1)
+		return true
+	default:
+		return false
+	}
+}
+
+// isSendPending ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// isSendPending 判断信道里是否还有数据需要发送出去。
+func (ch *Channel) isSendPending() bool {
+	if len(ch.sending) == 0 {
+		if len(ch.sendQueue) == 0 {
+			return false
+		}
+		ch.sending = <-ch.sendQueue
+	}
+	return true
+}
+
+// nextPacketMsg ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// nextPacketMsg 将信道里的数据打包成数据包，并返回，信道里的数据可能比较多，一次性打包不完，那么剩下的
+// 就下次再打包发送出去。
+func (ch *Channel) nextPacketMsg() pbp2p.PacketMsg {
+	packet := pbp2p.PacketMsg{ChannelID: int32(ch.desc.ID)}
+	maxSize := ch.maxPacketMsgPayloadSize
+	packet.Data = ch.sending[:number.MinInt(maxSize, len(ch.sending))]
+	if len(ch.sending) <= maxSize {
+		packet.EOF = true
+		ch.sending = nil
+		atomic.AddInt32(&ch.sendQueueSize, -1) // 信道里的数据发送干净了
+	} else {
+		packet.EOF = false
+		ch.sending = ch.sending[len(packet.Data):]
+	}
+	return packet
+}
+
+// writePacketMsgTo ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// writePacketMsgTo 从信道里打包一个数据包，然后写入到io.Writer里，这里的io.Writer，
+// 实际上是 bufio.NewWriter(net.Conn)。
+func (ch *Channel) writePacketMsgTo(w io.Writer) (n int, err error) {
+	packet := ch.nextPacketMsg()
+	n, err = protoio.NewDelimitedWriter(w).WriteMsg(wrapPacket(&packet))
+	atomic.AddInt64(&ch.recentlySent, int64(n))
+	return n, err
+}
+
+// recvPacketMsg ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// recvPacketMsg 解析收到的数据包，并将数据包里的数据返回出来。
+func (ch *Channel) recvPacketMsg(packet pbp2p.PacketMsg) ([]byte, error) {
+	ch.Logger.Debug("receive packet message")
+	var recvCap, received = ch.desc.RecvMessageCapacity, len(ch.recving) + len(packet.Data)
+	if recvCap < received {
+		return nil, fmt.Errorf("received message exceeds available capacity: %v < %v", recvCap, received)
+	}
+	ch.recving = append(ch.recving, packet.Data...)
+	if packet.EOF {
+		// 对方发送的数据包已经完整接收到了
+		msg := ch.recving
+		ch.recving = ch.recving[:0]
+		return msg, nil
+	}
+	// 对方发送的数据包还没有完整接收到
+	return nil, nil
+}
+
+// canSend ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// canSend 判断信道是否还能再发数据，默认情况下，信道的发送队列里只能存储一条数据。
+func (ch *Channel) canSend() bool {
+	queueSize := int(atomic.LoadInt32(&ch.sendQueueSize))
+	return queueSize < defaultSendQueueCapacity
+}
+
+// updateStats ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// updateStats 将信道已经发送的数据总和乘上0.8，相当于指数回退了。
+func (ch *Channel) updateStats() {
+	atomic.StoreInt64(&ch.recentlySent, int64(float64(atomic.LoadInt64(&ch.recentlySent))*0.8))
+}
+
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
 // 定义常量
@@ -347,6 +744,8 @@ const (
 	defaultRecvBufferCapacity  = 4096     // 信道的默认存放接收数据的缓冲区大小为4096
 	defaultRecvMessageCapacity = 22020096 // 信道默认能够接收的一条消息的大小为22020096
 	updateStats                = 2 * time.Second
+	defaultSendTimeout         = 10 * time.Second // 信道里如果消息满了，则可以等待10秒钟，这10秒里如果信道里的消息还没被发送出去，那么就超时了
+	numBatchPacketMsgs         = 10               // 一次可以批量发送10个数据包
 )
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/

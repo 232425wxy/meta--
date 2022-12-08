@@ -117,3 +117,12 @@ func TestRedirectToFile(t *testing.T) {
 	l.Error("error logger")
 	l.Crit("crit logger")
 }
+
+func TestInherit(t *testing.T) {
+	l := New("conn", "P2P/Connection:192.168.137.72:22")
+	l.SetHandler(StreamHandler(os.Stdout, TerminalFormat(true)))
+	l.Debug("hi")
+
+	child := l.New("channel id", 0x01)
+	child.Debug("hello")
+}
