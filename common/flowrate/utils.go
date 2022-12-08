@@ -2,7 +2,6 @@ package flowrate
 
 import (
 	"math"
-	"strconv"
 	"time"
 )
 
@@ -64,29 +63,4 @@ func round(x float64) int64 {
 		return int64(math.Ceil(x))
 	}
 	return int64(math.Floor(x))
-}
-
-type Percent uint32
-
-func percentOf(x, total float64) Percent {
-	if x < 0 || total <= 0 {
-		return 0
-	} else {
-		p := round(x / total * 10000)
-		return Percent(p)
-	}
-}
-
-// String ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
-//
-//	---------------------------------------------------------
-//
-// String 保留两位小数的百分比：75.40%。
-func (p Percent) String() string {
-	var buf [8]byte
-	bz := strconv.AppendUint(buf[:0], uint64(p)/100, 10)
-	n := len(bz)
-	bz = strconv.AppendUint(bz, 100+uint64(p)%100, 10)
-	bz[n] = '.'
-	return string(append(bz, '%'))
 }
