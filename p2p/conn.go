@@ -10,7 +10,9 @@ import (
 	"github.com/232425wxy/meta--/proto/pbp2p"
 	"github.com/cosmos/gogoproto/proto"
 	"net"
+	"runtime/debug"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -42,7 +44,7 @@ type Connection struct {
 	doneSendRoutine   chan struct{}
 	quitRecvRoutine   chan struct{}
 	stopMu            sync.Mutex
-	flusher           flusher.Flusher
+	flusher           *flusher.Flusher
 	pingTicker        *time.Ticker
 	pongTimer         *time.Timer
 	pongTimeoutCh     chan bool
@@ -136,6 +138,144 @@ func (c *Connection) SetLogger(logger log.Logger) {
 	}
 }
 
+func (c *Connection) Start() error {
+	c.flusher = flusher.NewFlusher(c.config.FlushDur)
+	c.pingTicker = time.NewTicker(c.config.PingInterval)
+	c.pongTimeoutCh = make(chan bool, 1)
+	c.chStatsTicker = time.NewTicker(updateStats)
+	c.quitSendRoutine = make(chan struct{})
+	c.doneSendRoutine = make(chan struct{})
+	c.quitRecvRoutine = make(chan struct{})
+	go c.sendRoutine()
+	go c.recvRoutine()
+	return c.BaseService.Start()
+}
+
+// StopServices ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// stopServices 关闭所有计时器，发送退出sendRoutine和recvRoutine协程的信号。
+func (c *Connection) stopServices() (stopped bool) {
+	c.stopMu.Lock()
+	defer c.stopMu.Unlock()
+	select {
+	case <-c.quitSendRoutine:
+		return true
+	case <-c.quitRecvRoutine:
+		return true
+	default:
+
+	}
+
+	c.flusher.Stop()
+	c.pingTicker.Stop()
+	c.chStatsTicker.Stop()
+
+	close(c.quitSendRoutine)
+	close(c.quitRecvRoutine)
+	return false
+}
+
+// FlushStop ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// FlushStop 在关闭之间将信道里的消息都发送出去，然后关闭底层网络连接net.Conn。
+func (c *Connection) FlushStop() {
+	if c.stopServices() {
+		return
+	}
+	// 等待sendRoutine协程将数据发送完毕，这样就不会竞争调用sendSomePacketMasgs方法。
+	<-c.doneSendRoutine
+	eof := c.sendSomePacketMsgs()
+	for !eof {
+		eof = c.sendSomePacketMsgs()
+	}
+	c.flush()
+	_ = c.conn.Close()
+}
+
+func (c *Connection) Stop() error {
+	if c.stopServices() {
+		return nil
+	}
+	_ = c.conn.Close()
+	return c.BaseService.Stop()
+}
+
+func (c *Connection) String() string {
+	return fmt.Sprintf("P2P/Connection:%v", c.conn.RemoteAddr())
+}
+
+// flush ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// flush 将数据写入底层的网络连接net.Conn里。
+func (c *Connection) flush() {
+	c.Logger.Debug("flush message to the other side", "receiver", c.String())
+	err := c.bufConnWriter.Flush()
+	if err != nil {
+		c.Logger.Error("failed to flush message to the other side", "conn", c.String(), "err", err)
+	}
+}
+
+// recover ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// recover 检测网络连接是否遇到严重错误。
+func (c *Connection) recover() {
+	if r := recover(); r != nil {
+		c.Logger.Error("connection panicked", "err", r, "stack", string(debug.Stack()))
+		c.stopForError(fmt.Errorf("recovered from panic: %v", r))
+	}
+}
+
+// stopForError ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// stopForError 因为某种严重错误才会导致网络连接停止。
+func (c *Connection) stopForError(err error) {
+	if e := c.Stop(); e != nil {
+		c.Logger.Error("failed to stop connection", "conn", c.String(), "err", e)
+	}
+	if atomic.CompareAndSwapUint32(&c.errored, 0, 1) {
+		if c.onError != nil {
+			c.onError(err)
+		}
+	}
+}
+
+// Send ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// Send 向指定信道发送数据。
+func (c *Connection) Send(chID byte, msg []byte) bool {
+	if !c.IsRunning() {
+		return false
+	}
+	channel, ok := c.channelsIdx[chID]
+	if !ok {
+		c.Logger.Error("want to send message to the specified channel, but cannot find this channel", "channel id", chID)
+	}
+	success := channel.sendBytes(msg)
+	if success {
+		c.Logger.Debug("send message to the specified channel", "channel id", chID, "conn", c.String(), "msg", fmt.Sprintf("%X", msg))
+		select {
+		case c.sendChan <- struct{}{}:
+		// 告诉sendRoutine来活了，有数据需要发送
+		default:
+		}
+	} else {
+		c.Logger.Warn("send message failed", "channel id", chID, "conn", c.String())
+	}
+	return success
+}
+
 // maxPacketMsgSize ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------
@@ -206,6 +346,7 @@ const (
 	defaultSendQueueCapacity   = 1        // 信道的默认发送队列大小等于1
 	defaultRecvBufferCapacity  = 4096     // 信道的默认存放接收数据的缓冲区大小为4096
 	defaultRecvMessageCapacity = 22020096 // 信道默认能够接收的一条消息的大小为22020096
+	updateStats                = 2 * time.Second
 )
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
