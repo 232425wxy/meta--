@@ -42,7 +42,7 @@ type Connection struct {
 	pong              chan struct{}
 	channels          []*Channel
 	channelsIdx       map[byte]*Channel
-	onReceive         receiveCb
+	onReceive         receiveCb // onReceive可以接收到的消息通过Reactor递送到指定的模块去处理
 	onError           errorCb
 	errored           uint32
 	config            ConnectionConfig

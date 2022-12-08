@@ -47,7 +47,7 @@ type logger struct {
 // write 方法将给定的日志消息、日志等级、日志里出现的键值对组装成一条完整的日志记录，然后将其打印出去。
 func (l *logger) write(msg string, lvl Lvl, ctx []interface{}, skip int) {
 	r := &Record{
-		Time: time.Time{},
+		Time: time.Now(),
 		Lvl:  lvl,
 		Msg:  msg,
 		Ctx:  newContext(l.ctx, ctx),
