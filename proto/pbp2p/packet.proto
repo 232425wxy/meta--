@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package pbp2p;
+
+import "gogoproto-1.4.3/gogoproto/gogo.proto";
+
+message PacketPing {}
+
+message PacketPong {}
+
+message PacketMsg {
+  int32 channel_id  = 1 [(gogoproto.customname) = "ChannelID"];
+  bool  eof         = 2 [(gogoproto.customname) = "EOF"];
+  bytes data        = 3;
+}
+
+message Packet {
+  oneof sum {
+    PacketPing  packet_ping = 1;
+    PacketPong  packet_pong = 2;
+    PacketMsg   packet_msg  = 3;
+  }
+}
