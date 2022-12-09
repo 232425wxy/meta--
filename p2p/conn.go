@@ -559,7 +559,7 @@ func (c *Connection) stopPongTimer() {
 // maxPacketMsgSize 包装一个数据包，该数据包的载荷设置成最大，然后求这个数据包的整体大小，就是最大数据包大小。
 func (c *Connection) maxPacketMsgSize() int {
 	msg := wrapPacket(&pbp2p.PacketMsg{
-		ChannelID: 0x00,
+		ChannelID: 0xff,
 		EOF:       true,
 		Data:      make([]byte, c.config.MaxPacketMsgPayloadSize),
 	})
@@ -698,7 +698,6 @@ func (ch *Channel) writePacketMsgTo(w io.Writer) (n int, err error) {
 //
 // recvPacketMsg 解析收到的数据包，并将数据包里的数据返回出来。
 func (ch *Channel) recvPacketMsg(packet pbp2p.PacketMsg) ([]byte, error) {
-	ch.Logger.Debug("receive packet message")
 	var recvCap, received = ch.desc.RecvMessageCapacity, len(ch.recving) + len(packet.Data)
 	if recvCap < received {
 		return nil, fmt.Errorf("received message exceeds available capacity: %v < %v", recvCap, received)
@@ -731,6 +730,42 @@ func (ch *Channel) canSend() bool {
 // updateStats 将信道已经发送的数据总和乘上0.8，相当于指数回退了。
 func (ch *Channel) updateStats() {
 	atomic.StoreInt64(&ch.recentlySent, int64(float64(atomic.LoadInt64(&ch.recentlySent))*0.8))
+}
+
+type ChannelStatus struct {
+	ID                byte
+	SendQueueCapacity int
+	SendQueueSize     int
+	Priority          int
+	RecentlySent      int64
+}
+
+// ConnectionStatus ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// ConnectionStatus 反应P2P网络底层连接状态的结构体。
+type ConnectionStatus struct {
+	Duration    time.Duration
+	SendMonitor flowrate.Status
+	RecvMonitor flowrate.Status
+	Channels    []ChannelStatus
+}
+
+func (c *Connection) Status() ConnectionStatus {
+	var status ConnectionStatus
+	status.Duration = time.Since(c.created)
+	status.SendMonitor = c.sendMonitor.Status()
+	status.RecvMonitor = c.recvMonitor.Status()
+	status.Channels = make([]ChannelStatus, len(c.channels))
+	for i := 0; i < len(c.channels); i++ {
+		status.Channels[i].ID = c.channels[i].desc.ID
+		status.Channels[i].Priority = c.channels[i].desc.Priority
+		status.Channels[i].SendQueueCapacity = c.channels[i].desc.SendQueueCapacity
+		status.Channels[i].SendQueueSize = int(atomic.LoadInt32(&c.channels[i].sendQueueSize))
+		status.Channels[i].RecentlySent = atomic.LoadInt64(&c.channels[i].recentlySent)
+	}
+	return status
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/

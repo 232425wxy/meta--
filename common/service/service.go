@@ -94,14 +94,14 @@ func (bs *BaseService) Start() error {
 	if atomic.CompareAndSwapUint32(&bs.started, 0, 1) {
 		if atomic.LoadUint32(&bs.stopped) == 1 {
 			// 服务已经停止了，不能再被启动了
-			bs.Logger.Error(fmt.Sprintf("BaseService{%s}: cannot start service, because already stopped", bs.name))
+			bs.Logger.Error(fmt.Sprintf("BaseService{%s}: cannot start, because already stopped", bs.name))
 			atomic.StoreUint32(&bs.started, 0)
 			return ErrAlreadyStopped
 		}
-		bs.Logger.Info(fmt.Sprintf("BaseService{%s}: start service", bs.name))
+		bs.Logger.Info(fmt.Sprintf("BaseService{%s}: start", bs.name))
 		return nil
 	}
-	bs.Logger.Warn(fmt.Sprintf("BaseService{%s}: repeat start service", bs.name))
+	bs.Logger.Warn(fmt.Sprintf("BaseService{%s}: repeat start", bs.name))
 	return ErrAlreadyStarted
 }
 
@@ -113,14 +113,14 @@ func (bs *BaseService) Start() error {
 func (bs *BaseService) Stop() error {
 	if atomic.CompareAndSwapUint32(&bs.stopped, 0, 1) {
 		if atomic.LoadUint32(&bs.started) == 0 {
-			bs.Logger.Warn(fmt.Sprintf("BaseService{%s}: cannot stop service, because service is not running", bs.name))
+			bs.Logger.Warn(fmt.Sprintf("BaseService{%s}: cannot stop, because service is not running", bs.name))
 			return ErrNotRunning
 		}
-		bs.Logger.Info(fmt.Sprintf("BaseService{%s}: stop service", bs.name))
+		bs.Logger.Info(fmt.Sprintf("BaseService{%s}: stop", bs.name))
 		close(bs.quit)
 		return nil
 	}
-	bs.Logger.Warn(fmt.Sprintf("BaseService{%s}: repeat stop service", bs.name))
+	bs.Logger.Warn(fmt.Sprintf("BaseService{%s}: repeat stop", bs.name))
 	return ErrAlreadyStopped
 }
 
