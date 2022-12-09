@@ -14,22 +14,10 @@ type TaskResultSet struct {
 }
 
 func newTaskResultSet(chz []chan TaskResult) *TaskResultSet {
-	return &TaskResultSet{
-		chz:     chz,
-		results: make([]TaskResult, len(chz)),
-	}
-}
-
-// Reap ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
-//
-//	---------------------------------------------------------
-//
-// Reap 将已经执行完毕，产生结果的任务标记一下OK为true。
-func (set *TaskResultSet) Reap() *TaskResultSet {
-	for i := 0; i < len(set.results); i++ {
-		var ch = set.chz[i]
+	set := &TaskResultSet{chz: chz, results: make([]TaskResult, len(chz))}
+	for i := 0; i < len(chz); i++ {
 		select {
-		case result, ok := <-ch:
+		case result, ok := <-chz[i]:
 			if ok {
 				result.OK = true
 				set.results[i] = result
@@ -66,4 +54,33 @@ func (set *TaskResultSet) FirstError() error {
 		}
 	}
 	return nil
+}
+
+// Parallel ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// Parallel 并发的去执行若干个任务。
+func Parallel(tasks ...Task) (*TaskResultSet, bool) {
+	var taskResultsChz = make([]chan TaskResult, len(tasks))
+	var taskDoneChz = make(chan bool, len(tasks))
+	ok := true
+
+	for i, task := range tasks {
+		var ch = make(chan TaskResult, 1)
+		taskResultsChz[i] = ch
+		go func(i int, task Task, ch chan TaskResult) {
+			var val, abort, err = task(i)
+			ch <- TaskResult{Value: val, Error: err}
+			taskDoneChz <- abort
+		}(i, task, ch)
+	}
+	for i := 0; i < len(tasks); i++ {
+		abort := <-taskDoneChz
+		if abort {
+			ok = false
+			break
+		}
+	}
+	return newTaskResultSet(taskResultsChz), ok
 }
