@@ -2,6 +2,8 @@ package p2p
 
 import (
 	"bufio"
+	"crypto/cipher"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/232425wxy/meta--/common/flowrate"
@@ -9,9 +11,11 @@ import (
 	"github.com/232425wxy/meta--/common/number"
 	"github.com/232425wxy/meta--/common/protoio"
 	"github.com/232425wxy/meta--/common/service"
+	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbp2p"
 	"github.com/cosmos/gogoproto/proto"
+	"golang.org/x/crypto/chacha20poly1305"
 	"io"
 	"math"
 	"net"
@@ -806,4 +810,48 @@ func wrapPacket(pb proto.Message) (msg *pbp2p.Packet) {
 		panic(fmt.Errorf("unknown packet type %T", pb))
 	}
 	return msg
+}
+
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
+
+// 加密通信
+
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
+
+type SecretConnection struct {
+	net.Conn
+	recvAead     cipher.AEAD
+	sendAead     cipher.AEAD
+	remPublicKey crypto.PublicKey
+	recvMu       sync.Mutex
+	recvBuffer   []byte
+	recvNonce    *[aeadNonceSize]byte
+	sendMu       sync.Mutex
+	sendNonce    *[aeadNonceSize]byte
+}
+
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
+
+// 加密通信用到的常量
+
+const (
+	aeadNonceSize = chacha20poly1305.NonceSize
+)
+
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
+
+// 不可导出的工具函数
+
+// incrNonce ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// incrNonce 递增nonce值。
+func incrNonce(nonce *[aeadNonceSize]byte) {
+	counter := binary.LittleEndian.Uint64(nonce[4:])
+	if counter == math.MaxUint64 {
+		counter = 0
+	}
+	counter++
+	binary.LittleEndian.PutUint64(nonce[4:], counter)
 }
