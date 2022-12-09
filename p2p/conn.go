@@ -136,7 +136,8 @@ func NewConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRece
 //
 //	---------------------------------------------------------
 //
-// SetLogger 为每个信道都设置日志记录器。
+// SetLogger 为每个信道都设置日志记录器，该方法由 Peer 的SetLogger方法调用，也就是说，在设置 Peer 的
+// 日志记录器时，为底层的p2p连接设置日志记录器。
 func (c *Connection) SetLogger(logger log.Logger) {
 	child := logger.New("conn", c.String())
 	c.BaseService.SetLogger(child)
