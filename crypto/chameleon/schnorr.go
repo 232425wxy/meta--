@@ -3,7 +3,7 @@ package chameleon
 import (
 	"bytes"
 	"fmt"
-	"github.com/232425wxy/meta--/crypto/hash/sha256"
+	"github.com/232425wxy/meta--/crypto/sha256"
 	"math/big"
 )
 

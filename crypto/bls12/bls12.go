@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12/bls12381"
-	"github.com/232425wxy/meta--/crypto/hash/sha256"
+	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/json"
 	"go.uber.org/multierr"
 	"math/big"
@@ -30,7 +30,7 @@ func init() {
 //	---------------------------------------------------------
 //
 // GeneratePrivateKey 根据定义的椭圆曲线G1群的阶 curveOrder 随机生成一个数作为私钥。
-func GeneratePrivateKey() (crypto.PrivateKey, error) {
+func GeneratePrivateKey() (*PrivateKey, error) {
 	key, err := rand.Int(rand.Reader, curveOrder)
 	if err != nil {
 		return nil, fmt.Errorf("bls12: failed to generate private Key: %q", err)
@@ -104,17 +104,13 @@ type PublicKey struct {
 //	---------------------------------------------------------
 //
 // Verify 验证签名。
-func (pub *PublicKey) Verify(sig crypto.Signature, h sha256.Hash) bool {
-	s, ok := sig.(*Signature)
-	if !ok {
-		panic(fmt.Sprintf("bls12: need bls12-381 signature, but got %q", sig.Type()))
-	}
+func (pub *PublicKey) Verify(sig *Signature, h sha256.Hash) bool {
 	p, err := bls12381.NewG2().HashToCurve(h[:], domain)
 	if err != nil {
 		return false
 	}
 	engine := bls12381.NewEngine()
-	engine.AddPairInv(&bls12381.G1One, s.sig)
+	engine.AddPairInv(&bls12381.G1One, sig.sig)
 	engine.AddPair(pub.Key, p)
 	return engine.Result().IsOne()
 }
@@ -125,7 +121,7 @@ func (pub *PublicKey) Verify(sig crypto.Signature, h sha256.Hash) bool {
 //
 // ToID 将节点的公钥转换成节点的ID。
 func (pub *PublicKey) ToID() crypto.ID {
-	bz := pub.ToBytes()[:crypto.TruncatePublicKeyLength]
+	bz := pub.ToBytes()[:TruncatePublicKeyLength]
 	id := crypto.ID(hex.EncodeToString(bz))
 	return id
 }
@@ -175,7 +171,7 @@ type PrivateKey struct {
 //	---------------------------------------------------------
 //
 // Sign 生成签名消息。
-func (private *PrivateKey) Sign(h sha256.Hash) (sig crypto.Signature, err error) {
+func (private *PrivateKey) Sign(h sha256.Hash) (sig *Signature, err error) {
 	p, err := bls12381.NewG2().HashToCurve(h[:], domain)
 	if err != nil {
 		return nil, fmt.Errorf("bls12: hash to curve failed: %q", err)
@@ -209,7 +205,7 @@ func (private *PrivateKey) FromBytes(bz []byte) error {
 //	---------------------------------------------------------
 //
 // PublicKey 返回与当前私钥关联的公钥。
-func (private *PrivateKey) PublicKey() crypto.PublicKey {
+func (private *PrivateKey) PublicKey() *PublicKey {
 	key := &bls12381.PointG1{}
 	return &PublicKey{Key: bls12381.NewG1().MulScalarBig(key, &bls12381.G1One, private.Key)}
 }
@@ -248,7 +244,7 @@ type Signature struct {
 //
 // ToBytes 将签名转换成字节切片形式并返回。
 func (s *Signature) ToBytes() []byte {
-	var id [crypto.TruncatePublicKeyLength]byte
+	var id [TruncatePublicKeyLength]byte
 	bz := s.signer.ToBytes()
 	copy(id[:], bz)
 	return append(id[:], bls12381.NewG2().ToCompressed(s.sig)...)
@@ -260,11 +256,11 @@ func (s *Signature) ToBytes() []byte {
 //
 // FromBytes 接受签名的字节切片形式的内容，然后将其转换为 Signature 对象。
 func (s *Signature) FromBytes(bz []byte) (err error) {
-	s.signer, err = crypto.FromBytesToID(bz[:crypto.TruncatePublicKeyLength])
+	s.signer, err = crypto.FromBytesToID(bz[:TruncatePublicKeyLength])
 	if err != nil {
 		return err
 	}
-	s.sig, err = bls12381.NewG2().FromCompressed(bz[crypto.TruncatePublicKeyLength:])
+	s.sig, err = bls12381.NewG2().FromCompressed(bz[TruncatePublicKeyLength:])
 	if err != nil {
 		return fmt.Errorf("bls12: failed to decompress signature: %q", err)
 	}
@@ -338,8 +334,8 @@ func (agg *AggregateSignature) Type() string {
 //
 // CryptoBLS12 实现了bls12-381聚合签名的的签名和验证功能。
 type CryptoBLS12 struct {
-	private crypto.PrivateKey
-	public  crypto.PublicKey
+	private *PrivateKey
+	public  *PublicKey
 	id      crypto.ID
 }
 
@@ -358,7 +354,7 @@ func NewCryptoBLS12() *CryptoBLS12 {
 //	---------------------------------------------------------
 //
 // Init 初始化，给 *blsCrypto 设置私钥和节点ID。
-func (cb *CryptoBLS12) Init(private crypto.PrivateKey) {
+func (cb *CryptoBLS12) Init(private *PrivateKey) {
 	public := private.PublicKey()
 
 	cb.private = private
@@ -371,7 +367,7 @@ func (cb *CryptoBLS12) Init(private crypto.PrivateKey) {
 //	---------------------------------------------------------
 //
 // Sign 对一个长度为256比特的哈希值进行签名。
-func (cb *CryptoBLS12) Sign(h sha256.Hash) (crypto.Signature, error) {
+func (cb *CryptoBLS12) Sign(h sha256.Hash) (*Signature, error) {
 	sig, err := cb.private.Sign(h)
 	return sig, err
 }
@@ -400,7 +396,7 @@ func (cb *CryptoBLS12) aggregateSignatures(signatures map[crypto.ID]*Signature) 
 //	---------------------------------------------------------
 //
 // Verify 给定一个签名，签名中包含签名者的ID，根据这个ID去找到这个签名者的公钥，然后验证这个签名是否合法。
-func (cb *CryptoBLS12) Verify(sig crypto.Signature, h [32]byte) bool {
+func (cb *CryptoBLS12) Verify(sig *Signature, h [32]byte) bool {
 	signerPubKey := GetBLSPublicKeyFromLib(sig.Signer())
 	if signerPubKey == nil {
 		return false
@@ -413,13 +409,9 @@ func (cb *CryptoBLS12) Verify(sig crypto.Signature, h [32]byte) bool {
 //	---------------------------------------------------------
 //
 // VerifyThresholdSignature 验证聚合签名。
-func (cb *CryptoBLS12) VerifyThresholdSignature(signature crypto.ThresholdSignature, h sha256.Hash, quorumSize int) bool {
-	sig, ok := signature.(*AggregateSignature)
-	if !ok {
-		panic(fmt.Sprintf("bls12: need bls12-381 threshold signature, but got %q", signature.Type()))
-	}
+func (cb *CryptoBLS12) VerifyThresholdSignature(signature *AggregateSignature, h sha256.Hash, quorumSize int) bool {
 	pubKeys := make([]*PublicKey, 0)
-	for _, participant := range sig.Participants().IDs {
+	for _, participant := range signature.Participants().IDs {
 		pubKey := GetBLSPublicKeyFromLib(participant)
 		if pubKey != nil {
 			pubKeys = append(pubKeys, pubKey)
@@ -434,7 +426,7 @@ func (cb *CryptoBLS12) VerifyThresholdSignature(signature crypto.ThresholdSignat
 		return false
 	}
 	engine := bls12381.NewEngine()
-	engine.AddPairInv(&bls12381.G1One, &sig.sig)
+	engine.AddPairInv(&bls12381.G1One, &signature.sig)
 	for _, key := range pubKeys {
 		engine.AddPair(key.Key, ps)
 	}
@@ -444,16 +436,12 @@ func (cb *CryptoBLS12) VerifyThresholdSignature(signature crypto.ThresholdSignat
 // VerifyThresholdSignatureForMessageSet ♏ |作者：吴翔宇| 🍁 |日期：2022/11/30|
 //
 // VerifyThresholdSignatureForMessageSet 根据给定的聚合签名和不同消息的哈希值，验证聚合签名是否合法。
-func (cb *CryptoBLS12) VerifyThresholdSignatureForMessageSet(signature crypto.ThresholdSignature, hashes map[crypto.ID]sha256.Hash, quorumSize int) bool {
-	sig, ok := signature.(*AggregateSignature)
-	if !ok {
-		panic(fmt.Sprintf("bls12: need bls12-381 threshold signature, but got %q", signature.Type()))
-	}
+func (cb *CryptoBLS12) VerifyThresholdSignatureForMessageSet(signature *AggregateSignature, hashes map[crypto.ID]sha256.Hash, quorumSize int) bool {
 	hashSet := make(map[sha256.Hash]struct{})
 	engine := bls12381.NewEngine()
-	engine.AddPairInv(&bls12381.G1One, &sig.sig)
+	engine.AddPairInv(&bls12381.G1One, &signature.sig)
 	for id, hash := range hashes {
-		if _, ok = hashSet[hash]; ok {
+		if _, ok := hashSet[hash]; ok {
 			continue
 		}
 		hashSet[hash] = struct{}{}
@@ -476,7 +464,7 @@ func (cb *CryptoBLS12) VerifyThresholdSignatureForMessageSet(signature crypto.Th
 // CreateThresholdSignature ♏ |作者：吴翔宇| 🍁 |日期：2022/11/30|
 //
 // CreateThresholdSignature 根据给定的部分签名创建聚合签名。
-func (cb *CryptoBLS12) CreateThresholdSignature(partialSignatures []crypto.Signature, _ sha256.Hash, quorumSize int) (_ crypto.ThresholdSignature, err error) {
+func (cb *CryptoBLS12) CreateThresholdSignature(partialSignatures []*Signature, _ sha256.Hash, quorumSize int) (_ *AggregateSignature, err error) {
 	if len(partialSignatures) < quorumSize {
 		return nil, fmt.Errorf("bls12: not reach quorum size: %q", quorumSize)
 	}
@@ -486,12 +474,7 @@ func (cb *CryptoBLS12) CreateThresholdSignature(partialSignatures []crypto.Signa
 			err = multierr.Append(err, fmt.Errorf("bls12: duplicate partial signature from ID: %q", sig.Signer()))
 			continue
 		}
-		s, ok := sig.(*Signature)
-		if !ok {
-			err = multierr.Append(err, fmt.Errorf("bls12: need bls12-381 signature, but got %q from ID: %q", sig.Type(), sig.Signer()))
-			continue
-		}
-		sigs[sig.Signer()] = s
+		sigs[sig.Signer()] = sig
 	}
 	if len(sigs) < quorumSize {
 		return nil, multierr.Combine(err, fmt.Errorf("bls12: not reach quorum size: %q, only got %q", quorumSize, len(sigs)))
@@ -502,7 +485,7 @@ func (cb *CryptoBLS12) CreateThresholdSignature(partialSignatures []crypto.Signa
 // CreateThresholdSignatureForMessageSet ♏ |作者：吴翔宇| 🍁 |日期：2022/11/30|
 //
 // CreateThresholdSignatureForMessageSet 将若干个为不同消息签名的签名聚合成聚合签名。
-func (cb *CryptoBLS12) CreateThresholdSignatureForMessageSet(partialSignatures []crypto.Signature, hashes map[crypto.ID]sha256.Hash, quorumSize int) (crypto.ThresholdSignature, error) {
+func (cb *CryptoBLS12) CreateThresholdSignatureForMessageSet(partialSignatures []*Signature, hashes map[crypto.ID]sha256.Hash, quorumSize int) (*AggregateSignature, error) {
 	return cb.CreateThresholdSignature(partialSignatures, sha256.Hash{}, quorumSize)
 
 }
@@ -521,6 +504,11 @@ const (
 	//
 	// PublicKeyFileType PEM格式的公钥。
 	PublicKeyFileType = "BLS12-381 PUBLIC KEY"
+
+	// TruncatePublicKeyLength ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+	// ---------------------------------------------------------
+	// TruncatePublicKeyLength 代表的是一个长度，这个长度是指要截取公钥字节的长度，在利用公钥生成节点ID时有用。
+	TruncatePublicKeyLength = 10
 )
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/

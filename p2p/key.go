@@ -14,7 +14,7 @@ import (
 //
 // NodeKey 结构体里存储着一个BLS12-381的私钥。
 type NodeKey struct {
-	PrivateKey crypto.PrivateKey `json:"privateKey"`
+	PrivateKey *bls12.PrivateKey `json:"privateKey"`
 }
 
 // GetID ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -32,7 +32,7 @@ func (key *NodeKey) GetID() crypto.ID {
 //	---------------------------------------------------------
 //
 // PublicKey 获取BLS12-381私钥所对应的公钥。
-func (key *NodeKey) PublicKey() crypto.PublicKey {
+func (key *NodeKey) PublicKey() *bls12.PublicKey {
 	return key.PrivateKey.PublicKey()
 }
 

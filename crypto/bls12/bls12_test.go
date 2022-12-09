@@ -1,8 +1,7 @@
 package bls12
 
 import (
-	"github.com/232425wxy/meta--/crypto"
-	"github.com/232425wxy/meta--/crypto/hash/sha256"
+	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -98,7 +97,7 @@ func TestThreshold(t *testing.T) {
 	sig4, err := private4.Sign(h)
 	assert.Nil(t, err)
 
-	sigs := []crypto.Signature{sig1, sig2, sig3, sig4}
+	sigs := []*Signature{sig1, sig2, sig3, sig4}
 
 	cb := NewCryptoBLS12()
 	thresholdSig, err := cb.CreateThresholdSignature(sigs, h, 4)

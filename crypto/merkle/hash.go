@@ -1,6 +1,8 @@
 package merkle
 
-import "github.com/232425wxy/meta--/crypto/hash/sha256"
+import (
+	"github.com/232425wxy/meta--/crypto/sha256"
+)
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 

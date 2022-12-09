@@ -6,12 +6,14 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/232425wxy/meta--/common/async"
 	"github.com/232425wxy/meta--/common/flowrate"
 	"github.com/232425wxy/meta--/common/flusher"
 	"github.com/232425wxy/meta--/common/number"
 	"github.com/232425wxy/meta--/common/protoio"
 	"github.com/232425wxy/meta--/common/service"
 	"github.com/232425wxy/meta--/crypto"
+	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbp2p"
 	"github.com/cosmos/gogoproto/proto"
@@ -840,7 +842,33 @@ const (
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
+// 辅助变量
+
+// authSig ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// authSig 在验证公钥的过程中用到的签名结构体。
+type authSig struct {
+	Key *bls12.PublicKey
+	Sig []byte
+}
+
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
+
 // 不可导出的工具函数
+
+// shareAuthSignature ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// shareAuthSignature 互相交换认证签名。
+func shareAuthSignature(sc net.Conn, publicKey *bls12.PublicKey, signature []byte) (recvMsg authSig, err error) {
+	var taskSet, _ = async.Parallel(
+		func(i int) (val interface{}, abort bool, err error) {
+
+		})
+}
 
 // incrNonce ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
