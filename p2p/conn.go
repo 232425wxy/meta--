@@ -2,22 +2,16 @@ package p2p
 
 import (
 	"bufio"
-	"crypto/cipher"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/232425wxy/meta--/common/async"
 	"github.com/232425wxy/meta--/common/flowrate"
 	"github.com/232425wxy/meta--/common/flusher"
 	"github.com/232425wxy/meta--/common/number"
 	"github.com/232425wxy/meta--/common/protoio"
 	"github.com/232425wxy/meta--/common/service"
-	"github.com/232425wxy/meta--/crypto"
-	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbp2p"
 	"github.com/cosmos/gogoproto/proto"
-	"golang.org/x/crypto/chacha20poly1305"
 	"io"
 	"math"
 	"net"
@@ -28,7 +22,7 @@ import (
 	"time"
 )
 
-// 这个文件里定义了普通通信和加密通信
+// 这个文件里定义了P2P的底层通信连接
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
@@ -812,74 +806,4 @@ func wrapPacket(pb proto.Message) (msg *pbp2p.Packet) {
 		panic(fmt.Errorf("unknown packet type %T", pb))
 	}
 	return msg
-}
-
-/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
-
-// 加密通信
-
-/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
-
-type SecretConnection struct {
-	net.Conn
-	recvAead     cipher.AEAD
-	sendAead     cipher.AEAD
-	remPublicKey crypto.PublicKey
-	recvMu       sync.Mutex
-	recvBuffer   []byte
-	recvNonce    *[aeadNonceSize]byte
-	sendMu       sync.Mutex
-	sendNonce    *[aeadNonceSize]byte
-}
-
-/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
-
-// 加密通信用到的常量
-
-const (
-	aeadNonceSize = chacha20poly1305.NonceSize
-)
-
-/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
-
-// 辅助变量
-
-// authSig ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
-//
-//	---------------------------------------------------------
-//
-// authSig 在验证公钥的过程中用到的签名结构体。
-type authSig struct {
-	Key *bls12.PublicKey
-	Sig []byte
-}
-
-/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
-
-// 不可导出的工具函数
-
-// shareAuthSignature ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
-//
-//	---------------------------------------------------------
-//
-// shareAuthSignature 互相交换认证签名。
-func shareAuthSignature(sc net.Conn, publicKey *bls12.PublicKey, signature []byte) (recvMsg authSig, err error) {
-	var taskSet, _ = async.Parallel(
-		func(i int) (val interface{}, abort bool, err error) {
-
-		})
-}
-
-// incrNonce ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
-//
-//	---------------------------------------------------------
-//
-// incrNonce 递增nonce值。
-func incrNonce(nonce *[aeadNonceSize]byte) {
-	counter := binary.LittleEndian.Uint64(nonce[4:])
-	if counter == math.MaxUint64 {
-		counter = 0
-	}
-	counter++
-	binary.LittleEndian.PutUint64(nonce[4:], counter)
 }

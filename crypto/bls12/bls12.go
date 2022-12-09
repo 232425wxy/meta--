@@ -8,6 +8,7 @@ import (
 	"github.com/232425wxy/meta--/crypto/bls12/bls12381"
 	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/json"
+	"github.com/232425wxy/meta--/proto/pbcrypto"
 	"go.uber.org/multierr"
 	"math/big"
 	"sync"
@@ -86,6 +87,17 @@ func GetBLSPublicKeyFromLib(id crypto.ID) *PublicKey {
 	return nil
 }
 
+// FromProtoToPublicKey ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// FromProtoToPublicKey 将protobuf形式的公钥转换为我们自定义的公钥。
+func FromProtoToPublicKey(pb *pbcrypto.BLS12PublicKey) (*PublicKey, error) {
+	pub := new(PublicKey)
+	err := pub.FromBytes(pb.Key)
+	return pub, err
+}
+
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
 // 定义项目级全局变量：公私钥对
@@ -155,6 +167,17 @@ func (pub *PublicKey) FromBytes(bz []byte) (err error) {
 // Type 返回公钥类型："BLS12-381 PUBLIC KEY"。
 func (pub *PublicKey) Type() string {
 	return "BLS12-381 PUBLIC KEY"
+}
+
+// ToProto ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// ToProto 将公钥转换为protobuf形式。
+func (pub *PublicKey) ToProto() *pbcrypto.BLS12PublicKey {
+	key := new(pbcrypto.BLS12PublicKey)
+	key.Key = pub.ToBytes()
+	return key
 }
 
 // PrivateKey ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
