@@ -807,3 +807,56 @@ func wrapPacket(pb proto.Message) (msg *pbp2p.Packet) {
 	}
 	return msg
 }
+
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
+
+// conn set
+
+type connItem struct {
+	conn net.Conn
+	ips  []net.IP
+}
+
+type ConnSet struct {
+	mu    sync.RWMutex
+	conns map[string]connItem // remote addr string -> item
+}
+
+func NewConnSet() *ConnSet {
+	return &ConnSet{conns: make(map[string]connItem)}
+}
+
+func (set *ConnSet) HasConn(c net.Conn) bool {
+	set.mu.RLock()
+	defer set.mu.RUnlock()
+	_, ok := set.conns[c.RemoteAddr().String()]
+	return ok
+}
+
+func (set *ConnSet) HasIP(ip net.IP) bool {
+	set.mu.RLock()
+	defer set.mu.RUnlock()
+	for _, c := range set.conns {
+		for _, known := range c.ips {
+			if known.Equal(ip) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (set *ConnSet) RemoveAddr(addr net.Addr) {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+	delete(set.conns, addr.String())
+}
+
+func (set *ConnSet) Add(c net.Conn, ips []net.IP) {
+	set.mu.Lock()
+	defer set.mu.Unlock()
+	set.conns[c.RemoteAddr().String()] = connItem{
+		conn: c,
+		ips:  ips,
+	}
+}
