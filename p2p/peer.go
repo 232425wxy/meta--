@@ -104,7 +104,9 @@ func (p *Peer) metricsReport() {
 			for _, chStats := range status.Channels {
 				sendQueueSize += float64(chStats.SendQueueSize)
 			}
-			p.metrics.p
+			p.metrics.PeerPendingSendBytes.With("peer_id", string(p.NodeID())).Set(sendQueueSize)
+		case <-p.WaitStop():
+			return
 		}
 	}
 }
