@@ -11,7 +11,7 @@ import (
 )
 
 type peerConn struct {
-	conn net.Conn
+	conn net.Conn // 这里的conn是最原始的net.Conn，在将来会将其包装成 Connection
 	addr *NetAddress
 	ip   net.IP
 }
@@ -93,6 +93,41 @@ func (p *Peer) Start() error {
 	}
 	go p.metricsReport()
 	return nil
+}
+
+// FlushStop ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// FlushStop将底层连接信道中还未发送完的数据发送出去，然后再关闭连接。
+func (p *Peer) FlushStop() {
+	p.metricsTicker.Stop()
+	p.connection.FlushStop()
+}
+
+func (p *Peer) Stop() error {
+	p.metricsTicker.Stop()
+	if err := p.connection.Stop(); err != nil {
+		return err
+	}
+	return p.BaseService.Stop()
+}
+
+func (p *Peer) NodeInfo() NodeInfo {
+	return p.nodeInfo
+}
+
+func (p *Peer) NetAddress() *NetAddress {
+	return p.addr
+}
+
+// Status ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// Status 返回p2p/connection的状态。
+func (p *Peer) Status() ConnectionStatus {
+	return p.connection.Status()
 }
 
 func (p *Peer) metricsReport() {
