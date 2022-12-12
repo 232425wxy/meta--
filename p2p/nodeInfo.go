@@ -121,8 +121,8 @@ func (node NodeInfo) ToProto() *pbp2p.NodeInfo {
 //	---------------------------------------------------------
 //
 // NodeInfoFromProto 将protobuf形式的NodeInfo转换成自定义的 NodeInfo。
-func NodeInfoFromProto(pbInfo *pbp2p.NodeInfo) NodeInfo {
-	return NodeInfo{
+func NodeInfoFromProto(pbInfo *pbp2p.NodeInfo) *NodeInfo {
+	return &NodeInfo{
 		NodeID:     crypto.ID(pbInfo.NodeID),
 		ListenAddr: pbInfo.ListenAddr,
 		ChainID:    pbInfo.ChainID,

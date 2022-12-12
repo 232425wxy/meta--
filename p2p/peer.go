@@ -7,13 +7,14 @@ import (
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/log"
 	"net"
+	"sync"
 	"time"
 )
 
 type peerConn struct {
 	conn net.Conn // 这里的conn是最原始的net.Conn，在将来会将其包装成 Connection
 	addr *NetAddress
-	ip   net.IP
+	ip   net.IP // 该字段在RemoteIP方法中被赋值。
 }
 
 func newPeerConn(conn net.Conn, addr *NetAddress) peerConn {
@@ -23,11 +24,31 @@ func newPeerConn(conn net.Conn, addr *NetAddress) peerConn {
 	}
 }
 
+func (pc peerConn) RemoteIP() net.IP {
+	if pc.ip != nil {
+		return pc.ip
+	}
+
+	host, _, err := net.SplitHostPort(pc.conn.RemoteAddr().String())
+	if err != nil {
+		panic(err)
+	}
+
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		panic(err)
+	}
+
+	pc.ip = ips[0]
+
+	return pc.ip
+}
+
 type Peer struct {
 	service.BaseService
 	peerConn
 	connection    *Connection
-	nodeInfo      NodeInfo
+	nodeInfo      *NodeInfo
 	Data          *cmap.CMap
 	metrics       *Metrics
 	metricsTicker *time.Ticker
@@ -41,7 +62,7 @@ func PeerOptionSetMetrics(m *Metrics) PeerOption {
 	}
 }
 
-func newPeer(pc peerConn, config ConnectionConfig, nodeInfo NodeInfo, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(peer *Peer, err error), options ...PeerOption) *Peer {
+func newPeer(pc peerConn, config ConnectionConfig, nodeInfo *NodeInfo, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(peer *Peer, err error), options ...PeerOption) *Peer {
 	p := &Peer{
 		BaseService:   *service.NewBaseService(nil, "Peer"),
 		peerConn:      pc,
@@ -101,7 +122,7 @@ func (p *Peer) Stop() error {
 	return p.BaseService.Stop()
 }
 
-func (p *Peer) NodeInfo() NodeInfo {
+func (p *Peer) NodeInfo() *NodeInfo {
 	return p.nodeInfo
 }
 
@@ -183,6 +204,127 @@ func (p *Peer) metricsReport() {
 			return
 		}
 	}
+}
+
+/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
+
+// peer 集合
+
+type PeerSet struct {
+	mu      sync.RWMutex
+	indexes map[crypto.ID]*peerIndex
+	peers   []*Peer
+}
+
+type peerIndex struct {
+	peer  *Peer
+	index int
+}
+
+func NewPeerSet() *PeerSet {
+	return &PeerSet{indexes: make(map[crypto.ID]*peerIndex), peers: make([]*Peer, 0)}
+}
+
+// AddPeer ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// AddPeer 往peer节点集合中加入新的节点，如果该节点已经存在了，就什么也不做，直接返回。
+func (ps *PeerSet) AddPeer(peer *Peer) {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	if ps.indexes[peer.NodeID()] != nil {
+		return
+	}
+	index := len(ps.peers)
+	ps.peers = append(ps.peers, peer)
+	ps.indexes[peer.NodeID()] = &peerIndex{peer: peer, index: index}
+}
+
+// HasPeer ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// HasPeer 给定某个peer节点的id，判断该peer节点存不存在，如果不存在就返回false。
+func (ps *PeerSet) HasPeer(peerID crypto.ID) bool {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+	return ps.indexes[peerID] != nil
+}
+
+// HasIP ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// HasIP 判断在peer节点集合中是否已经存在给定的IP地址，这在给节点拨号时很有用，避免重复拨号。
+func (ps *PeerSet) HasIP(ip net.IP) bool {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+	for _, peer := range ps.peers {
+		if peer.RemoteIP().Equal(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// GetPeer ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// GetPeer 根据peer节点的ID获取对应的peer节点。
+func (ps *PeerSet) GetPeer(peerID crypto.ID) *Peer {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	if _, ok := ps.indexes[peerID]; ok {
+		return ps.indexes[peerID].peer
+	}
+	return nil
+}
+
+// RemovePeer ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// RemovePeer 从peer集合中删除指定的peer节点。
+func (ps *PeerSet) RemovePeer(peer *Peer) {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	indexIt := ps.indexes[peer.NodeID()]
+	if indexIt == nil {
+		return
+	}
+	index := indexIt.index
+	peers := make([]*Peer, len(ps.peers)-1)
+	copy(peers, ps.peers)
+	delete(ps.indexes, peer.NodeID())
+	// 如果要删除的节点是最后一个节点，那么直接截取前n-1个节点就行了
+	if index == len(ps.peers)-1 {
+		ps.peers = peers
+		return
+	}
+	// 如果要删除的节点是中间某个节点，就将最后那个节点和中间这个节点调换一下，然后改一下索引位置就行了。
+	lastPeer := ps.peers[len(ps.peers)-1]
+	peers[index] = lastPeer
+	ps.indexes[lastPeer.NodeID()].index = index
+	ps.peers = peers
+}
+
+// Size ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// Size 返回peer集合中peer节点数量。
+func (ps *PeerSet) Size() int {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+	return len(ps.peers)
+}
+
+func (ps *PeerSet) Peers() []*Peer {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+	return ps.peers
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
