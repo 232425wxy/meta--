@@ -95,21 +95,9 @@ func (p *Peer) Start() error {
 	return nil
 }
 
-// FlushStop ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
-//
-//	---------------------------------------------------------
-//
-// FlushStop将底层连接信道中还未发送完的数据发送出去，然后再关闭连接。
-func (p *Peer) FlushStop() {
-	p.metricsTicker.Stop()
-	p.connection.FlushStop()
-}
-
 func (p *Peer) Stop() error {
 	p.metricsTicker.Stop()
-	if err := p.connection.Stop(); err != nil {
-		return err
-	}
+	p.connection.FlushStop()
 	return p.BaseService.Stop()
 }
 
@@ -128,6 +116,57 @@ func (p *Peer) NetAddress() *NetAddress {
 // Status 返回p2p/connection的状态。
 func (p *Peer) Status() ConnectionStatus {
 	return p.connection.Status()
+}
+
+// Send ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// Send 给对方的指定信道发送消息。
+func (p *Peer) Send(chID byte, msg []byte) bool {
+	if !p.IsRunning() {
+		return false
+	}
+	res := p.connection.Send(chID, msg)
+	if res {
+		labels := []string{"peer_id", string(p.NodeID()), "channel_id", fmt.Sprintf("%x", chID)}
+		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msg)))
+	}
+	return res
+}
+
+// TrySend ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// TrySend 尝试发送数据。
+func (p *Peer) TrySend(chID byte, msg []byte) bool {
+	if !p.IsRunning() {
+		return false
+	}
+	res := p.connection.TrySend(chID, msg)
+	if res {
+		labels := []string{"peer_id", string(p.NodeID()), "channel_id", fmt.Sprintf("%x", chID)}
+		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msg)))
+	}
+	return res
+}
+
+func (p *Peer) Get(key string) interface{} {
+	return p.Data.Get(key)
+}
+
+func (p *Peer) Set(key string, data interface{}) {
+	p.Data.Set(key, data)
+}
+
+// RemoteAddr ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+//	---------------------------------------------------------
+//
+// RemoteAddr 返回对方节点的网络地址。
+func (p *Peer) RemoteAddr() net.Addr {
+	return p.conn.RemoteAddr()
 }
 
 func (p *Peer) metricsReport() {
