@@ -84,7 +84,7 @@ func (t *Transport) Close() error {
 //
 //	---------------------------------------------------------
 //
-// Cleanup
+// Cleanup 将与指定的peer相关的底层网络连接从集合中删除，同时关闭该底层连接。
 func (t *Transport) Cleanup(p *Peer) {
 	t.connSet.RemoveAddr(p.RemoteAddr())
 	_ = p.conn.Close()

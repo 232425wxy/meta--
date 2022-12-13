@@ -17,6 +17,8 @@ import (
 //  5. 数据包的最大载荷：MaxPacketPayloadSize
 //  6. 发送数据的速率上限：SendRate
 //  7. 接收数据的速率上限：RecvRate
+//  8. 接收ping-pong消息的超时时间：PongTimeout
+//  9. 发送ping消息的间隔时间：PingInterval
 type P2PConfig struct {
 	Home                    string        `mapstructure:"home"`
 	ListenAddress           string        `mapstructure:"listen_address"`
@@ -25,6 +27,8 @@ type P2PConfig struct {
 	MaxPacketMsgPayloadSize int           `mapstructure:"max_packet_msg_payload_size"`
 	SendRate                int64         `mapstructure:"send_rate"`
 	RecvRate                int64         `mapstructure:"recv_rate"`
+	PongTimeout             time.Duration `mapstructure:"pong_interval"`
+	PingInterval            time.Duration `mapstructure:"ping_interval"`
 }
 
 func DefaultP2PConfig() *P2PConfig {
@@ -35,6 +39,8 @@ func DefaultP2PConfig() *P2PConfig {
 		MaxPacketMsgPayloadSize: 1024,
 		SendRate:                5120000,
 		RecvRate:                5120000,
+		PongTimeout:             45 * time.Second,
+		PingInterval:            90 * time.Second,
 	}
 }
 

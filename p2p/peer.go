@@ -287,12 +287,12 @@ func (ps *PeerSet) GetPeer(peerID crypto.ID) *Peer {
 //	---------------------------------------------------------
 //
 // RemovePeer 从peer集合中删除指定的peer节点。
-func (ps *PeerSet) RemovePeer(peer *Peer) {
+func (ps *PeerSet) RemovePeer(peer *Peer) bool {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
 	indexIt := ps.indexes[peer.NodeID()]
 	if indexIt == nil {
-		return
+		return false
 	}
 	index := indexIt.index
 	peers := make([]*Peer, len(ps.peers)-1)
@@ -301,13 +301,14 @@ func (ps *PeerSet) RemovePeer(peer *Peer) {
 	// 如果要删除的节点是最后一个节点，那么直接截取前n-1个节点就行了
 	if index == len(ps.peers)-1 {
 		ps.peers = peers
-		return
+		return true
 	}
 	// 如果要删除的节点是中间某个节点，就将最后那个节点和中间这个节点调换一下，然后改一下索引位置就行了。
 	lastPeer := ps.peers[len(ps.peers)-1]
 	peers[index] = lastPeer
 	ps.indexes[lastPeer.NodeID()].index = index
 	ps.peers = peers
+	return true
 }
 
 // Size ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨

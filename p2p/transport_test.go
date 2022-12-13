@@ -223,6 +223,11 @@ func TestPeerToPeer(t *testing.T) {
 	peerB, err := transportA.Dial(addrB, peerCfgA)
 	peerA := <-peerC
 
+	peerA_, _ := transportB.Dial(addrA, peerCfgB)
+
+	t.Log(peerA.NodeID())
+	t.Log(peerA_.NodeID())
+
 	peerA.SetLogger(loggerA)
 	peerB.SetLogger(loggerB)
 
