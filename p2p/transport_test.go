@@ -76,4 +76,6 @@ func TestTransport_Listen(t *testing.T) {
 	addr := testNetAddress(transport.nodeInfo.NodeID, transport.nodeInfo.ListenAddr)
 	err = transport.Listen(addr)
 	assert.Nil(t, err)
+	err = transport.Close()
+	assert.Nil(t, err)
 }

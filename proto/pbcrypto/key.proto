@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package pbcrypto;
+
+message BLS12PublicKey {
+  bytes key = 1;
+}
+
+// protoc --gogofaster_out=. key.proto
