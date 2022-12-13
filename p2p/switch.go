@@ -48,6 +48,18 @@ func (sw *Switch) Start() error {
 	return sw.BaseService.Start()
 }
 
+func (sw *Switch) Stop() error {
+	for _, p := range sw.peers.Peers() {
+		sw.stopAndRemovePeer(p, nil)
+	}
+	for _, reactor := range sw.reactors {
+		if err := reactor.Stop(); err != nil {
+			sw.Logger.Error("failed to stop reactor", "err", err)
+		}
+	}
+	return sw.BaseService.Stop()
+}
+
 func (sw *Switch) NetAddress() *NetAddress {
 	return sw.transport.NetAddress()
 }
@@ -153,6 +165,14 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) error {
 
 func (sw *Switch) IsDialingOrExisting(addr *NetAddress) bool {
 	return sw.dialing.Has(string(addr.ID)) || sw.peers.HasPeer(addr.ID)
+}
+
+func (sw *Switch) Broadcast(chID byte, msg []byte) {
+	for _, peer := range sw.peers.peers {
+		go func(p *Peer) {
+			peer.Send(chID, msg)
+		}(peer)
+	}
 }
 
 func (sw *Switch) reconnectToPeer(addr *NetAddress) {
