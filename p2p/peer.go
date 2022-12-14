@@ -63,13 +63,13 @@ func PeerOptionSetMetrics(m *Metrics) PeerOption {
 	}
 }
 
-func newPeer(pc peerConn, config *config2.P2PConfig, nodeInfo *NodeInfo, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(peer *Peer, err error), options ...PeerOption) *Peer {
+func newPeer(pc peerConn, config *config2.P2PConfig, nodeInfo *NodeInfo, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(peer *Peer, err error), metrics *Metrics) *Peer {
 	p := &Peer{
 		BaseService:   *service.NewBaseService(nil, "Peer"),
 		peerConn:      pc,
 		nodeInfo:      nodeInfo,
 		Data:          cmap.NewCap(),
-		metrics:       P2PMetrics(),
+		metrics:       metrics,
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 	}
 	// 在这里给每个模块的reactor注册各自信道收到消息后的处理方法。
@@ -86,10 +86,6 @@ func newPeer(pc peerConn, config *config2.P2PConfig, nodeInfo *NodeInfo, reactor
 		onPeerError(p, err)
 	}
 	p.connection = NewConnectionWithConfig(pc.conn, chDescs, onReceive, onError, config)
-	// 这个地方一般是把Switch那里的metrics下放到Peer这里
-	for _, opt := range options {
-		opt(p)
-	}
 	return p
 }
 

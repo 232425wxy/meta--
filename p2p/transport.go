@@ -187,7 +187,7 @@ func (t *Transport) acceptPeers() {
 // 用它去创建底层的p2p连接Connection。
 func (t *Transport) wrapPeer(c net.Conn, nodeInfo *NodeInfo, config peerConfig, addr *NetAddress) *Peer {
 	pc := newPeerConn(c, addr)
-	peer := newPeer(pc, t.config, nodeInfo, config.reactorsByCh, config.chDescs, config.onPeerError, PeerOptionSetMetrics(config.metrics))
+	peer := newPeer(pc, t.config, nodeInfo, config.reactorsByCh, config.chDescs, config.onPeerError, config.metrics)
 	return peer
 }
 
