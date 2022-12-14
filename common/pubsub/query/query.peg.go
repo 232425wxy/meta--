@@ -13,7 +13,7 @@ import (
 
 const endSymbol rune = 1114112
 
-/* The rule types inferred from the grammar are below. */
+/* The rule pbtypes inferred from the grammar are below. */
 type pegRule uint8
 
 const (

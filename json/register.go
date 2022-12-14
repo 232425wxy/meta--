@@ -14,7 +14,7 @@ import (
 //
 //	---------------------------------------------------------
 //
-// RegisterType 方法接受两个参数，一个是某类型的实例，另一个是为该类型取的名字，然后将其注册到 types 结构体里。
+// RegisterType 方法接受两个参数，一个是某类型的实例，另一个是为该类型取的名字，然后将其注册到 pbtypes 结构体里。
 func RegisterType(x interface{}, name string) {
 	if x == nil {
 		panic("cannot register nil type")
