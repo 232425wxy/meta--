@@ -45,11 +45,21 @@ func (a *addrBook) AddOurAddress(addr *NetAddress) {
 	a.ourAddresses[addr.String()] = struct{}{}
 }
 
+func (a *addrBook) IsOurAddress(addr *NetAddress) bool {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	_, ok := a.ourAddresses[addr.String()]
+	return ok
+}
+
 func (a *addrBook) AddAddress(addr *NetAddress) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if _, ok := a.ourAddresses[addr.String()]; ok {
 		return false
+	}
+	if _, ok := a.bucket[addr.ID]; ok {
+		return true
 	}
 	a.bucket[addr.ID] = newKnownAddress(addr)
 	return true

@@ -126,6 +126,8 @@ func TestSwitch_Broadcast(t *testing.T) {
 		counter:     0,
 	}
 	sw2.AddReactor("test reactor", reactor2)
+	sw1.SetAddrBook(NewAddrBook("addrbook1.json"))
+	sw2.SetAddrBook(NewAddrBook("addrbook2.json"))
 	assert.Nil(t, sw1.Start())
 	assert.Nil(t, sw2.Start())
 
@@ -146,16 +148,16 @@ func TestSwitch_Broadcast(t *testing.T) {
 
 	<-connected
 
-	sw1.Broadcast(0x01, []byte("hello, world"))
+	sw2.Broadcast(0x01, []byte("hello, world"))
 
 	for {
-		if reactor2.counter == 1 {
+		if reactor1.counter == 1 {
 			break
 		}
 	}
 
-	assert.Equal(t, reactor2.msgReceived[0x01][0].peerID, sw1.NodeInfo().NodeID)
-	assert.Equal(t, reactor2.msgReceived[0x01][0].msg, []byte("hello, world"))
+	assert.Equal(t, reactor1.msgReceived[0x01][0].peerID, sw2.NodeInfo().NodeID)
+	assert.Equal(t, reactor1.msgReceived[0x01][0].msg, []byte("hello, world"))
 
 	assert.Nil(t, sw1.Stop())
 	assert.Nil(t, sw2.Stop())
@@ -191,4 +193,97 @@ func TestSwitch_SetAddrBook(t *testing.T) {
 
 	assert.Nil(t, sw1.Stop())
 	assert.Nil(t, sw2.Stop())
+}
+
+func Test4Nodes(t *testing.T) {
+	log.PrintOrigins(true)
+	sw1, sw2 := create2Switches(t)
+	sw3, sw4 := create2Switches(t)
+
+	sw1.SetAddrBook(NewAddrBook("addrbook1.json"))
+	sw2.SetAddrBook(NewAddrBook("addrbook2.json"))
+	sw3.SetAddrBook(NewAddrBook("addrbook3.json"))
+	sw4.SetAddrBook(NewAddrBook("addrbook4.json"))
+
+	reactor1 := &TestReactor{
+		BaseReactor: *NewBaseReactor("Switch-1"),
+		msgReceived: make(map[byte][]PeerMsg),
+		counter:     0,
+	}
+	reactor2 := &TestReactor{
+		BaseReactor: *NewBaseReactor("Switch-2"),
+		msgReceived: make(map[byte][]PeerMsg),
+		counter:     0,
+	}
+	reactor3 := &TestReactor{
+		BaseReactor: *NewBaseReactor("Switch-1"),
+		msgReceived: make(map[byte][]PeerMsg),
+		counter:     0,
+	}
+	reactor4 := &TestReactor{
+		BaseReactor: *NewBaseReactor("Switch-2"),
+		msgReceived: make(map[byte][]PeerMsg),
+		counter:     0,
+	}
+	sw1.AddReactor("test reactor", reactor1)
+	sw2.AddReactor("test reactor", reactor2)
+	sw3.AddReactor("test reactor", reactor3)
+	sw4.AddReactor("test reactor", reactor4)
+
+	assert.Nil(t, sw1.Start())
+	assert.Nil(t, sw2.Start())
+	assert.Nil(t, sw3.Start())
+	assert.Nil(t, sw4.Start())
+
+	addrs := []*NetAddress{sw1.NetAddress(), sw2.NetAddress(), sw3.NetAddress(), sw4.NetAddress()}
+
+	connect := func(sw *Switch) {
+		for _, addr := range addrs {
+			_ = sw.DialPeerWithAddress(addr)
+		}
+	}
+
+	go connect(sw1)
+	go connect(sw2)
+	go connect(sw3)
+	go connect(sw4)
+
+	connected := make(chan struct{})
+
+	go func() {
+		for {
+			if sw1.peers.Size() == 3 && sw2.peers.Size() == 3 && sw3.peers.Size() == 3 && sw4.peers.Size() == 3 {
+				close(connected)
+				return
+			}
+		}
+	}()
+
+	<-connected
+
+	time.Sleep(time.Millisecond * 200)
+
+	sw1.Broadcast(0x01, []byte("hello, greeting from node1"))
+	time.Sleep(time.Millisecond * 200)
+	assert.Equal(t, 0, reactor1.counter)
+	assert.Equal(t, 1, reactor2.counter)
+	assert.Equal(t, 1, reactor3.counter)
+	assert.Equal(t, 1, reactor4.counter)
+
+	sw2.Broadcast(0x01, []byte("hello, greeting from node2"))
+	time.Sleep(time.Millisecond * 200)
+	assert.Equal(t, 1, reactor1.counter)
+	assert.Equal(t, 1, reactor2.counter)
+	assert.Equal(t, 2, reactor3.counter)
+	assert.Equal(t, 2, reactor4.counter)
+
+	time.Sleep(4 * time.Second)
+
+	assert.Equal(t, []byte("hello, greeting from node1"), reactor2.msgReceived[0x01][0].msg)
+	assert.Equal(t, sw1.NodeInfo().NodeID, reactor2.msgReceived[0x01][0].peerID)
+
+	assert.Nil(t, sw1.Stop())
+	assert.Nil(t, sw2.Stop())
+	assert.Nil(t, sw3.Stop())
+	assert.Nil(t, sw4.Stop())
 }

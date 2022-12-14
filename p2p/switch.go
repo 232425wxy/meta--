@@ -108,6 +108,7 @@ func (sw *Switch) StopPeerForError(p *Peer, err error) {
 
 func (sw *Switch) SetAddrBook(addrbook *addrBook) {
 	sw.addrbook = addrbook
+	sw.addrbook.AddOurAddress(sw.NetAddress())
 }
 
 func (sw *Switch) DialPeerAsync(peers []string) {
@@ -137,6 +138,9 @@ func (sw *Switch) DialPeerAsync(peers []string) {
 }
 
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress) error {
+	if sw.addrbook.IsOurAddress(addr) {
+		return nil
+	}
 	if sw.IsDialingOrExisting(addr) {
 		return fmt.Errorf("already has or dialing to the specified address: %q", addr.String())
 	}
@@ -210,8 +214,9 @@ func (sw *Switch) acceptRoutine() {
 			break
 		}
 		if err = sw.addPeer(p); err != nil {
-			sw.Logger.Error("failed to add new peer", "new peer", p.NodeID())
+			sw.Logger.Warn("failed to add new peer", "new peer", p.NodeID(), "err", err)
 		}
+		sw.addrbook.AddAddress(p.NetAddress())
 	}
 }
 
@@ -222,7 +227,7 @@ func (sw *Switch) acceptRoutine() {
 // addPeer 方法所做的不仅仅是将新的peer加入到switch里，还会在各个reactor那里初始化新peer，并将peer启动。
 func (sw *Switch) addPeer(p *Peer) error {
 	if !sw.filterPeer(p) {
-		return fmt.Errorf("switch already has this peer: %q", p.NodeID())
+		return fmt.Errorf("switch already has this peer: %s", p.NodeID())
 	}
 	p.SetLogger(sw.Logger.New("peer", p.NodeID()))
 	if !sw.IsRunning() {
