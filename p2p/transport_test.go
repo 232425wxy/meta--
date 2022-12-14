@@ -3,6 +3,7 @@ package p2p
 import (
 	"fmt"
 	"github.com/232425wxy/meta--/common/hexbytes"
+	config2 "github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/log"
@@ -29,6 +30,12 @@ func (tr *TestReactor) Receive(chID byte, peer *Peer, msg []byte) {
 	}
 	tr.msgReceived[chID] = append(tr.msgReceived[chID], peerMsg)
 	tr.counter++
+}
+
+func (tr *TestReactor) GetChannels() []*ChannelDescriptor {
+	return []*ChannelDescriptor{
+		{ID: 0x01, Priority: 1, SendQueueCapacity: defaultSendQueueCapacity, RecvMessageCapacity: defaultRecvMessageCapacity, RecvBufferCapacity: defaultRecvBufferCapacity},
+	}
 }
 
 type PeerMsg struct {
@@ -121,17 +128,6 @@ func testNodeKey(privateKey *bls12.PrivateKey) *NodeKey {
 	return &NodeKey{PrivateKey: privateKey}
 }
 
-func testConnectionConfig() ConnectionConfig {
-	return ConnectionConfig{
-		SendRate:                5120000,
-		RecvRate:                5120000,
-		MaxPacketMsgPayloadSize: 1024,
-		FlushDur:                50 * time.Millisecond,
-		PingInterval:            90 * time.Millisecond,
-		PongTimeout:             45 * time.Millisecond,
-	}
-}
-
 func testNetAddress(id crypto.ID, addr string) *NetAddress {
 	netAddr, err := NewNetAddressString(fmt.Sprintf("%s@%s", id, addr))
 	if err != nil {
@@ -143,7 +139,7 @@ func testNetAddress(id crypto.ID, addr string) *NetAddress {
 func createTransport(privateKey *bls12.PrivateKey) *Transport {
 	nodeInfo := testNodeInfo(privateKey)
 	nodeKey := testNodeKey(privateKey)
-	config := testConnectionConfig()
+	config := config2.DefaultP2PConfig()
 	transport := NewTransport(nodeInfo, nodeKey, config)
 	return transport
 }

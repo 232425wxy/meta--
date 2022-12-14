@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"github.com/232425wxy/meta--/common/cmap"
 	"github.com/232425wxy/meta--/common/service"
-	"github.com/232425wxy/meta--/config"
 	"math/rand"
 	"time"
 )
 
 type Switch struct {
 	service.BaseService
-	config       *config.P2PConfig
 	reactors     map[string]Reactor
 	reactorsByCh map[byte]Reactor
 	chDescs      []*ChannelDescriptor
@@ -23,10 +21,9 @@ type Switch struct {
 	metrics      *Metrics
 }
 
-func NewSwitch(config *config.P2PConfig, transport *Transport, metrics *Metrics) *Switch {
+func NewSwitch(transport *Transport, metrics *Metrics) *Switch {
 	return &Switch{
 		BaseService:  *service.NewBaseService(nil, "Switch"),
-		config:       config,
 		reactors:     make(map[string]Reactor),
 		reactorsByCh: make(map[byte]Reactor),
 		chDescs:      make([]*ChannelDescriptor, 0),
@@ -45,6 +42,7 @@ func (sw *Switch) Start() error {
 		}
 	}
 	go sw.acceptRoutine()
+	sw.addrbook.Start()
 	return sw.BaseService.Start()
 }
 
@@ -57,6 +55,7 @@ func (sw *Switch) Stop() error {
 			sw.Logger.Error("failed to stop reactor", "err", err)
 		}
 	}
+	sw.addrbook.Close()
 	return sw.BaseService.Stop()
 }
 
@@ -141,6 +140,8 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) error {
 	if sw.IsDialingOrExisting(addr) {
 		return fmt.Errorf("already has or dialing to the specified address: %q", addr.String())
 	}
+	sw.addrbook.AddAddress(addr)
+	sw.addrbook.MarkAttempt(addr)
 	sw.dialing.Set(string(addr.ID), addr)
 	defer sw.dialing.Delete(string(addr.ID))
 	sw.Logger.Info("dialing peer", "address", addr.String())
@@ -169,6 +170,7 @@ func (sw *Switch) IsDialingOrExisting(addr *NetAddress) bool {
 
 func (sw *Switch) Broadcast(chID byte, msg []byte) {
 	for _, peer := range sw.peers.peers {
+		peer := peer
 		go func(p *Peer) {
 			peer.Send(chID, msg)
 		}(peer)
@@ -244,8 +246,10 @@ func (sw *Switch) addPeer(p *Peer) error {
 
 func (sw *Switch) stopAndRemovePeer(p *Peer, reason error) {
 	sw.transport.Cleanup(p)
-	if err := p.Stop(); err != nil {
-		sw.Logger.Error("failed to stop peer", "err", err, "peer", p.NodeID())
+	if !p.IsRunning() {
+		if err := p.Stop(); err != nil {
+			sw.Logger.Error("failed to stop peer", "err", err)
+		}
 	}
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(p, reason)

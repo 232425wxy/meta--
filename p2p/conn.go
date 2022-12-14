@@ -9,6 +9,7 @@ import (
 	"github.com/232425wxy/meta--/common/number"
 	"github.com/232425wxy/meta--/common/protoio"
 	"github.com/232425wxy/meta--/common/service"
+	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbp2p"
 	"github.com/cosmos/gogoproto/proto"
@@ -45,7 +46,7 @@ type Connection struct {
 	onReceive         receiveCb // onReceive可以接收到的消息通过Reactor递送到指定的模块去处理
 	onError           errorCb
 	errored           uint32
-	config            ConnectionConfig
+	config            *config.P2PConfig
 	quitSendRoutine   chan struct{}
 	doneSendRoutine   chan struct{}
 	quitRecvRoutine   chan struct{}
@@ -57,20 +58,6 @@ type Connection struct {
 	chStatsTicker     *time.Ticker // 每隔一段时间更新一下信道状态
 	created           time.Time
 	_maxPacketMsgSize int // 数据包的最大大小
-}
-
-// ConnectionConfig ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
-//
-//	---------------------------------------------------------
-//
-// ConnectionConfig p2p连接的配置信息。
-type ConnectionConfig struct {
-	SendRate                int64         `mapstructure:"send_rate"`
-	RecvRate                int64         `mapstructure:"recv_rate"`
-	MaxPacketMsgPayloadSize int           `mapstructure:"max_packet_msg_payload_size"`
-	FlushDur                time.Duration `mapstructure:"flusher"`
-	PingInterval            time.Duration `mapstructure:"ping_interval"`
-	PongTimeout             time.Duration `mapstructure:"pong_timeout"`
 }
 
 // receiveCb ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -92,7 +79,7 @@ type errorCb func(err error)
 //	---------------------------------------------------------
 //
 // NewConnectionWithConfig 根据配置信息实例化一个p2p网络中的底层连接。
-func NewConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCb, onError errorCb, config ConnectionConfig) *Connection {
+func NewConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCb, onError errorCb, config *config.P2PConfig) *Connection {
 	connection := &Connection{
 		conn:          conn,
 		bufConnReader: bufio.NewReaderSize(conn, minReadBufferSize),
@@ -148,7 +135,7 @@ func (c *Connection) SetLogger(logger log.Logger) {
 }
 
 func (c *Connection) Start() error {
-	c.flusher = flusher.NewFlusher(c.config.FlushDur)
+	c.flusher = flusher.NewFlusher(c.config.FlushDuration)
 	c.pingTicker = time.NewTicker(c.config.PingInterval)
 	c.pongTimeoutCh = make(chan bool, 1)
 	c.chStatsTicker = time.NewTicker(updateStats)

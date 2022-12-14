@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	mos "github.com/232425wxy/meta--/common/os"
-	"github.com/232425wxy/meta--/common/service"
 	"github.com/232425wxy/meta--/crypto"
 	"os"
 	"sync"
@@ -12,39 +11,37 @@ import (
 )
 
 type addrBook struct {
-	service.BaseService
 	mu             sync.RWMutex
 	ourAddresses   map[string]struct{} // id@ip:port -> struct{}{}
 	bucket         map[crypto.ID]*knownAddress
 	filePath       string
 	fileSaveTicker *time.Ticker
+	quit           chan struct{}
 }
 
 func NewAddrBook(filePath string) *addrBook {
 	return &addrBook{
-		BaseService:    *service.NewBaseService(nil, "AddrBook"),
 		ourAddresses:   make(map[string]struct{}),
 		bucket:         make(map[crypto.ID]*knownAddress),
 		filePath:       filePath,
 		fileSaveTicker: time.NewTicker(defaultSaveToFileDur),
+		quit:           make(chan struct{}),
 	}
 }
 
-func (a *addrBook) Start() error {
+func (a *addrBook) Start() {
 	a.loadFromFile()
 	go a.saveRoutine()
-	return a.BaseService.Start()
 }
 
-func (a *addrBook) Stop() error {
+func (a *addrBook) Close() {
 	a.fileSaveTicker.Stop()
-	return a.BaseService.Stop()
+	close(a.quit)
 }
 
 func (a *addrBook) AddOurAddress(addr *NetAddress) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.Logger.Debug("add our address to book", "address", addr.DialString())
 	a.ourAddresses[addr.String()] = struct{}{}
 }
 
@@ -85,7 +82,7 @@ func (a *addrBook) saveRoutine() {
 		select {
 		case <-a.fileSaveTicker.C:
 			a.saveToFile()
-		case <-a.WaitStop():
+		case <-a.quit:
 			return
 		}
 	}
@@ -95,7 +92,6 @@ func (a *addrBook) saveToFile() {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
-	a.Logger.Debug("saving addresses from book to the disk")
 	aJSON := &addrBookJSON{Addresses: make([]*knownAddress, 0)}
 	for _, ka := range a.bucket {
 		aJSON.Addresses = append(aJSON.Addresses, ka)
@@ -165,5 +161,5 @@ func (ka *knownAddress) NodeID() crypto.ID {
 // 常量
 
 const (
-	defaultSaveToFileDur = 2 * time.Minute
+	defaultSaveToFileDur = 2 * time.Second
 )

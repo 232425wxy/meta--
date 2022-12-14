@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/232425wxy/meta--/common/protoio"
+	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/proto/pbp2p"
 	"net"
 	"time"
@@ -19,7 +20,7 @@ type Transport struct {
 	handshakeTimeout time.Duration
 	nodeInfo         *NodeInfo
 	nodeKey          *NodeKey
-	config           ConnectionConfig
+	config           *config.P2PConfig
 }
 
 type accept struct {
@@ -41,7 +42,7 @@ type peerConfig struct {
 	metrics      *Metrics
 }
 
-func NewTransport(nodeInfo *NodeInfo, nodeKey *NodeKey, config ConnectionConfig) *Transport {
+func NewTransport(nodeInfo *NodeInfo, nodeKey *NodeKey, config *config.P2PConfig) *Transport {
 	return &Transport{
 		acceptc:          make(chan accept),
 		closed:           make(chan struct{}),

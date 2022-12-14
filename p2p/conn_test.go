@@ -3,6 +3,7 @@ package p2p
 import (
 	"encoding/hex"
 	"github.com/232425wxy/meta--/common/protoio"
+	config2 "github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbp2p"
 	"github.com/cosmos/gogoproto/proto"
@@ -28,14 +29,7 @@ func createConn(conn net.Conn) *Connection {
 	logger := log.New()
 	logger.SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
 	//log.PrintOrigins(true)
-	config := ConnectionConfig{
-		SendRate:                5120000,
-		RecvRate:                5120000,
-		MaxPacketMsgPayloadSize: 1024,
-		FlushDur:                50 * time.Millisecond,
-		PingInterval:            90 * time.Millisecond,
-		PongTimeout:             45 * time.Millisecond,
-	}
+	config := config2.DefaultP2PConfig()
 	chDescs := []*ChannelDescriptor{
 		{ID: 0x01, Priority: 1, SendQueueCapacity: 1},
 		{ID: 0x02, Priority: 1, SendQueueCapacity: 1},
@@ -417,14 +411,7 @@ func createClientConnAndServerConn(t *testing.T, errorsCh chan interface{}) (*Co
 	var onError errorCb = func(err error) {
 		errorsCh <- err
 	}
-	config := ConnectionConfig{
-		SendRate:                5120000,
-		RecvRate:                5120000,
-		MaxPacketMsgPayloadSize: 1024,
-		FlushDur:                50 * time.Millisecond,
-		PingInterval:            90 * time.Millisecond,
-		PongTimeout:             45 * time.Millisecond,
-	}
+	config := config2.DefaultP2PConfig()
 	chDescs := []*ChannelDescriptor{{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
 	serverConn := NewConnectionWithConfig(server, chDescs, onReceive, onError, config)
 	logger := log.New()
