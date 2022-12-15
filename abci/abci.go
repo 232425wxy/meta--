@@ -6,7 +6,7 @@ import (
 )
 
 type Application interface {
-	Info(pbabci.RequestInfo) pbabci.ResponseInfo
+	Info(pbabci.RequestInfo) pbabci.ResponseInfo // 返回代理应用的信息
 	Echo(pbabci.RequestEcho) pbabci.ResponseEcho
 	InitChain(pbabci.RequestInitChain) pbabci.ResponseInitChain
 	Query(pbabci.RequestQuery) pbabci.ResponseQuery
