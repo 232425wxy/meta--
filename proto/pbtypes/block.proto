@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package pbtypes;
-
-message Data {
-  repeated bytes    txs = 1;
-  bytes             merkle_root_hash = 2;
-}

@@ -58,6 +58,22 @@ func (txs Txs) MerkleRootHash() []byte {
 	return merkle.ComputeMerkleRoot(hashes)
 }
 
+func (txs Txs) ToProto() pbtypes.Txs {
+	pb := pbtypes.Txs{Txs: make([][]byte, len(txs))}
+	for i := 0; i < len(txs); i++ {
+		pb.Txs[i] = txs[i]
+	}
+	return pb
+}
+
+func TxsFromProto(pb pbtypes.Txs) Txs {
+	txs := Txs{}
+	for _, tx := range pb.Txs {
+		txs = append(txs, tx)
+	}
+	return txs
+}
+
 // Proof ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------
@@ -124,8 +140,10 @@ func TxProofFromProto(pb pbtypes.TxProof) (TxProof, error) {
 //
 // ComputeProtoSizeForTxs 方法将一众交易数据包装成区块中的交易字段，包括交易数据的默克尔根哈希，然后计算
 // 交易字段的大小并返回。
-func ComputeProtoSizeForTxs(txs []Tx) int64 {
-	data := Data{Txs: txs}
-	pbData := data.ToProto()
-	return int64(pbData.Size())
+func ComputeProtoSizeForTxs(txs []Tx) int {
+	pb := pbtypes.Txs{Txs: make([][]byte, len(txs))}
+	for i, tx := range txs {
+		pb.Txs[i] = tx
+	}
+	return pb.Size()
 }

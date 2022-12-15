@@ -9,3 +9,7 @@ message TxProof {
   bytes           data = 2;
   pbcrypto.Proof  proof = 3;
 }
+
+message Txs {
+  repeated bytes txs = 1;
+}
