@@ -51,23 +51,17 @@ func DefaultP2PConfig() *P2PConfig {
 // TxsPoolConfig 结构定义了交易池模块中一些常用的配置信息：
 //  1. Home：配置文件的存储位置
 //  2. MaxSize：交易池里最多能够存储的交易数量
-//  3. CacheSize：交易缓存区的大小
-//  4. MaxTxBytes：所允许的单笔交易的最大大小
-//  5. WalPath：
+//  3. MaxTxBytes：所允许的单笔交易的最大大小
 type TxsPoolConfig struct {
 	Home       string `mapstructure:"home"`
 	MaxSize    int    `mapstructure:"max_size"`
-	CacheSize  int    `mapstructure:"cache_size"`
 	MaxTxBytes int    `mapstructure:"max_tx_bytes"`
-	WalPath    string `mapstructure:"wal_path"`
 }
 
 func DefaultTxsPoolConfig() *TxsPoolConfig {
 	return &TxsPoolConfig{
 		MaxSize:    2000,
-		CacheSize:  4000,
 		MaxTxBytes: 1024 * 1024 * 3, // 3MB
-		WalPath:    "",
 	}
 }
 

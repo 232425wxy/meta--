@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package pbabci;
+
+import "proto/pbcrypto/key.proto";
+import "gogoproto-1.4.3/gogoproto/gogo.proto";
+
+message Request {
+  oneof Value {
+    RequestInfo       info        = 1;
+    RequestEcho       echo        = 2;
+    RequestInitChain  init_chain  = 3;
+    RequestQuery      query       = 4;
+    RequestCheckTx    check_tx    = 5;
+    RequestDeliverTx  deliver_tx  = 6;
+    RequestBeginBlock begin_block = 7;
+    RequestEndBlock   end_block   = 8;
+    RequestCommit     commit      = 9;
+    RequestRedact     redact      = 10;
+  }
+}
+
+message RequestInfo {}
+
+message RequestEcho {
+  string message = 1;
+}
+
+message RequestInitChain {
+  repeated ValidatorUpdate validator_updates = 1 [(gogoproto.nullable) = false];
+  int64    initial_height = 2;
+}
+
+message RequestQuery {
+  bytes   data = 1;
+  string  path = 2;
+  int64   height = 3;
+}
+
+message RequestBeginBlock {
+  repeated Evidence evidences = 1 [(gogoproto.nullable) = false];
+  int64             height    = 2;
+}
+
+message RequestCheckTx {
+  bytes tx = 1;
+}
+
+message RequestDeliverTx {
+  bytes tx = 1;
+}
+
+message RequestEndBlock {
+  int64 height = 1;
+}
+
+message RequestCommit {}
+
+message RequestRedact {
+  int64 height  = 1;
+  int64 index   = 2;
+  bytes key     = 3;
+  bytes value   = 4;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+message Response {
+  oneof Value {
+    ResponseInfo info               = 1;
+    ResponseEcho echo               = 2;
+    ResponseInitChain init_chain    = 3;
+    ResponseQuery query             = 4;
+    ResponseCheckTx check_tx        = 5;
+    ResponseDeliverTx deliver_tx    = 6;
+    ResponseBeginBlock begin_block  = 7;
+    ResponseEndBlock end_block      = 8;
+    ResponseCommit commit           = 9;
+    ResponseRedact redact           = 10;
+  }
+}
+
+message ResponseInfo {
+  string type = 1;
+}
+
+message ResponseEcho {
+  string message = 1;
+}
+
+message ResponseInitChain {
+  repeated ValidatorUpdate validator_updates = 1;
+}
+
+message ResponseQuery {
+  int64 height  = 1;
+  int64 index   = 2;
+  bytes key     = 3;
+  bytes value   = 4;
+}
+
+message ResponseCheckTx {
+  bool ok = 1 [(gogoproto.customname) = "OK"];
+}
+
+message ResponseDeliverTx {
+  bool ok = 1 [(gogoproto.customname) = "OK"];
+}
+
+message ResponseBeginBlock {
+  bool ok = 1 [(gogoproto.customname) = "OK"];
+}
+
+message ResponseEndBlock {
+  int64     height                            = 1;
+  repeated  ValidatorUpdate validator_updates = 2;
+}
+
+message ResponseCommit {
+  bool ok = 1 [(gogoproto.customname) = "OK"];
+}
+
+message ResponseRedact {
+  bool ok = 1 [(gogoproto.customname) = "OK"];
+}
+
+message ValidatorUpdate {
+  pbcrypto.BLS12PublicKey bls12_public_key  = 1 [(gogoproto.nullable) = false, (gogoproto.customname) = "BLS12PublicKey"];
+  int64                     power             = 2;
+}
+
+// Evidence 恶意节点故意作恶的证据。
+message Evidence {
+  ValidatorUpdate validator = 1 [(gogoproto.nullable) = false];
+  int64           height    = 2;
+}

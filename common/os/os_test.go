@@ -2,6 +2,7 @@ package os
 
 import (
 	"bytes"
+	"github.com/232425wxy/meta--/common/rand"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -52,4 +53,15 @@ func TestEnsureDir(t *testing.T) {
 	assert.Nil(t, err)
 	assert.DirExists(t, dir)
 	assert.Nil(t, os.RemoveAll("root"))
+}
+
+func TestAutoFile(t *testing.T) {
+	af, err := OpenAutoFile("a.txt")
+	assert.Nil(t, err)
+	for i := 0; i < 10000; i++ {
+		n, err := af.Write(append(rand.Bytes(2048), '\n'))
+		assert.Nil(t, err)
+		assert.Equal(t, 2049, n)
+	}
+	_ = af.Close()
 }

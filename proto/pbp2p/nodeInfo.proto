@@ -7,7 +7,6 @@ import "gogoproto-1.4.3/gogoproto/gogo.proto";
 message NodeInfo {
   string  node_id     = 1 [(gogoproto.customname) = "NodeID"];
   string  listen_addr = 2;
-  string  chain_id    = 3 [(gogoproto.customname) = "ChainID"];
   bytes   channels    = 4;
   string  rpc_address = 5 [(gogoproto.customname) = "RPCAddress"];
   string  tx_index    = 6;

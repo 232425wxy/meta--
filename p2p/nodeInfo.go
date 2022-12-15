@@ -24,7 +24,6 @@ const (
 type NodeInfo struct {
 	NodeID     crypto.ID         `json:"nodeID"`
 	ListenAddr string            `json:"listenAddr"` // 监听的网络地址，从该地址获取新连接
-	ChainID    string            // 区块链的ID号，类似于以太坊中的网络号
 	Channels   hexbytes.HexBytes // 节点管理的所有信道
 	RPCAddress string            // rpc通信地址
 	TxIndex    string
@@ -73,9 +72,6 @@ func (node NodeInfo) Validate() error {
 //
 // CompatibleWith 检测两个节点是否兼容。
 func (node NodeInfo) CompatibleWith(other NodeInfo) error {
-	if node.ChainID != other.ChainID {
-		return fmt.Errorf("we are on the different blockchain, i'm on %q, but the other side is on %q", node.ChainID, other.ChainID)
-	}
 	if !node.Channels.CompatibleWith(other.Channels) {
 		return fmt.Errorf("we have completely different channels, i have %q, but the other side has %q", node.Channels, other.Channels)
 	}
@@ -109,7 +105,6 @@ func (node NodeInfo) ToProto() *pbp2p.NodeInfo {
 	return &pbp2p.NodeInfo{
 		NodeID:     string(node.NodeID),
 		ListenAddr: node.ListenAddr,
-		ChainID:    node.ChainID,
 		Channels:   node.Channels,
 		RPCAddress: node.TxIndex,
 		TxIndex:    node.TxIndex,
@@ -125,7 +120,6 @@ func NodeInfoFromProto(pbInfo *pbp2p.NodeInfo) *NodeInfo {
 	return &NodeInfo{
 		NodeID:     crypto.ID(pbInfo.NodeID),
 		ListenAddr: pbInfo.ListenAddr,
-		ChainID:    pbInfo.ChainID,
 		Channels:   pbInfo.Channels,
 		RPCAddress: pbInfo.RPCAddress,
 		TxIndex:    pbInfo.TxIndex,
