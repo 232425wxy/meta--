@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/232425wxy/meta--/common/btree"
+	"golang.org/x/net/context"
 	"sync"
 )
 
@@ -133,15 +134,104 @@ var _ DB = (*MemDB)(nil)
 // 内存数据库的迭代器
 
 type memDBIterator struct {
-	ch <-chan *item
+	ch     <-chan *item
+	cancel context.CancelFunc
+	item   *item
+	start  []byte
+	end    []byte
 }
+
+//func newMemDBIterator(db *MemDB, start []byte, end []byte, reverse bool) *memDBIterator {
+//	ctx, cancel := context.WithCancel(context.Background())
+//	ch := make(chan *item, chBufferSize)
+//	iterator := &memDBIterator{
+//		ch:     ch,
+//		cancel: cancel,
+//		start:  start,
+//		end:    end,
+//	}
+//	db.mu.RLock()
+//	defer db.mu.RUnlock()
+//	go func() {
+//		// btree uses (start,end], but we use [start,end)
+//		var skipEqual, abortLessThan []byte
+//		visitor := func(i btree.Item) bool {
+//			it := i.(*item)
+//			if skipEqual != nil && bytes.Equal(it.key, skipEqual) {
+//				skipEqual = nil
+//				return true
+//			}
+//			if abortLessThan != nil && bytes.Compare(it.key, abortLessThan) == -1 {
+//				return false
+//			}
+//			select {
+//			case <-ctx.Done():
+//				return false
+//			case ch <- it:
+//				return true
+//			}
+//		}
+//
+//		switch {
+//		case start == nil && end == nil && !reverse:
+//			db.btree.Ascend(visitor) // 升序排列的迭代器
+//		case start == nil && end == nil && reverse:
+//			db.btree.Descend(visitor) // 降序排列的迭代器
+//		case end == nil && !reverse:
+//			db.btree.AscendGreaterOrEqual(newKey(start), visitor)
+//		case !reverse:
+//			db.btree.AscendRange(newKey(start), newKey(end), visitor)
+//		case end == nil:
+//			abortLessThan = start
+//			db.btree.Descend(visitor)
+//		}
+//	}()
+//}
+
+func (m *memDBIterator) Domain() (start []byte, end []byte) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *memDBIterator) Valid() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *memDBIterator) Next() {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *memDBIterator) Key() (key []byte) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *memDBIterator) Value() (value []byte) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *memDBIterator) Error() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *memDBIterator) Close() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+var _ Iterator = (*memDBIterator)(nil)
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
 // 包级常量
 
 const (
-	bTreeDegree = 32
+	bTreeDegree  = 32
+	chBufferSize = 64
 )
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
