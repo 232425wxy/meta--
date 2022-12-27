@@ -129,3 +129,13 @@ func NewDB(name string, backend BackendType, dir string) (DB, error) {
 	}
 	return create(name, dir)
 }
+
+func init() {
+	registerDBCreator(MemDBBackend, func(name string, dir string) (DB, error) {
+		return NewMemDB(), nil
+	}, false)
+
+	registerDBCreator(GoLevelDBBackend, func(name string, dir string) (DB, error) {
+		return NewGoLevelDB(name, dir)
+	}, false)
+}

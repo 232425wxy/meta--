@@ -145,3 +145,18 @@ func TestBTree_DescendFromLastToPivot(t *testing.T) {
 	start := &item{num: 166}
 	tree.DescendFromLastToPivot(start, visitor)
 }
+
+func TestBTree_Delete2(t *testing.T) {
+	tree := New(4)
+	its := createItems(512)
+	for _, it := range its {
+		tree.Insert(it)
+	}
+	for i := 0; i < 2000; i++ {
+		it := &item{num: i}
+		tree.Delete(it)
+	}
+	if tree.Length() != 0 {
+		t.Errorf("after deleteing all items, there should be no item in tree")
+	}
+}
