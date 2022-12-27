@@ -17,6 +17,18 @@ type KVStoreApp struct {
 	db         database.DB
 }
 
+func NewKVStoreApp(name, dir string, backend database.BackendType) *KVStoreApp {
+	db, err := database.NewDB(name, dir, backend)
+	if err != nil {
+		panic(err)
+	}
+	return &KVStoreApp{
+		height:     0,
+		validators: make(map[crypto.ID]pbabci.ValidatorUpdate),
+		db:         db,
+	}
+}
+
 func (k *KVStoreApp) Info(req pbabci.RequestInfo) pbabci.ResponseInfo {
 	return pbabci.ResponseInfo{Type: "kv-store"}
 }

@@ -118,7 +118,7 @@ func registerDBCreator(backend BackendType, c creator, force bool) {
 	backends[backend] = c
 }
 
-func NewDB(name string, backend BackendType, dir string) (DB, error) {
+func NewDB(name string, dir string, backend BackendType) (DB, error) {
 	create, ok := backends[backend]
 	if !ok {
 		keys := make([]string, 0)

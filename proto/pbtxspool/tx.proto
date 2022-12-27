@@ -1,0 +1,10 @@
+syntax = "proto3";
+package pbtxspool;
+
+message Txs {
+  repeated bytes txs = 1;
+}
+
+message Message {
+  Txs txs = 1;
+}

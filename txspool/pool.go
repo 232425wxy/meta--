@@ -97,9 +97,19 @@ func (p *TxsPool) WaitTxs() <-chan struct{} {
 // CheckTx 首先本地交易池会检查池子是否已满，如果满了的话，就返回错误，如果没满，则将交易数据
 // 交给代理应用去检查，例如在key-value数据库里，会检查该笔交易是否已在数据库里被存储，如果已经
 // 被存储过，则检查不会被通过，否则就让它通过吧。
-func (p *TxsPool) CheckTx(tx types.Tx, sender crypto.ID, cb func(*pbabci.Response)) error {
+func (p *TxsPool) CheckTx(tx types.Tx, sender crypto.ID) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.txsMap.Has(txKey(tx)) {
+		// 从其他节点那里收到了我们池子里已经存在的交易，记录一下是谁发来的这个交易数据，
+		// 也就是说如果我从很多节点那里收到了这个交易数据，那么就代表我不需要再把这个交
+		// 易数据发送给这些节点了。
+		elem := p.txsMap.Get(txKey(tx))
+		element := elem.(*clist.Element)
+		ptx := element.Value.(*poolTx)
+		ptx.senders.Set(string(sender), struct{}{})
+		return errors.New("tx already in pool")
+	}
 	if p.isFull() {
 		return errors.New("txs pool has been full")
 	}
@@ -110,36 +120,17 @@ func (p *TxsPool) CheckTx(tx types.Tx, sender crypto.ID, cb func(*pbabci.Respons
 	if !res.OK {
 		return errors.New("check tx is not passed")
 	}
+
+	ptx := &poolTx{
+		tx:      tx,
+		height:  p.height,
+		senders: cmap.NewCap(),
+	}
+	ptx.senders.Set(string(sender), struct{}{}) // 记录一下是谁发来的这个交易数据
+	p.addTx(ptx)
+	p.notifyTxsAvailable() // 通知其他模块说交易池里有交易数据了
+	p.metrics.Size.Set(float64(p.Size()))
 	return nil
-}
-
-func (p *TxsPool) ReqResCallback(tx types.Tx, sender crypto.ID, externalCb func(*pbabci.Response)) func(*pbabci.Response) {
-	return func(response *pbabci.Response) {
-		// 这里的response是 abci.ReqRes.Response
-		p.ResponseCallback(tx, sender, response)
-		p.metrics.Size.Set(float64(p.Size()))
-		if externalCb != nil {
-			externalCb(response)
-		}
-	}
-}
-
-func (p *TxsPool) ResponseCallback(tx types.Tx, sender crypto.ID, response *pbabci.Response) {
-	if res, ok := response.Value.(*pbabci.Response_CheckTx); ok {
-		if res.CheckTx.OK {
-			// 代理应用检查交易数据的合法性，然后这里根据检查结果，仅将合法的交易数据放到交易池里
-			if p.isFull() {
-				return
-			}
-			ptx := &poolTx{
-				tx:     tx,
-				sender: sender,
-				height: p.height,
-			}
-			p.addTx(ptx)
-			p.notifyTxsAvailable() // 通知其他模块说交易池里有交易数据了
-		}
-	}
 }
 
 // TxsAvailable ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -242,9 +233,9 @@ func (p *TxsPool) isFull() bool {
 // 辅助变量：存储在交易池里的交易
 
 type poolTx struct {
-	tx     types.Tx
-	sender crypto.ID
-	height int64
+	tx      types.Tx
+	senders *cmap.CMap
+	height  int64
 }
 
 // txKey ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
