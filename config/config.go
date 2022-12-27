@@ -61,7 +61,7 @@ type TxsPoolConfig struct {
 func DefaultTxsPoolConfig() *TxsPoolConfig {
 	return &TxsPoolConfig{
 		MaxSize:    2000,
-		MaxTxBytes: 1024 * 1024 * 3, // 3MB
+		MaxTxBytes: 1024, // 1KB
 	}
 }
 

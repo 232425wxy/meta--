@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package pbtypes;
+
+import "proto/pbcrypto/signature.proto";
+import "gogoproto-1.4.3/protobuf/google/protobuf/timestamp.proto";
+import "gogoproto-1.4.3/gogoproto/gogo.proto";
+
+message Block {
+  SimpleBlock last_block  = 1;
+  Header header           = 2;
+  Data data               = 3;
+  Decision decision       = 4;
+}
+
+message SimpleBlock {
+  bytes hash = 1;
+}
+
+message Header {
+  bytes hash                          = 1;
+  int64 height                        = 2;
+  google.protobuf.Timestamp timestamp = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string proposer                     = 4;
+}
+
+message Data {
+  bytes     root_hash = 1;
+  repeated bytes  txs = 2;
+}
+
+message Decision {
+  pbcrypto.AggregateSignature signature = 1;
+}

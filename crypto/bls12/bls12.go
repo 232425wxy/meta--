@@ -50,7 +50,7 @@ func RestoreAggregateSignature(sig []byte, participants *crypto.IDSet) (*Aggrega
 		return nil, fmt.Errorf("bls12: failed to restore aggregate signature: %q", err)
 	}
 	return &AggregateSignature{
-		sig:          *s,
+		sig:          s,
 		participants: participants,
 	}, nil
 }
@@ -314,7 +314,7 @@ func (s *Signature) Type() string {
 //
 // AggregateSignature 是bls12-381的聚合签名。
 type AggregateSignature struct {
-	sig          bls12381.PointG2
+	sig          *bls12381.PointG2
 	participants *crypto.IDSet
 }
 
@@ -327,8 +327,13 @@ func (agg *AggregateSignature) ToBytes() []byte {
 	if agg == nil {
 		return nil
 	}
-	bz := bls12381.NewG2().ToCompressed(&agg.sig)
+	bz := bls12381.NewG2().ToCompressed(agg.sig)
 	return bz
+}
+
+func (agg *AggregateSignature) FromBytes(bz []byte) (err error) {
+	agg.sig, err = bls12381.NewG2().FromCompressed(bz)
+	return err
 }
 
 // Participants ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -349,6 +354,31 @@ func (agg *AggregateSignature) Participants() *crypto.IDSet {
 // Type 返回聚合签名的类型："BLS12-381 THRESHOLD SIGNATURE"。
 func (agg *AggregateSignature) Type() string {
 	return "BLS12-381 THRESHOLD SIGNATURE"
+}
+
+func (agg *AggregateSignature) ToProto() pbcrypto.AggregateSignature {
+	pb := pbcrypto.AggregateSignature{
+		Participants: make([]string, 0),
+	}
+	pb.Sig = agg.ToBytes()
+	for _, participant := range agg.participants.IDs {
+		pb.Participants = append(pb.Participants, string(participant))
+	}
+	return pb
+}
+
+func FromProtoToAggregateSignature(pb pbcrypto.AggregateSignature) (*AggregateSignature, error) {
+	agg := &AggregateSignature{
+		participants: crypto.NewIDSet(0),
+	}
+	err := agg.FromBytes(pb.Sig)
+	if err != nil {
+		return nil, err
+	}
+	for _, participant := range pb.Participants {
+		agg.participants.AddID(crypto.ID(participant))
+	}
+	return agg, nil
 }
 
 // CryptoBLS12 ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -405,10 +435,10 @@ func (cb *CryptoBLS12) aggregateSignatures(signatures map[crypto.ID]*Signature) 
 		return nil
 	}
 	g2 := bls12381.NewG2()
-	sig := bls12381.PointG2{}
+	sig := &bls12381.PointG2{}
 	var participants = crypto.NewIDSet(0)
 	for id, s := range signatures {
-		g2.Add(&sig, &sig, s.sig)
+		g2.Add(sig, sig, s.sig)
 		participants.AddID(id)
 	}
 	return &AggregateSignature{sig: sig, participants: participants}
@@ -449,7 +479,7 @@ func (cb *CryptoBLS12) VerifyThresholdSignature(signature *AggregateSignature, h
 		return false
 	}
 	engine := bls12381.NewEngine()
-	engine.AddPairInv(&bls12381.G1One, &signature.sig)
+	engine.AddPairInv(&bls12381.G1One, signature.sig)
 	for _, key := range pubKeys {
 		engine.AddPair(key.Key, ps)
 	}
@@ -462,7 +492,7 @@ func (cb *CryptoBLS12) VerifyThresholdSignature(signature *AggregateSignature, h
 func (cb *CryptoBLS12) VerifyThresholdSignatureForMessageSet(signature *AggregateSignature, hashes map[crypto.ID]sha256.Hash, quorumSize int) bool {
 	hashSet := make(map[sha256.Hash]struct{})
 	engine := bls12381.NewEngine()
-	engine.AddPairInv(&bls12381.G1One, &signature.sig)
+	engine.AddPairInv(&bls12381.G1One, signature.sig)
 	for id, hash := range hashes {
 		if _, ok := hashSet[hash]; ok {
 			continue

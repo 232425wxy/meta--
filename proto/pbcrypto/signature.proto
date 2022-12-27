@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package pbcrypto;
+
+message AggregateSignature {
+  bytes sig = 1;
+  repeated string participants = 2;
+}
