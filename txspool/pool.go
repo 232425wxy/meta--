@@ -25,11 +25,11 @@ type TxsPool struct {
 	mu                sync.RWMutex
 	txs               *clist.List
 	txsMap            *cmap.CMap // 用于快速定位到存储在链表里的交易元素 hash(tx) -> *clist.Element
-	proxyApp          proxy.AppConnTxsPool
+	proxyApp          *proxy.AppConnTxsPool
 	metrics           *Metrics
 }
 
-func NewTxsPool(cfg *config.TxsPoolConfig, proxyApp proxy.AppConnTxsPool, height int64) *TxsPool {
+func NewTxsPool(cfg *config.TxsPoolConfig, proxyApp *proxy.AppConnTxsPool, height int64) *TxsPool {
 	pool := &TxsPool{
 		cfg:               cfg,
 		height:            height,
@@ -106,12 +106,10 @@ func (p *TxsPool) CheckTx(tx types.Tx, sender crypto.ID, cb func(*pbabci.Respons
 	if len(tx) > p.cfg.MaxTxBytes {
 		return fmt.Errorf("single tx is to large: %d > %d", len(tx), p.cfg.MaxTxBytes)
 	}
-	// 如果代理应用的交易缓冲池满了，则代理应用可能会出错
-	if err := p.proxyApp.Error(); err != nil {
-		return err
+	res := p.proxyApp.CheckTx(pbabci.RequestCheckTx{Tx: tx})
+	if !res.OK {
+		return errors.New("check tx is not passed")
 	}
-	reqRes := p.proxyApp.CheckTx(pbabci.RequestCheckTx{Tx: tx})
-	reqRes.SetCallback(p.ReqResCallback(tx, sender, cb))
 	return nil
 }
 
@@ -249,6 +247,9 @@ type poolTx struct {
 	height int64
 }
 
+// txKey ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+// txKey 计算交易的sha256哈希值。
 func txKey(tx types.Tx) string {
 	h := sha256.Sum(tx)
 	return hex.EncodeToString(h[:])
