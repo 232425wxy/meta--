@@ -21,9 +21,9 @@ func TestMatches(t *testing.T) {
 		events map[string][]string
 		match  bool
 	}{
-		{query: "block.validator = 'node1'", events: map[string][]string{"block.validator": {"node1", "node2"}}, match: true},
-		{query: "block.validator = 'node3'", events: map[string][]string{"block.validator": {"node1", "node2"}}, match: false},
-		{query: "block.height > 5", events: map[string][]string{"block.validator": {"node1", "node2"}}, match: false},
+		{query: "block.validator.proto = 'node1'", events: map[string][]string{"block.validator.proto": {"node1", "node2"}}, match: true},
+		{query: "block.validator.proto = 'node3'", events: map[string][]string{"block.validator.proto": {"node1", "node2"}}, match: false},
+		{query: "block.height > 5", events: map[string][]string{"block.validator.proto": {"node1", "node2"}}, match: false},
 		{query: "block.height > 5", events: map[string][]string{"block.height": {"3", "8"}}, match: true},
 		{query: "block.height > 5", events: map[string][]string{"block.height": {"3", "4"}}, match: false},
 		{query: "vote > 5", events: map[string][]string{"vote.rate": {"3", "7"}}, match: false},

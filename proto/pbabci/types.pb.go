@@ -1410,7 +1410,7 @@ func (m *ValidatorUpdate) GetPower() int64 {
 
 // Evidence 恶意节点故意作恶的证据。
 type Evidence struct {
-	Validator ValidatorUpdate `protobuf:"bytes,1,opt,name=validator,proto3" json:"validator"`
+	Validator ValidatorUpdate `protobuf:"bytes,1,opt,name=validator.proto,proto3" json:"validator.proto"`
 	Height    int64           `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
 }
 

@@ -1,0 +1,17 @@
+syntax = "proto3";
+package pbstate;
+
+import "proto/pbtypes/block.proto";
+import "proto/pbtypes/validator.proto";
+import "gogoproto-1.4.3/gogoproto/gogo.proto";
+import "gogoproto-1.4.3/protobuf/google/protobuf/timestamp.proto";
+
+message State {
+  int64 initial_height = 1;
+  int64 last_block_height = 2;
+  pbtypes.SimpleBlock last_block = 3 [(gogoproto.nullable) = false];
+  google.protobuf.Timestamp last_block_time = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  pbtypes.ValidatorSet validators = 5;
+}
+
+// protoc --gogofaster_out=. -I=D:\learn\lab\code\go\src -I=D:\learn\lab\code\go\src\gogoproto-1.4.3\protobuf -I=D:\learn\lab\code\go\src\meta-- -I=D:\learn\lab\code\go\src\meta--\proto\pbstate state.proto

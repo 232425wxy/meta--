@@ -14,7 +14,17 @@ message Block {
 }
 
 message SimpleBlock {
-  bytes hash = 1;
+  bytes hash                    = 1;
+  PartSetHeader part_set_header = 2;
+}
+
+message PartSetHeader {
+  int64 total = 1;
+}
+
+message Part {
+  int64 index = 1;
+  bytes data  = 2;
 }
 
 message Header {

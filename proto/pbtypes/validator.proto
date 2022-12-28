@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package pbtypes;
+
+import "proto/pbcrypto/key.proto";
+
+message Validator {
+  string id                          = 1;
+  pbcrypto.BLS12PublicKey public_key = 2;
+  int64 voting_power                 = 3;
+  int64 proposer_priority            = 4;
+}
+
+message ValidatorSet {
+  repeated Validator validators = 1;
+  Validator proposer            = 2;
+  int64 total_voting_power      = 3;
+}

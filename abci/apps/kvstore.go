@@ -73,7 +73,7 @@ func (k *KVStoreApp) InitChain(req pbabci.RequestInitChain) pbabci.ResponseInitC
 
 func (k *KVStoreApp) Query(req pbabci.RequestQuery) pbabci.ResponseQuery {
 	switch req.Path {
-	case "/validator":
+	case "/validator.proto":
 		// 查验证者信息
 		value, err := k.db.Get(req.Data)
 		if err != nil {
