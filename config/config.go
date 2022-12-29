@@ -5,6 +5,32 @@ import (
 	"time"
 )
 
+type Config struct {
+	BasicConfig   *BasicConfig   `mapstructure:"basic_config"`
+	P2PConfig     *P2PConfig     `mapstructure:"p2p_config"`
+	TxsPoolConfig *TxsPoolConfig `mapstructure:"txs_pool_config"`
+}
+
+// BasicConfig ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+//
+// BasicConfig 结构体定义了节点的基本配置信息：
+//  1. 配置文件的根目录：Home
+//  2. 存放节点密钥文件的地址：KeyFile
+//  3. 存放初始文件的地址：GenesisFile
+type BasicConfig struct {
+	Home        string `mapstructure:"home"`
+	KeyFile     string `mapstructure:"key_file"`
+	GenesisFile string `mapstructure:"genesis_file"`
+}
+
+func (bc *BasicConfig) KeyFilePath() string {
+	return filepath.Join(bc.Home, bc.KeyFile)
+}
+
+func (bc *BasicConfig) GenesisFilePath() string {
+	return filepath.Join(bc.Home, bc.GenesisFile)
+}
+
 // P2PConfig ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------

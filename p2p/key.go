@@ -14,7 +14,9 @@ import (
 //
 // NodeKey 结构体里存储着一个BLS12-381的私钥。
 type NodeKey struct {
-	PrivateKey *bls12.PrivateKey `json:"privateKey"`
+	PrivateKey *bls12.PrivateKey `json:"private_key"`
+	PublicKey  *bls12.PublicKey  `json:"public_key"`
+	K          []byte            `json:"k"`
 }
 
 // GetID ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -25,15 +27,6 @@ type NodeKey struct {
 // 以此字符串作为节点的ID。
 func (key *NodeKey) GetID() crypto.ID {
 	return key.PrivateKey.PublicKey().ToID()
-}
-
-// PublicKey ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
-//
-//	---------------------------------------------------------
-//
-// PublicKey 获取BLS12-381私钥所对应的公钥。
-func (key *NodeKey) PublicKey() *bls12.PublicKey {
-	return key.PrivateKey.PublicKey()
 }
 
 // SaveAs ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -72,7 +65,7 @@ func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	nodeKey := &NodeKey{PrivateKey: key}
+	nodeKey := &NodeKey{PrivateKey: key, PublicKey: key.PublicKey(), K: nil}
 	return nodeKey, nil
 }
 

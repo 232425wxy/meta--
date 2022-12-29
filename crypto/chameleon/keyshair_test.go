@@ -58,8 +58,8 @@ func CreateParticipants(n, t int) []*Participant2 {
 	for _, participantx := range participants {
 		for _, participanty := range participants {
 			participantx.f.Add(participantx.f, participanty.poly.calc(participantx.x))
+			participantx.f.Mod(participantx.f, Q)
 		}
-		participantx.f.Mod(participantx.f, Q)
 	}
 
 	F := func() *Polynomial {

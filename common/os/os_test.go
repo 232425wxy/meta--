@@ -65,3 +65,11 @@ func TestAutoFile(t *testing.T) {
 	}
 	_ = af.Close()
 }
+
+func TestWriteFile(t *testing.T) {
+	data := rand.Bytes(10)
+	WriteFile("test.txt", data, 0644)
+
+	data = rand.Bytes(1024)
+	WriteFile("test.txt", data, 0644)
+}
