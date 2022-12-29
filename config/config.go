@@ -11,6 +11,20 @@ type Config struct {
 	TxsPoolConfig *TxsPoolConfig `mapstructure:"txs_pool_config"`
 }
 
+func DefaultConfig() *Config {
+	return &Config{
+		BasicConfig:   DefaultBasicConfig(),
+		P2PConfig:     DefaultP2PConfig(),
+		TxsPoolConfig: DefaultTxsPoolConfig(),
+	}
+}
+
+func (c *Config) SetHome(home string) {
+	c.BasicConfig.Home = home
+	c.P2PConfig.Home = home
+	c.TxsPoolConfig.Home = home
+}
+
 // BasicConfig ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 // BasicConfig 结构体定义了节点的基本配置信息：
@@ -21,6 +35,13 @@ type BasicConfig struct {
 	Home        string `mapstructure:"home"`
 	KeyFile     string `mapstructure:"key_file"`
 	GenesisFile string `mapstructure:"genesis_file"`
+}
+
+func DefaultBasicConfig() *BasicConfig {
+	return &BasicConfig{
+		KeyFile:     "node_key.json",
+		GenesisFile: "genesis.json",
+	}
 }
 
 func (bc *BasicConfig) KeyFilePath() string {
