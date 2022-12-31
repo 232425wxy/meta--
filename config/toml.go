@@ -21,6 +21,7 @@ send_rate = "{{ .P2PConfig.SendRate }}"
 recv_rate = "{{ .P2PConfig.RecvRate }}"
 pong_timeout = "{{ .P2PConfig.PongTimeout }}"
 ping_interval = "{{ .P2PConfig.PingInterval }}"
+neighbours = "{{ .P2PConfig.Neighbours }}"
 
 [txs_pool]
 home = "{{ .TxsPoolConfig.Home }}"

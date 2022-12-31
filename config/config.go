@@ -86,6 +86,7 @@ type P2PConfig struct {
 	RecvRate                int64         `mapstructure:"recv_rate"`
 	PongTimeout             time.Duration `mapstructure:"pong_timeout"`
 	PingInterval            time.Duration `mapstructure:"ping_interval"`
+	Neighbours              []string      `mapstructure:"neighbours"`
 }
 
 func DefaultP2PConfig() *P2PConfig {
@@ -99,6 +100,10 @@ func DefaultP2PConfig() *P2PConfig {
 		PongTimeout:             45 * time.Second,
 		PingInterval:            90 * time.Second,
 	}
+}
+
+func (p2p *P2PConfig) SetNeighbours(neighbours []string) {
+	p2p.Neighbours = neighbours
 }
 
 // TxsPoolConfig ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
