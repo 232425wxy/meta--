@@ -1,14 +1,16 @@
 package config
 
 import (
+	"bytes"
+	mos "github.com/232425wxy/meta--/common/os"
 	"path/filepath"
 	"time"
 )
 
 type Config struct {
-	BasicConfig   *BasicConfig   `mapstructure:"basic_config"`
-	P2PConfig     *P2PConfig     `mapstructure:"p2p_config"`
-	TxsPoolConfig *TxsPoolConfig `mapstructure:"txs_pool_config"`
+	BasicConfig   *BasicConfig   `mapstructure:"basic"`
+	P2PConfig     *P2PConfig     `mapstructure:"p2p"`
+	TxsPoolConfig *TxsPoolConfig `mapstructure:"txs_pool"`
 }
 
 func DefaultConfig() *Config {
@@ -23,6 +25,14 @@ func (c *Config) SetHome(home string) {
 	c.BasicConfig.Home = home
 	c.P2PConfig.Home = home
 	c.TxsPoolConfig.Home = home
+}
+
+func (c *Config) SaveAs(file string) {
+	var buffer bytes.Buffer
+	if err := configTemplate.Execute(&buffer, c); err != nil {
+		panic(err)
+	}
+	mos.MustWriteFile(file, buffer.Bytes(), 0644)
 }
 
 // BasicConfig ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -74,7 +84,7 @@ type P2PConfig struct {
 	MaxPacketMsgPayloadSize int           `mapstructure:"max_packet_msg_payload_size"`
 	SendRate                int64         `mapstructure:"send_rate"`
 	RecvRate                int64         `mapstructure:"recv_rate"`
-	PongTimeout             time.Duration `mapstructure:"pong_interval"`
+	PongTimeout             time.Duration `mapstructure:"pong_timeout"`
 	PingInterval            time.Duration `mapstructure:"ping_interval"`
 }
 
