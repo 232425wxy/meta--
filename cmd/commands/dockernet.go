@@ -29,6 +29,7 @@ var DockerNetCmd = &cobra.Command{
 func dockernetFiles(cmd *cobra.Command, args []string) (err error) {
 	cfg := config.DefaultConfig()
 	validators := make([]*types.Validator, 0)
+	var genesisExists = make(map[int]bool)
 
 	for i := 0; i < NodesNum; i++ {
 		nodeDirName := fmt.Sprintf("node%d", i)
@@ -48,6 +49,7 @@ func dockernetFiles(cmd *cobra.Command, args []string) (err error) {
 		genesisFilePath := cfg.BasicConfig.GenesisFilePath()
 		genesis := &types.Genesis{}
 		if mos.FileExists(genesisFilePath) {
+			genesisExists[i] = true
 			genesis, err = types.GenesisReadFromFile(genesisFilePath)
 			if err != nil {
 				return err
@@ -85,14 +87,16 @@ func dockernetFiles(cmd *cobra.Command, args []string) (err error) {
 		nodeDirName := fmt.Sprintf("node%d", i)
 		nodeDir := filepath.Join(OutputDir, nodeDirName)
 		cfg.SetHome(nodeDir)
-		genesis := &types.Genesis{}
-		genesis, err = types.GenesisReadFromFile(cfg.BasicConfig.GenesisFilePath())
-		if err != nil {
-			return err
-		}
-		genesis.Validators = validators
-		if err = genesis.SaveAs(cfg.BasicConfig.GenesisFilePath()); err != nil {
-			return err
+		if !genesisExists[i] {
+			genesis := &types.Genesis{}
+			genesis, err = types.GenesisReadFromFile(cfg.BasicConfig.GenesisFilePath())
+			if err != nil {
+				return err
+			}
+			genesis.Validators = validators
+			if err = genesis.SaveAs(cfg.BasicConfig.GenesisFilePath()); err != nil {
+				return err
+			}
 		}
 	}
 

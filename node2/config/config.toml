@@ -1,0 +1,21 @@
+
+[basic]
+home = "node2"
+key_file = "node_key.json"
+genesis_file = "genesis.json"
+
+[p2p]
+home = "node2"
+listen_address = "tcp://0.0.0.0:26656"
+addr_book = "config/addrbook.json"
+flush_duration = "100ms"
+max_packet_msg_payload_size = "1024"
+send_rate = "5120000"
+recv_rate = "5120000"
+pong_timeout = "45s"
+ping_interval = "1m30s"
+
+[txs_pool]
+home = "node2"
+max_size = "2000"
+max_tx_bytes = "1024"
