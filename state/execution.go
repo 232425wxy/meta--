@@ -12,7 +12,7 @@ import (
 )
 
 type BlockExecutor struct {
-	store          *Store
+	store          *StoreState
 	proxyConsensus *proxy.AppConnConsensus
 	txsPool        *txspool.TxsPool
 	eventBus       *types.EventBus
@@ -20,7 +20,7 @@ type BlockExecutor struct {
 	logger         log.Logger
 }
 
-func NewBlockExecutor(store *Store, consensus *proxy.AppConnConsensus, txsPool *txspool.TxsPool, logger log.Logger) *BlockExecutor {
+func NewBlockExecutor(store *StoreState, consensus *proxy.AppConnConsensus, txsPool *txspool.TxsPool, logger log.Logger) *BlockExecutor {
 	return &BlockExecutor{
 		store:          store,
 		proxyConsensus: consensus,

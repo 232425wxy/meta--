@@ -8,17 +8,18 @@ import (
 	"github.com/232425wxy/meta--/proto/pbtypes"
 	"github.com/232425wxy/meta--/types"
 	"github.com/cosmos/gogoproto/proto"
+	"sync"
 )
 
-type Store struct {
+type StoreState struct {
 	db database.DB
 }
 
-func NewStore(db database.DB) *Store {
-	return &Store{db: db}
+func NewStore(db database.DB) *StoreState {
+	return &StoreState{db: db}
 }
 
-func (s *Store) LoadFromDBOrGenesis(genesis *types.Genesis) *State {
+func (s *StoreState) LoadFromDBOrGenesis(genesis *types.Genesis) *State {
 	state, err := s.LoadState()
 	if err != nil {
 		return &State{}
@@ -29,7 +30,7 @@ func (s *Store) LoadFromDBOrGenesis(genesis *types.Genesis) *State {
 	return state
 }
 
-func (s *Store) LoadState() (*State, error) {
+func (s *StoreState) LoadState() (*State, error) {
 	bz, err := s.db.Get(StateKey)
 	if err != nil {
 		return nil, err
@@ -46,15 +47,15 @@ func (s *Store) LoadState() (*State, error) {
 	return state, nil
 }
 
-func (s *Store) SaveState(state *State) error {
+func (s *StoreState) SaveState(state *State) error {
 	return s.db.SetSync(StateKey, state.ToBytes())
 }
 
-func (s *Store) Bootstrap(state *State) error {
+func (s *StoreState) Bootstrap(state *State) error {
 	return s.SaveState(state)
 }
 
-func (s *Store) SaveValidators(height int64, validators *types.ValidatorSet) error {
+func (s *StoreState) SaveValidators(height int64, validators *types.ValidatorSet) error {
 	pb := validators.ToProto()
 	bz, err := proto.Marshal(pb)
 	if err != nil {
@@ -63,7 +64,7 @@ func (s *Store) SaveValidators(height int64, validators *types.ValidatorSet) err
 	return s.db.SetSync(calcValidatorsKey(height), bz)
 }
 
-func (s *Store) LoadValidators(height int64) (*types.ValidatorSet, error) {
+func (s *StoreState) LoadValidators(height int64) (*types.ValidatorSet, error) {
 	bz, err := s.db.Get(calcValidatorsKey(height))
 	if err != nil {
 		return nil, err
@@ -80,4 +81,11 @@ func (s *Store) LoadValidators(height int64) (*types.ValidatorSet, error) {
 
 func calcValidatorsKey(height int64) []byte {
 	return append(ValidatorsKey, fmt.Sprintf("%d", height)...)
+}
+
+type StoreBlock struct {
+	db     database.DB
+	mu     sync.RWMutex
+	base   int64
+	height int64
 }
