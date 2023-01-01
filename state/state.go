@@ -3,14 +3,16 @@ package state
 import (
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/merkle"
+	"github.com/232425wxy/meta--/proto/pbstate"
 	"github.com/232425wxy/meta--/types"
+	"github.com/cosmos/gogoproto/proto"
 	"time"
 )
 
 type State struct {
 	InitialHeight   int64
 	LastBlockHeight int64
-	LastBlock       types.SimpleBlock
+	LastBlock       *types.SimpleBlock
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
 }
@@ -44,8 +46,43 @@ func (s *State) MakeGenesisState(gen *types.Genesis) (*State, error) {
 	return &State{
 		InitialHeight:   gen.InitialHeight,
 		LastBlockHeight: 0,
-		LastBlock:       types.SimpleBlock{},
+		LastBlock:       &types.SimpleBlock{},
 		LastBlockTime:   gen.GenesisTime,
 		Validators:      types.NewValidatorSet(gen.Validators),
 	}, nil
+}
+
+func (s *State) ToProto() *pbstate.State {
+	if s == nil {
+		return nil
+	}
+	return &pbstate.State{
+		InitialHeight:   s.InitialHeight,
+		LastBlockHeight: s.LastBlockHeight,
+		LastBlock:       s.LastBlock.ToProto(),
+		LastBlockTime:   s.LastBlockTime,
+		Validators:      s.Validators.ToProto(),
+	}
+}
+
+func StateFromProto(pb *pbstate.State) *State {
+	if pb == nil {
+		return nil
+	}
+	return &State{
+		InitialHeight:   pb.InitialHeight,
+		LastBlockHeight: pb.LastBlockHeight,
+		LastBlock:       types.SimpleBlockFromProto(pb.LastBlock),
+		LastBlockTime:   pb.LastBlockTime,
+		Validators:      types.ValidatorSetFromProto(pb.Validators),
+	}
+}
+
+func (s *State) ToBytes() []byte {
+	pb := s.ToProto()
+	bz, err := proto.Marshal(pb)
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }

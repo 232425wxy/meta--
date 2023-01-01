@@ -3,9 +3,10 @@ syntax = "proto3";
 package pbtypes;
 
 import "proto/pbcrypto/key.proto";
+import "gogoproto-1.4.3/gogoproto/gogo.proto";
 
 message Validator {
-  string id                          = 1;
+  string id = 1 [(gogoproto.customname) = "ID"];
   pbcrypto.BLS12PublicKey public_key = 2;
   int64 voting_power                 = 3;
   int64 proposer_priority            = 4;

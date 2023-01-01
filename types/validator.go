@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12"
+	"github.com/232425wxy/meta--/proto/pbtypes"
 )
 
 type Validator struct {
@@ -18,6 +19,30 @@ func NewValidator(publicKey *bls12.PublicKey, votingPower int64) *Validator {
 		PublicKey:        publicKey,
 		VotingPower:      votingPower,
 		ProposerPriority: 0,
+	}
+}
+
+func (v *Validator) ToProto() *pbtypes.Validator {
+	if v == nil {
+		return nil
+	}
+	return &pbtypes.Validator{
+		ID:               string(v.ID),
+		PublicKey:        v.PublicKey.ToProto(),
+		VotingPower:      v.VotingPower,
+		ProposerPriority: v.ProposerPriority,
+	}
+}
+
+func ValidatorFromProto(pb *pbtypes.Validator) *Validator {
+	if pb == nil {
+		return nil
+	}
+	return &Validator{
+		ID:               crypto.ID(pb.ID),
+		PublicKey:        bls12.PublicKeyFromProto(pb.PublicKey),
+		VotingPower:      pb.VotingPower,
+		ProposerPriority: pb.ProposerPriority,
 	}
 }
 
@@ -47,4 +72,34 @@ func NewValidatorSet(validators []*Validator) *ValidatorSet {
 		set.TotalVotingPower += validator.VotingPower
 	}
 	return set
+}
+
+func (set *ValidatorSet) ToProto() *pbtypes.ValidatorSet {
+	if set == nil {
+		return nil
+	}
+	validators := make([]*pbtypes.Validator, 0)
+	for _, validator := range set.Validators {
+		validators = append(validators, validator.ToProto())
+	}
+	return &pbtypes.ValidatorSet{
+		Validators:       validators,
+		Proposer:         set.Proposer.ToProto(),
+		TotalVotingPower: set.TotalVotingPower,
+	}
+}
+
+func ValidatorSetFromProto(pb *pbtypes.ValidatorSet) *ValidatorSet {
+	if pb == nil {
+		return nil
+	}
+	validators := make([]*Validator, 0)
+	for _, validator := range pb.Validators {
+		validators = append(validators, ValidatorFromProto(validator))
+	}
+	return &ValidatorSet{
+		Validators:       validators,
+		Proposer:         ValidatorFromProto(pb.Proposer),
+		TotalVotingPower: pb.TotalVotingPower,
+	}
 }

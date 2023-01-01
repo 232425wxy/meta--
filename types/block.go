@@ -15,7 +15,7 @@ import (
 // 区块
 
 type PartSetHeader struct {
-	Total int `json:"total"`
+	Total int64 `json:"total"`
 }
 
 func (psh *PartSetHeader) ToProto() *pbtypes.PartSetHeader {
@@ -23,6 +23,10 @@ func (psh *PartSetHeader) ToProto() *pbtypes.PartSetHeader {
 		return nil
 	}
 	return &pbtypes.PartSetHeader{Total: int64(psh.Total)}
+}
+
+func PartSetHeaderFromProto(pb *pbtypes.PartSetHeader) *PartSetHeader {
+	return &PartSetHeader{Total: pb.Total}
 }
 
 type Part struct {
@@ -37,8 +41,8 @@ type PartSet struct {
 }
 
 type SimpleBlock struct {
-	Hash          []byte        `json:"hash"`
-	PartSetHeader PartSetHeader `json:"part_set_header"`
+	Hash          []byte         `json:"hash"`
+	PartSetHeader *PartSetHeader `json:"part_set_header"`
 }
 
 func (sb *SimpleBlock) ToProto() *pbtypes.SimpleBlock {
@@ -48,6 +52,13 @@ func (sb *SimpleBlock) ToProto() *pbtypes.SimpleBlock {
 	return &pbtypes.SimpleBlock{
 		Hash:          sb.Hash,
 		PartSetHeader: sb.PartSetHeader.ToProto(),
+	}
+}
+
+func SimpleBlockFromProto(pb *pbtypes.SimpleBlock) *SimpleBlock {
+	return &SimpleBlock{
+		Hash:          pb.Hash,
+		PartSetHeader: PartSetHeaderFromProto(pb.PartSetHeader),
 	}
 }
 

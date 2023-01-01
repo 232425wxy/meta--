@@ -87,15 +87,18 @@ func GetBLSPublicKeyFromLib(id crypto.ID) *PublicKey {
 	return nil
 }
 
-// FromProtoToPublicKey ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+// PublicKeyFromProto ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------
 //
-// FromProtoToPublicKey 将protobuf形式的公钥转换为我们自定义的公钥。
-func FromProtoToPublicKey(pb *pbcrypto.BLS12PublicKey) (*PublicKey, error) {
+// PublicKeyFromProto 将protobuf形式的公钥转换为我们自定义的公钥。
+func PublicKeyFromProto(pb *pbcrypto.BLS12PublicKey) *PublicKey {
 	pub := new(PublicKey)
 	err := pub.FromBytes(pb.Key)
-	return pub, err
+	if err != nil {
+		panic(err)
+	}
+	return pub
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/

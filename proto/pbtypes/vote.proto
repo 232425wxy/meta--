@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package pbtypes;
+
+import "gogoproto-1.4.3/gogoproto/gogo.proto";
+import "proto/pbtypes/block.proto";
+import "proto/pbcrypto/signature.proto";
+import "gogoproto-1.4.3/protobuf/google/protobuf/timestamp.proto";
+
+enum VoteType {
+  option (gogoproto.goproto_enum_stringer) = true;
+  option (gogoproto.goproto_enum_prefix)   = false;
+  PREPARE_VOTE = 0 [(gogoproto.enumvalue_customname) = "PrepareVote"];
+  PRE_COMMIT_VOTE = 1 [(gogoproto.enumvalue_customname) = "PreCommitVote"];
+  COMMIT_VOTE = 2 [(gogoproto.enumvalue_customname) = "CommitVote"];
+}
+
+message Vote {
+  VoteType vote_type = 1;
+  int64 height = 2;
+  SimpleBlock simple_block = 3;
+  google.protobuf.Timestamp timestamp = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string voter = 5;
+  pbcrypto.Signature signature = 6;
+}

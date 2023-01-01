@@ -7,6 +7,7 @@ import (
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/database"
 	"github.com/232425wxy/meta--/proto/pbabci"
+	"github.com/cosmos/gogoproto/proto"
 	"sync"
 )
 
@@ -42,19 +43,16 @@ func (k *KVStoreApp) Echo(req pbabci.RequestEcho) pbabci.ResponseEcho {
 // InitChain 更新验证者集合。
 func (k *KVStoreApp) InitChain(req pbabci.RequestInitChain) pbabci.ResponseInitChain {
 	for _, update := range req.ValidatorUpdates {
-		publicKey, err := bls12.FromProtoToPublicKey(&update.BLS12PublicKey)
-		if err != nil {
-			panic(err)
-		}
+		publicKey := bls12.PublicKeyFromProto(&update.BLS12PublicKey)
 		if update.Power <= 0 {
 			// 需要将投票权等于0的投票者从系统中删除
-			if err = k.db.Delete(publicKey.ToBytes()); err != nil {
+			if err := k.db.Delete(publicKey.ToBytes()); err != nil {
 				panic(err)
 			}
 			delete(k.validators, publicKey.ToID())
 		} else {
 			var value []byte
-			value, err = update.Marshal()
+			value, err := proto.Marshal(&update)
 			if err != nil {
 				panic(err)
 			}
@@ -114,10 +112,7 @@ func (k *KVStoreApp) DeliverTx(req pbabci.RequestDeliverTx) pbabci.ResponseDeliv
 func (k *KVStoreApp) BeginBlock(req pbabci.RequestBeginBlock) pbabci.ResponseBeginBlock {
 	for _, evidence := range req.Evidences {
 		val := evidence.Validator
-		publicKey, err := bls12.FromProtoToPublicKey(&val.BLS12PublicKey)
-		if err != nil {
-			panic(err)
-		}
+		publicKey := bls12.PublicKeyFromProto(&val.BLS12PublicKey)
 		k.validators[publicKey.ToID()] = pbabci.ValidatorUpdate{
 			BLS12PublicKey: val.BLS12PublicKey,
 			Power:          k.validators[publicKey.ToID()].Power - 1,
