@@ -308,6 +308,25 @@ func (s *Signature) Type() string {
 	return "BLS12-381 SIGNATURE"
 }
 
+func (s *Signature) ToProto() *pbcrypto.Signature {
+	sig := bls12381.NewG2().ToCompressed(s.sig)
+	return &pbcrypto.Signature{
+		Signer: string(s.signer),
+		Sig:    sig,
+	}
+}
+
+func SignatureFromProto(pb *pbcrypto.Signature) *Signature {
+	sig, err := bls12381.NewG2().FromCompressed(pb.Sig)
+	if err != nil {
+		panic(err)
+	}
+	return &Signature{
+		signer: crypto.ID(pb.Signer),
+		sig:    sig,
+	}
+}
+
 // AggregateSignature ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------

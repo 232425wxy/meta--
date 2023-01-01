@@ -2,6 +2,11 @@ syntax = "proto3";
 
 package pbcrypto;
 
+message Signature {
+  string signer = 1;
+  bytes sig     = 2;
+}
+
 message AggregateSignature {
   bytes sig = 1;
   repeated string participants = 2;

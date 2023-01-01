@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package pbtypes;
+
+import "proto/pbcrypto/signature.proto";
+import "proto/pbtypes/block.proto";
+import "gogoproto-1.4.3/protobuf/google/protobuf/timestamp.proto";
+import "gogoproto-1.4.3/gogoproto/gogo.proto";
+
+message Proposal {
+  int64 height = 1;
+  pbtypes.SimpleBlock simple_block = 2;
+  google.protobuf.Timestamp timestamp = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  pbcrypto.Signature signature = 4;
+}
+
+// protoc --gogofaster_out=. -I=$GOPATH/src/meta-- -I=$GOPATH/src -I=$GOPATH/src/gogoproto-1.4.3/protobuf -I=. proposal.proto
