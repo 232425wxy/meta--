@@ -22,7 +22,7 @@ s.Start()
 ```go
 clientID := "client-xx"
 event := query.MustParse("block.height > 10")
-subscription, err := s.Subscribe(context.Background(), clientID, event)
+subscription, err := s.Subscribe(clientID, event)
 ```
 
 在上面代码中，我们创建了一个客户端，用字符串表示，然后让该字符串在服务端订阅了一个事件，这个事件的含义是*区块的高度大于10*，也就是说，将来只有服务端发布
@@ -45,7 +45,7 @@ for {
 服务端利用以下代码发布与*区块高度大于10*事件相关的消息：
 
 ```go
-err := s.PublishWithEvents(context.Background(), msg, map[string][]string{"block.height": {"11"}})
+err := s.PublishWithEvents(msg, map[string][]string{"block.height": {"11"}})
 ```
 
 上面代码里除了11，任何大于10的小数或者整数都可以，客户端将来能够收到服务端发布的消息，如果上面不是11，而是一个比10小的数字，那么客户端将收不到消息。
@@ -57,7 +57,7 @@ err := s.PublishWithEvents(context.Background(), msg, map[string][]string{"block
 ```go
 clientID := "client-xx"
 event := query.MustParse("block.height > 10")
-err := s.Unsubscribe(context.Background(), clientID, event)
+err := s.Unsubscribe(clientID, event)
 ```
 
 上面代码执行完毕后，客户端那里就会侦听到自己的订阅被取消了：

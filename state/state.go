@@ -9,6 +9,9 @@ import (
 	"time"
 )
 
+var StateKey = []byte("meta--/state")
+var ValidatorsKey = []byte("meta--/state/validators")
+
 type State struct {
 	InitialHeight   int64
 	LastBlockHeight int64
@@ -42,14 +45,14 @@ func (s *State) MakeBlock(height int64, txs []types.Tx, proposer crypto.ID, last
 	return block
 }
 
-func (s *State) MakeGenesisState(gen *types.Genesis) (*State, error) {
+func MakeGenesisState(gen *types.Genesis) *State {
 	return &State{
 		InitialHeight:   gen.InitialHeight,
 		LastBlockHeight: 0,
 		LastBlock:       &types.SimpleBlock{},
 		LastBlockTime:   gen.GenesisTime,
 		Validators:      types.NewValidatorSet(gen.Validators),
-	}, nil
+	}
 }
 
 func (s *State) ToProto() *pbstate.State {
@@ -85,4 +88,8 @@ func (s *State) ToBytes() []byte {
 		panic(err)
 	}
 	return bz
+}
+
+func (s *State) IsEmpty() bool {
+	return s.Validators == nil || len(s.Validators.Validators) == 0
 }

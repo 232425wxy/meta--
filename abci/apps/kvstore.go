@@ -43,7 +43,7 @@ func (k *KVStoreApp) Echo(req pbabci.RequestEcho) pbabci.ResponseEcho {
 // InitChain 更新验证者集合。
 func (k *KVStoreApp) InitChain(req pbabci.RequestInitChain) pbabci.ResponseInitChain {
 	for _, update := range req.ValidatorUpdates {
-		publicKey := bls12.PublicKeyFromProto(&update.BLS12PublicKey)
+		publicKey := bls12.PublicKeyFromProto(update.BLS12PublicKey)
 		if update.Power <= 0 {
 			// 需要将投票权等于0的投票者从系统中删除
 			if err := k.db.Delete(publicKey.ToBytes()); err != nil {
@@ -112,7 +112,7 @@ func (k *KVStoreApp) DeliverTx(req pbabci.RequestDeliverTx) pbabci.ResponseDeliv
 func (k *KVStoreApp) BeginBlock(req pbabci.RequestBeginBlock) pbabci.ResponseBeginBlock {
 	for _, evidence := range req.Evidences {
 		val := evidence.Validator
-		publicKey := bls12.PublicKeyFromProto(&val.BLS12PublicKey)
+		publicKey := bls12.PublicKeyFromProto(val.BLS12PublicKey)
 		k.validators[publicKey.ToID()] = pbabci.ValidatorUpdate{
 			BLS12PublicKey: val.BLS12PublicKey,
 			Power:          k.validators[publicKey.ToID()].Power - 1,

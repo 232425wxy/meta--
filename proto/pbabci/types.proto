@@ -125,7 +125,7 @@ message ResponseRedact {
 }
 
 message ValidatorUpdate {
-  pbcrypto.BLS12PublicKey bls12_public_key  = 1 [(gogoproto.nullable) = false, (gogoproto.customname) = "BLS12PublicKey"];
+  pbcrypto.BLS12PublicKey bls12_public_key  = 1 [(gogoproto.customname) = "BLS12PublicKey"];
   int64                     power             = 2;
 }
 
@@ -133,4 +133,10 @@ message ValidatorUpdate {
 message Evidence {
   ValidatorUpdate validator = 1 [(gogoproto.nullable) = false];
   int64           height    = 2;
+}
+
+message ABCIResponses {
+  repeated ResponseDeliverTx deliver_txs = 1;
+  ResponseEndBlock end_block = 2;
+  ResponseBeginBlock begin_block = 3;
 }

@@ -1,7 +1,6 @@
 package pubsub
 
 import (
-	"context"
 	"fmt"
 	"github.com/232425wxy/meta--/common/pubsub/query"
 	"github.com/232425wxy/meta--/common/service"
@@ -73,9 +72,9 @@ func (s *Server) BufferCapacity() int {
 //
 //	---------------------------------------------------------
 //
-// Subscribe 给定订阅者的ID以及要订阅的查询，将其注册到服务中，传入的第四个参数是可选的，如果大于0，
+// Subscribe 给定订阅者的ID以及要订阅的查询，将其注册到服务中，传入的第三个参数是可选的，如果大于0，
 // 则会创建一个消息处理缓冲区大于0的Subscription，否则就创建一个缓冲区大小为0的Subscription。
-func (s *Server) Subscribe(ctx context.Context, clientID string, query *query.Query, outCapacity ...int) (*Subscription, error) {
+func (s *Server) Subscribe(clientID string, query *query.Query, outCapacity ...int) (*Subscription, error) {
 	capacity := 0
 	if len(outCapacity) > 0 {
 		if outCapacity[0] < 0 {
@@ -84,7 +83,7 @@ func (s *Server) Subscribe(ctx context.Context, clientID string, query *query.Qu
 		}
 		capacity = outCapacity[0]
 	}
-	return s.subscribe(ctx, clientID, query, capacity)
+	return s.subscribe(clientID, query, capacity)
 }
 
 // SubscribeUnbuffered ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -92,8 +91,8 @@ func (s *Server) Subscribe(ctx context.Context, clientID string, query *query.Qu
 //	---------------------------------------------------------
 //
 // SubscribeUnbuffered 根据给定的客户端ID、查询请求创建一个消息处理缓冲区大小为0的Subscription。
-func (s *Server) SubscribeUnbuffered(ctx context.Context, clientID string, query *query.Query) (*Subscription, error) {
-	return s.subscribe(ctx, clientID, query, 0)
+func (s *Server) SubscribeUnbuffered(clientID string, query *query.Query) (*Subscription, error) {
+	return s.subscribe(clientID, query, 0)
 }
 
 // Unsubscribe ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -101,7 +100,7 @@ func (s *Server) SubscribeUnbuffered(ctx context.Context, clientID string, query
 //	---------------------------------------------------------
 //
 // Unsubscribe 取消客户端指定的订阅。
-func (s *Server) Unsubscribe(ctx context.Context, clientID string, query *query.Query) error {
+func (s *Server) Unsubscribe(clientID string, query *query.Query) error {
 	s.mu.RLock()
 	clientSubscriptions, ok := s.subscriptions[clientID]
 	if ok {
@@ -120,8 +119,6 @@ func (s *Server) Unsubscribe(ctx context.Context, clientID string, query *query.
 		}
 		s.mu.Unlock()
 		return nil
-	case <-ctx.Done():
-		return ctx.Err()
 	case <-s.WaitStop():
 		return nil
 	}
@@ -132,7 +129,7 @@ func (s *Server) Unsubscribe(ctx context.Context, clientID string, query *query.
 //	---------------------------------------------------------
 //
 // UnsubscribeAll 取消指定客户端的所有订阅。
-func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
+func (s *Server) UnsubscribeAll(clientID string) error {
 	s.mu.RLock()
 	_, ok := s.subscriptions[clientID]
 	s.mu.RUnlock()
@@ -145,8 +142,6 @@ func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
 		delete(s.subscriptions, clientID)
 		s.mu.Unlock()
 		return nil
-	case <-ctx.Done():
-		return ctx.Err()
 	case <-s.WaitStop():
 		return nil
 	}
@@ -182,8 +177,8 @@ func (s *Server) NumClientSubscriptions(clientID string) int {
 //
 // Publish 发布给定的消息，事实上，这个方法在程序运行期间不会起作用的，因为它的events是空的，匹配的时候
 // 会一直返回false。可以看 query.Query 的 Matches 方法。
-func (s *Server) Publish(ctx context.Context, msg interface{}) error {
-	return s.PublishWithEvents(ctx, msg, make(map[string][]string))
+func (s *Server) Publish(msg interface{}) error {
+	return s.PublishWithEvents(msg, make(map[string][]string))
 }
 
 // PublishWithEvents ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -191,12 +186,10 @@ func (s *Server) Publish(ctx context.Context, msg interface{}) error {
 //	---------------------------------------------------------
 //
 // PublishWithEvents 带着一系列事件发布给定的消息。
-func (s *Server) PublishWithEvents(ctx context.Context, msg interface{}, events map[string][]string) error {
+func (s *Server) PublishWithEvents(msg interface{}, events map[string][]string) error {
 	select {
 	case s.cmds <- cmd{op: pub, msg: msg, events: events}:
 		return nil
-	case <-ctx.Done():
-		return ctx.Err()
 	case <-s.WaitStop():
 		return nil
 	}
@@ -231,7 +224,7 @@ func (s *Server) Stop() error {
 //	---------------------------------------------------------
 //
 // subscribe 给定订阅者的ID以及要订阅的查询，将其注册到服务中。
-func (s *Server) subscribe(ctx context.Context, clientID string, query *query.Query, outCapacity int) (*Subscription, error) {
+func (s *Server) subscribe(clientID string, query *query.Query, outCapacity int) (*Subscription, error) {
 	s.mu.RLock()
 	clientSubscriptions, ok := s.subscriptions[clientID]
 	// 判断给定的client是否已经订阅过
@@ -256,8 +249,6 @@ func (s *Server) subscribe(ctx context.Context, clientID string, query *query.Qu
 		s.subscriptions[clientID][query.String()] = struct{}{}
 		s.mu.Unlock()
 		return subscription, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	case <-s.WaitStop():
 		return nil, nil
 	}

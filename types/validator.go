@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12"
+	"github.com/232425wxy/meta--/proto/pbabci"
 	"github.com/232425wxy/meta--/proto/pbtypes"
 )
 
@@ -72,6 +73,33 @@ func NewValidatorSet(validators []*Validator) *ValidatorSet {
 		set.TotalVotingPower += validator.VotingPower
 	}
 	return set
+}
+
+func (set *ValidatorSet) Update(validatorUpdates []*pbabci.ValidatorUpdate) {
+	for _, update := range validatorUpdates {
+		var exists bool = false
+		publicKey := bls12.PublicKeyFromProto(update.BLS12PublicKey)
+		for i, validator := range set.Validators {
+			if publicKey.ToID() == validator.ID {
+				exists = true
+				validator.VotingPower = update.Power
+				if update.Power <= 0 {
+					set.Validators = append(set.Validators[:i], set.Validators[i+1:]...)
+					if publicKey.ToID() == set.Proposer.ID {
+						set.Proposer = set.Validators[0]
+					}
+				}
+			}
+		}
+		if !exists {
+			set.Validators = append(set.Validators, &Validator{
+				ID:               publicKey.ToID(),
+				PublicKey:        publicKey,
+				VotingPower:      update.Power,
+				ProposerPriority: 10,
+			})
+		}
+	}
 }
 
 func (set *ValidatorSet) ToProto() *pbtypes.ValidatorSet {
