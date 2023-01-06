@@ -30,10 +30,10 @@ func SimpleBlockFromProto(pb *pbtypes.SimpleBlock) *SimpleBlock {
 }
 
 type Block struct {
-	LastBlock SimpleBlock `json:"last_block"` // 上个区块的哈希值
-	Header    Header      `json:"header"`
-	Data      Data        `json:"data"`
-	Decision  Decision    `json:"decision"` // 人们对当前区块的投票决定
+	LastBlock *SimpleBlock `json:"last_block"` // 上个区块的哈希值
+	Header    *Header      `json:"header"`
+	Data      *Data        `json:"data"`
+	Decision  *Decision    `json:"decision"` // 人们对当前区块的投票决定
 }
 
 func (b *Block) ValidateBasic() error {
@@ -70,6 +70,36 @@ func (b *Block) ToProto() *pbtypes.Block {
 	return pb
 }
 
+func BlockFromProto(pb *pbtypes.Block) *Block {
+	if pb == nil {
+		return nil
+	}
+	return &Block{
+		LastBlock: SimpleBlockFromProto(pb.LastBlock),
+		Header:    HeaderFromProto(pb.Header),
+		Data:      DataFromProto(pb.Data),
+		Decision:  DecisionFromProto(pb.Decision),
+	}
+}
+
+type BlockHeight struct {
+	Height int64 `json:"height"`
+}
+
+func (bh *BlockHeight) ToProto() *pbtypes.BlockHeight {
+	if bh == nil {
+		return nil
+	}
+	return &pbtypes.BlockHeight{Height: bh.Height}
+}
+
+func BlockHeightFromProto(pb *pbtypes.BlockHeight) *BlockHeight {
+	if pb == nil {
+		return nil
+	}
+	return &BlockHeight{Height: pb.Height}
+}
+
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
 // 区块头
@@ -90,6 +120,18 @@ func (h *Header) ToProto() *pbtypes.Header {
 		Height:    h.Height,
 		Timestamp: h.Timestamp,
 		Proposer:  string(h.Proposer),
+	}
+}
+
+func HeaderFromProto(pb *pbtypes.Header) *Header {
+	if pb == nil {
+		return nil
+	}
+	return &Header{
+		Hash:      pb.Hash,
+		Height:    pb.Height,
+		Timestamp: pb.Timestamp,
+		Proposer:  crypto.ID(pb.Proposer),
 	}
 }
 
@@ -116,6 +158,20 @@ func (d *Data) ToProto() *pbtypes.Data {
 	}
 }
 
+func DataFromProto(pb *pbtypes.Data) *Data {
+	if pb == nil {
+		return nil
+	}
+	txs := make(Txs, len(pb.Txs))
+	for i := 0; i < len(pb.Txs); i++ {
+		txs[i] = pb.Txs[i]
+	}
+	return &Data{
+		RootHash: pb.RootHash,
+		Txs:      txs,
+	}
+}
+
 // ValidateBasic ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 // ValidateBasic 方法验证区块体部分的交易数据大小不能超过1MB。
@@ -136,4 +192,11 @@ func (d *Data) ValidateBasic() error {
 
 type Decision struct {
 	Signature *bls12.AggregateSignature
+}
+
+func DecisionFromProto(pb *pbtypes.Decision) *Decision {
+	if pb == nil {
+		return nil
+	}
+	return &Decision{Signature: bls12.AggregateSignatureFromProto(pb.Signature)}
 }

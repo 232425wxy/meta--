@@ -389,18 +389,21 @@ func (agg *AggregateSignature) ToProto() pbcrypto.AggregateSignature {
 	return pb
 }
 
-func FromProtoToAggregateSignature(pb pbcrypto.AggregateSignature) (*AggregateSignature, error) {
+func AggregateSignatureFromProto(pb *pbcrypto.AggregateSignature) *AggregateSignature {
+	if pb == nil {
+		return nil
+	}
 	agg := &AggregateSignature{
 		participants: crypto.NewIDSet(0),
 	}
 	err := agg.FromBytes(pb.Sig)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 	for _, participant := range pb.Participants {
 		agg.participants.AddID(crypto.ID(participant))
 	}
-	return agg, nil
+	return agg
 }
 
 // CryptoBLS12 ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨

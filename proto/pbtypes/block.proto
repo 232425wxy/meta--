@@ -13,6 +13,10 @@ message Block {
   Decision decision       = 4;
 }
 
+message BlockHeight {
+  int64 height = 1;
+}
+
 message SimpleBlock {
   bytes hash                    = 1;
 }

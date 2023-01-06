@@ -117,7 +117,7 @@ func (sb *StoreBlock) Height() int64 {
 	return sb.height
 }
 
-func (sb *StoreBlock) LoadBlock(height int64) *types.Block {
+func (sb *StoreBlock) LoadBlockByHeight(height int64) *types.Block {
 	pb := &pbtypes.Block{}
 	bz, err := sb.db.Get(calcBlockHeightKey(height))
 	if err != nil {
@@ -126,9 +126,53 @@ func (sb *StoreBlock) LoadBlock(height int64) *types.Block {
 	if err = proto.Unmarshal(bz, pb); err != nil {
 		panic(err)
 	}
-	block := types.bloc
+	block := &types.Block{
+		LastBlock: types.SimpleBlockFromProto(pb.LastBlock),
+		Header:    types.HeaderFromProto(pb.Header),
+		Data:      types.DataFromProto(pb.Data),
+		Decision:  types.DecisionFromProto(pb.Decision),
+	}
+	return block
+}
+
+func (sb *StoreBlock) LoadBlockByHash(hash []byte) *types.Block {
+	pb := &pbtypes.BlockHeight{}
+	bz, err := sb.db.Get(calcBlockHashKey(hash))
+	if err != nil {
+		panic(err)
+	}
+	if err = proto.Unmarshal(bz, pb); err != nil {
+		panic(err)
+	}
+	return sb.LoadBlockByHeight(pb.Height)
+}
+
+func (sb *StoreBlock) SaveBlock(block *types.Block) {
+	if block == nil {
+		panic("cannot save nil block")
+	}
+	pb := block.ToProto()
+	bz, err := proto.Marshal(pb)
+	if err != nil {
+		panic(err)
+	}
+	bh := &pbtypes.BlockHeight{Height: block.Header.Height}
+	bzh, err := proto.Marshal(bh)
+	if err != nil {
+		panic(err)
+	}
+	if err = sb.db.SetSync(calcBlockHashKey(block.Hash()), bzh); err != nil {
+		panic(err)
+	}
+	if err = sb.db.SetSync(calcBlockHeightKey(block.Header.Height), bz); err != nil {
+		panic(err)
+	}
 }
 
 func calcBlockHeightKey(height int64) []byte {
 	return append([]byte("block-height:"), fmt.Sprintf("%d", height)...)
+}
+
+func calcBlockHashKey(hash []byte) []byte {
+	return append([]byte("block-hash:"), hash...)
 }
