@@ -14,33 +14,16 @@ import (
 
 // 区块
 
-type SimpleBlock struct {
-	Hash []byte `json:"hash"`
-}
-
-func (sb *SimpleBlock) ToProto() *pbtypes.SimpleBlock {
-	if sb == nil {
-		return nil
-	}
-	return &pbtypes.SimpleBlock{Hash: sb.Hash}
-}
-
-func SimpleBlockFromProto(pb *pbtypes.SimpleBlock) *SimpleBlock {
-	return &SimpleBlock{Hash: pb.Hash}
-}
-
 type Block struct {
-	LastBlock *SimpleBlock `json:"last_block"` // 上个区块的哈希值
-	Header    *Header      `json:"header"`
-	Data      *Data        `json:"data"`
-	Decision  *Decision    `json:"decision"` // 人们对当前区块的投票决定
+	Header *Header `json:"header"`
+	Body   *Data   `json:"body"`
 }
 
 func (b *Block) ValidateBasic() error {
 	if b == nil {
 		return errors.New("nil block")
 	}
-	if err := b.Data.ValidateBasic(); err != nil {
+	if err := b.Body.ValidateBasic(); err != nil {
 		return err
 	}
 	return nil
@@ -48,11 +31,11 @@ func (b *Block) ValidateBasic() error {
 
 func (b *Block) Hash() []byte {
 	h := sha256.New()
-	h.Write(b.LastBlock.Hash)
+	h.Write(b.Header.PreviousBlockHash)
 	h.Write([]byte(fmt.Sprintf("%d", b.Header.Height)))
 	h.Write([]byte(b.Header.Timestamp.String()))
 	h.Write([]byte(b.Header.Proposer))
-	h.Write(b.Data.RootHash)
+	h.Write(b.Body.RootHash)
 	b.Header.Hash = h.Sum(nil)
 	return b.Header.Hash
 }
@@ -63,9 +46,8 @@ func (b *Block) ToProto() *pbtypes.Block {
 		return nil
 	}
 	pb := &pbtypes.Block{
-		LastBlock: b.LastBlock.ToProto(),
-		Header:    b.Header.ToProto(),
-		Data:      b.Data.ToProto(),
+		Header: b.Header.ToProto(),
+		Body:   b.Body.ToProto(),
 	}
 	return pb
 }
@@ -75,10 +57,8 @@ func BlockFromProto(pb *pbtypes.Block) *Block {
 		return nil
 	}
 	return &Block{
-		LastBlock: SimpleBlockFromProto(pb.LastBlock),
-		Header:    HeaderFromProto(pb.Header),
-		Data:      DataFromProto(pb.Data),
-		Decision:  DecisionFromProto(pb.Decision),
+		Header: HeaderFromProto(pb.Header),
+		Body:   DataFromProto(pb.Body),
 	}
 }
 
@@ -100,15 +80,22 @@ func BlockHeightFromProto(pb *pbtypes.BlockHeight) *BlockHeight {
 	return &BlockHeight{Height: pb.Height}
 }
 
+type CommitBlock struct {
+	Height             int64                     `json:"height"`
+	Hash               []byte                    `json:"hash"`
+	AggregateSignature *bls12.AggregateSignature `json:"aggregate_signature"`
+}
+
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
 // 区块头
 
 type Header struct {
-	Hash      []byte    `json:"hash"` // 当前区块哈希
-	Height    int64     `json:"height"`
-	Timestamp time.Time `json:"timestamp"`
-	Proposer  crypto.ID `json:"proposer"`
+	PreviousBlockHash []byte    `json:"previous_block_hash"`
+	Hash              []byte    `json:"hash"` // 当前区块哈希
+	Height            int64     `json:"height"`
+	Timestamp         time.Time `json:"timestamp"`
+	Proposer          crypto.ID `json:"proposer"`
 }
 
 func (h *Header) ToProto() *pbtypes.Header {
@@ -116,10 +103,11 @@ func (h *Header) ToProto() *pbtypes.Header {
 		return nil
 	}
 	return &pbtypes.Header{
-		Hash:      h.Hash,
-		Height:    h.Height,
-		Timestamp: h.Timestamp,
-		Proposer:  string(h.Proposer),
+		PreviousBlockHash: h.PreviousBlockHash,
+		Hash:              h.Hash,
+		Height:            h.Height,
+		Timestamp:         h.Timestamp,
+		Proposer:          string(h.Proposer),
 	}
 }
 
@@ -128,10 +116,11 @@ func HeaderFromProto(pb *pbtypes.Header) *Header {
 		return nil
 	}
 	return &Header{
-		Hash:      pb.Hash,
-		Height:    pb.Height,
-		Timestamp: pb.Timestamp,
-		Proposer:  crypto.ID(pb.Proposer),
+		PreviousBlockHash: pb.PreviousBlockHash,
+		Hash:              pb.Hash,
+		Height:            pb.Height,
+		Timestamp:         pb.Timestamp,
+		Proposer:          crypto.ID(pb.Proposer),
 	}
 }
 

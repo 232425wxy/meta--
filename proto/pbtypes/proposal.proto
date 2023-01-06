@@ -9,7 +9,7 @@ import "gogoproto-1.4.3/gogoproto/gogo.proto";
 
 message Proposal {
   int64 height = 1;
-  pbtypes.SimpleBlock simple_block = 2;
+  pbtypes.Block block = 2;
   google.protobuf.Timestamp timestamp = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   pbcrypto.Signature signature = 4;
 }

@@ -744,7 +744,7 @@ func (m *PacketMsg) Unmarshal(dAtA []byte) error {
 			m.EOF = bool(v != 0)
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Data", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Body", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {

@@ -7,32 +7,29 @@ import "gogoproto-1.4.3/protobuf/google/protobuf/timestamp.proto";
 import "gogoproto-1.4.3/gogoproto/gogo.proto";
 
 message Block {
-  SimpleBlock last_block  = 1;
-  Header header           = 2;
-  Data data               = 3;
-  Decision decision       = 4;
+  Header header           = 1;
+  Data body               = 2;
 }
 
 message BlockHeight {
   int64 height = 1;
 }
 
-message SimpleBlock {
-  bytes hash                    = 1;
+message CommitBlock {
+  int64 height = 1;
+  bytes hash = 2;
+  pbcrypto.AggregateSignature aggregate_signature = 3;
 }
 
 message Header {
-  bytes hash                          = 1;
-  int64 height                        = 2;
-  google.protobuf.Timestamp timestamp = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  string proposer                     = 4;
+  bytes previous_block_hash           = 1;
+  bytes hash                          = 2;
+  int64 height                        = 3;
+  google.protobuf.Timestamp timestamp = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string proposer                     = 5;
 }
 
 message Data {
   bytes     root_hash = 1;
   repeated bytes  txs = 2;
-}
-
-message Decision {
-  pbcrypto.AggregateSignature signature = 1;
 }

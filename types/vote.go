@@ -12,21 +12,21 @@ import (
 )
 
 type Vote struct {
-	VoteType    pbtypes.VoteType
-	Height      int64
-	SimpleBlock *SimpleBlock
-	Timestamp   time.Time
-	Voter       crypto.ID
-	Signature   *bls12.Signature
+	VoteType  pbtypes.VoteType
+	Height    int64
+	BlockHash []byte
+	Timestamp time.Time
+	Voter     crypto.ID
+	Signature *bls12.Signature
 }
 
 func (v *Vote) ToSignBytes() []byte {
 	pb := &pbtypes.Vote{
-		VoteType:    v.VoteType,
-		Height:      v.Height,
-		SimpleBlock: v.SimpleBlock.ToProto(),
-		Timestamp:   v.Timestamp,
-		Voter:       string(v.Voter),
+		VoteType:  v.VoteType,
+		Height:    v.Height,
+		BlockHash: v.BlockHash,
+		Timestamp: v.Timestamp,
+		Voter:     string(v.Voter),
 	}
 	bz, err := proto.Marshal(pb)
 	if err != nil {
@@ -60,22 +60,22 @@ func (v *Vote) ToProto() *pbtypes.Vote {
 		return nil
 	}
 	return &pbtypes.Vote{
-		VoteType:    v.VoteType,
-		Height:      v.Height,
-		SimpleBlock: v.SimpleBlock.ToProto(),
-		Timestamp:   v.Timestamp,
-		Voter:       string(v.Voter),
-		Signature:   v.Signature.ToProto(),
+		VoteType:  v.VoteType,
+		Height:    v.Height,
+		BlockHash: v.BlockHash,
+		Timestamp: v.Timestamp,
+		Voter:     string(v.Voter),
+		Signature: v.Signature.ToProto(),
 	}
 }
 
 func VoteFromProto(pb *pbtypes.Vote) *Vote {
 	return &Vote{
-		VoteType:    pb.VoteType,
-		Height:      pb.Height,
-		SimpleBlock: SimpleBlockFromProto(pb.SimpleBlock),
-		Timestamp:   pb.Timestamp,
-		Voter:       crypto.ID(pb.Voter),
-		Signature:   bls12.SignatureFromProto(pb.Signature),
+		VoteType:  pb.VoteType,
+		Height:    pb.Height,
+		BlockHash: pb.BlockHash,
+		Timestamp: pb.Timestamp,
+		Voter:     crypto.ID(pb.Voter),
+		Signature: bls12.SignatureFromProto(pb.Signature),
 	}
 }

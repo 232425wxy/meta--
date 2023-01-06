@@ -16,7 +16,7 @@ var ValidatorsKey = []byte("meta--/state/validators")
 type State struct {
 	InitialHeight   int64
 	LastBlockHeight int64
-	LastBlock       *types.SimpleBlock
+	PreviousBlock   *types.Block
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
 }
@@ -25,7 +25,7 @@ func (s *State) Copy() *State {
 	return &State{
 		InitialHeight:   s.InitialHeight,
 		LastBlockHeight: s.LastBlockHeight,
-		LastBlock:       s.LastBlock,
+		PreviousBlock:   s.PreviousBlock,
 		LastBlockTime:   s.LastBlockTime,
 		Validators:      s.Validators.Copy(),
 	}
@@ -33,15 +33,14 @@ func (s *State) Copy() *State {
 
 func (s *State) MakeBlock(height int64, txs []types.Tx, proposer crypto.ID, lastBlockHash []byte) *types.Block {
 	block := &types.Block{
-		LastBlock: types.SimpleBlock{Hash: lastBlockHash},
-		Header:    types.Header{Height: height, Timestamp: time.Now(), Proposer: proposer},
-		Data:      types.Data{Txs: txs},
+		Header: &types.Header{Height: height, Timestamp: time.Now(), Proposer: proposer},
+		Body:   &types.Data{Txs: txs},
 	}
 	_txs := make([][]byte, len(txs))
 	for i, tx := range txs {
 		copy(_txs[i], tx)
 	}
-	block.Data.RootHash = merkle.ComputeMerkleRoot(_txs)
+	block.Body.RootHash = merkle.ComputeMerkleRoot(_txs)
 	block.Hash()
 	return block
 }
@@ -50,7 +49,7 @@ func MakeGenesisState(gen *types.Genesis) *State {
 	return &State{
 		InitialHeight:   gen.InitialHeight,
 		LastBlockHeight: 0,
-		LastBlock:       &types.SimpleBlock{},
+		PreviousBlock:   &types.Block{},
 		LastBlockTime:   gen.GenesisTime,
 		Validators:      types.NewValidatorSet(gen.Validators),
 	}
@@ -63,7 +62,7 @@ func (s *State) ToProto() *pbstate.State {
 	return &pbstate.State{
 		InitialHeight:   s.InitialHeight,
 		LastBlockHeight: s.LastBlockHeight,
-		LastBlock:       s.LastBlock.ToProto(),
+		PreviousBlock:   s.PreviousBlock.ToProto(),
 		LastBlockTime:   s.LastBlockTime,
 		Validators:      s.Validators.ToProto(),
 	}
@@ -76,7 +75,7 @@ func StateFromProto(pb *pbstate.State) *State {
 	return &State{
 		InitialHeight:   pb.InitialHeight,
 		LastBlockHeight: pb.LastBlockHeight,
-		LastBlock:       types.SimpleBlockFromProto(pb.LastBlock),
+		PreviousBlock:   types.BlockFromProto(pb.PreviousBlock),
 		LastBlockTime:   pb.LastBlockTime,
 		Validators:      types.ValidatorSetFromProto(pb.Validators),
 	}

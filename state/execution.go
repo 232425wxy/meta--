@@ -46,7 +46,7 @@ func (be *BlockExecutor) ApplyBlock(state *State, block *types.Block) (*State, e
 	be.txsPool.Lock()
 	defer be.txsPool.Unlock()
 	// TODO 这里图方便直接将区块里的交易数据从交易池里删除了
-	be.txsPool.Update(block.Header.Height, block.Data.Txs)
+	be.txsPool.Update(block.Header.Height, block.Body.Txs)
 	if err = be.store.SaveState(state); err != nil {
 		return state, err
 	}
@@ -57,7 +57,7 @@ func (be *BlockExecutor) ApplyBlock(state *State, block *types.Block) (*State, e
 	}); err != nil {
 		be.logger.Error("failed to publish new block", "err", err)
 	}
-	for i, tx := range block.Data.Txs {
+	for i, tx := range block.Body.Txs {
 		if err = be.eventBus.PublishEventTx(types.EventDataTx{
 			Height:            block.Header.Height,
 			Tx:                tx,
@@ -80,7 +80,7 @@ func (be *BlockExecutor) ApplyBlock(state *State, block *types.Block) (*State, e
 func execBlockOnProxyConsensus(proxyConsensus *proxy.AppConnConsensus, block *types.Block, logger log.Logger) (*pbabci.ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 	responses := new(pbabci.ABCIResponses)
-	responses.DeliverTxs = make([]*pbabci.ResponseDeliverTx, len(block.Data.Txs))
+	responses.DeliverTxs = make([]*pbabci.ResponseDeliverTx, len(block.Body.Txs))
 
 	pbHeader := block.Header.ToProto()
 	if pbHeader == nil {
@@ -91,7 +91,7 @@ func execBlockOnProxyConsensus(proxyConsensus *proxy.AppConnConsensus, block *ty
 		Height:    block.Header.Height,
 	})
 	responses.BeginBlock = &beginBlock
-	for i, tx := range block.Data.Txs {
+	for i, tx := range block.Body.Txs {
 		res := proxyConsensus.DeliverTx(pbabci.RequestDeliverTx{Tx: tx})
 		responses.DeliverTxs[i] = &res
 		if !res.OK {
@@ -110,7 +110,7 @@ func updateState(state *State, validatorUpdates []*pbabci.ValidatorUpdate, block
 	if len(validatorUpdates) > 0 {
 		state.Validators.Update(validatorUpdates)
 	}
-	state.LastBlock = &types.SimpleBlock{Hash: block.Hash()}
+	state.PreviousBlock = block
 	state.LastBlockHeight = block.Header.Height
 	state.LastBlockTime = block.Header.Timestamp
 }

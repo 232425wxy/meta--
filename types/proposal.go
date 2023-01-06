@@ -8,17 +8,17 @@ import (
 )
 
 type Proposal struct {
-	Height      int64            `json:"height"`
-	SimpleBlock SimpleBlock      `json:"simple_block"`
-	Timestamp   time.Time        `json:"timestamp"`
-	Signature   *bls12.Signature `json:"signature"`
+	Height    int64            `json:"height"`
+	Block     *Block           `json:"block"`
+	Timestamp time.Time        `json:"timestamp"`
+	Signature *bls12.Signature `json:"signature"`
 }
 
-func NewProposal(height int64, simple SimpleBlock) *Proposal {
+func NewProposal(height int64, block *Block) *Proposal {
 	return &Proposal{
-		Height:      height,
-		SimpleBlock: simple,
-		Timestamp:   time.Now(),
+		Height:    height,
+		Block:     block,
+		Timestamp: time.Now(),
 	}
 }
 
@@ -31,9 +31,9 @@ func (p *Proposal) ValidateBasic() error {
 
 func (p *Proposal) ToProto() *pbtypes.Proposal {
 	return &pbtypes.Proposal{
-		Height:      p.Height,
-		SimpleBlock: p.SimpleBlock.ToProto(),
-		Timestamp:   p.Timestamp,
-		Signature:   p.Signature.ToProto(),
+		Height:    p.Height,
+		Block:     p.Block.ToProto(),
+		Timestamp: p.Timestamp,
+		Signature: p.Signature.ToProto(),
 	}
 }
