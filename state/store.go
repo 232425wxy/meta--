@@ -127,10 +127,8 @@ func (sb *StoreBlock) LoadBlockByHeight(height int64) *types.Block {
 		panic(err)
 	}
 	block := &types.Block{
-		LastBlock: types.SimpleBlockFromProto(pb.LastBlock),
-		Header:    types.HeaderFromProto(pb.Header),
-		Data:      types.DataFromProto(pb.Data),
-		Decision:  types.DecisionFromProto(pb.Decision),
+		Header: types.HeaderFromProto(pb.Header),
+		Body:   types.DataFromProto(pb.Body),
 	}
 	return block
 }

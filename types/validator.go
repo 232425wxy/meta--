@@ -8,18 +8,18 @@ import (
 )
 
 type Validator struct {
-	ID               crypto.ID        `json:"ID"`
-	PublicKey        *bls12.PublicKey `json:"public_key"`
-	VotingPower      int64            `json:"voting_power"`
-	ProposerPriority int64            `json:"proposer_priority"`
+	ID             crypto.ID        `json:"ID"`
+	PublicKey      *bls12.PublicKey `json:"public_key"`
+	VotingPower    int64            `json:"voting_power"`
+	LeaderPriority int64            `json:"leader_priority"`
 }
 
 func NewValidator(publicKey *bls12.PublicKey, votingPower int64) *Validator {
 	return &Validator{
-		ID:               publicKey.ToID(),
-		PublicKey:        publicKey,
-		VotingPower:      votingPower,
-		ProposerPriority: 0,
+		ID:             publicKey.ToID(),
+		PublicKey:      publicKey,
+		VotingPower:    votingPower,
+		LeaderPriority: 0,
 	}
 }
 
@@ -28,10 +28,10 @@ func (v *Validator) ToProto() *pbtypes.Validator {
 		return nil
 	}
 	return &pbtypes.Validator{
-		ID:               string(v.ID),
-		PublicKey:        v.PublicKey.ToProto(),
-		VotingPower:      v.VotingPower,
-		ProposerPriority: v.ProposerPriority,
+		ID:             string(v.ID),
+		PublicKey:      v.PublicKey.ToProto(),
+		VotingPower:    v.VotingPower,
+		LeaderPriority: v.LeaderPriority,
 	}
 }
 
@@ -40,10 +40,10 @@ func ValidatorFromProto(pb *pbtypes.Validator) *Validator {
 		return nil
 	}
 	return &Validator{
-		ID:               crypto.ID(pb.ID),
-		PublicKey:        bls12.PublicKeyFromProto(pb.PublicKey),
-		VotingPower:      pb.VotingPower,
-		ProposerPriority: pb.ProposerPriority,
+		ID:             crypto.ID(pb.ID),
+		PublicKey:      bls12.PublicKeyFromProto(pb.PublicKey),
+		VotingPower:    pb.VotingPower,
+		LeaderPriority: pb.LeaderPriority,
 	}
 }
 
@@ -52,15 +52,15 @@ func ValidatorFromProto(pb *pbtypes.Validator) *Validator {
 // validator.proto 集合
 
 type ValidatorSet struct {
-	Validators       []*Validator
-	Proposer         *Validator
-	TotalVotingPower int64
+	Validators       []*Validator `json:"validators"`
+	Leader           *Validator   `json:"leader"`
+	TotalVotingPower int64        `json:"total_voting_power"`
 }
 
 func (set *ValidatorSet) Copy() *ValidatorSet {
 	cpy := &ValidatorSet{
 		Validators:       make([]*Validator, len(set.Validators)),
-		Proposer:         set.Proposer,
+		Leader:           set.Leader,
 		TotalVotingPower: set.TotalVotingPower,
 	}
 	copy(cpy.Validators, set.Validators)
@@ -85,18 +85,18 @@ func (set *ValidatorSet) Update(validatorUpdates []*pbabci.ValidatorUpdate) {
 				validator.VotingPower = update.Power
 				if update.Power <= 0 {
 					set.Validators = append(set.Validators[:i], set.Validators[i+1:]...)
-					if publicKey.ToID() == set.Proposer.ID {
-						set.Proposer = set.Validators[0]
+					if publicKey.ToID() == set.Leader.ID {
+						set.Leader = set.Validators[0]
 					}
 				}
 			}
 		}
 		if !exists {
 			set.Validators = append(set.Validators, &Validator{
-				ID:               publicKey.ToID(),
-				PublicKey:        publicKey,
-				VotingPower:      update.Power,
-				ProposerPriority: 10,
+				ID:             publicKey.ToID(),
+				PublicKey:      publicKey,
+				VotingPower:    update.Power,
+				LeaderPriority: 10,
 			})
 		}
 	}
@@ -112,7 +112,7 @@ func (set *ValidatorSet) ToProto() *pbtypes.ValidatorSet {
 	}
 	return &pbtypes.ValidatorSet{
 		Validators:       validators,
-		Proposer:         set.Proposer.ToProto(),
+		Leader:           set.Leader.ToProto(),
 		TotalVotingPower: set.TotalVotingPower,
 	}
 }
@@ -127,7 +127,7 @@ func ValidatorSetFromProto(pb *pbtypes.ValidatorSet) *ValidatorSet {
 	}
 	return &ValidatorSet{
 		Validators:       validators,
-		Proposer:         ValidatorFromProto(pb.Proposer),
+		Leader:           ValidatorFromProto(pb.Leader),
 		TotalVotingPower: pb.TotalVotingPower,
 	}
 }

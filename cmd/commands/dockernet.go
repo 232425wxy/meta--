@@ -80,10 +80,10 @@ func dockernetFiles(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 		validator := &types.Validator{
-			ID:               key.PublicKey.ToID(),
-			PublicKey:        key.PublicKey,
-			VotingPower:      10,
-			ProposerPriority: 10,
+			ID:             key.PublicKey.ToID(),
+			PublicKey:      key.PublicKey,
+			VotingPower:    10,
+			LeaderPriority: 10,
 		}
 		validators = append(validators, validator)
 

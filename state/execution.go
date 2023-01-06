@@ -33,7 +33,7 @@ func (be *BlockExecutor) SetEventBUs(bus *types.EventBus) {
 	be.eventBus = bus
 }
 
-func (be *BlockExecutor) CreateProposalBlock(height int64, state *State, proposer crypto.ID, lastBlockHash []byte) *types.Block {
+func (be *BlockExecutor) CreateBlock(height int64, state *State, proposer crypto.ID, lastBlockHash []byte) *types.Block {
 	txs := be.txsPool.ReapMaxBytes(be.cfg.MaxTxBytes * be.cfg.MaxSize)
 	return state.MakeBlock(height, txs, proposer, lastBlockHash)
 }

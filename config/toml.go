@@ -27,6 +27,13 @@ neighbours = "{{ .P2PConfig.Neighbours }}"
 home = "{{ .TxsPoolConfig.Home }}"
 max_size = "{{ .TxsPoolConfig.MaxSize }}"
 max_tx_bytes = "{{ .TxsPoolConfig.MaxTxBytes }}"
+
+[consensus]
+home = "{{ .ConsensusConfig.Home }}"
+timeout_prepare = "{{ .ConsensusConfig.TimeoutPrepare }}"
+timeout_pre_commit = "{{ .ConsensusConfig.TimeoutPreCommit }}"
+timeout_commit = "{{ .ConsensusConfig.TimeoutCommit }}"
+timeout_decide = "{{ .ConsensusConfig.TimeoutDecide }}"
 `
 
 var configTemplate *template.Template

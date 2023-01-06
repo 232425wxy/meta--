@@ -7,7 +7,7 @@ import "proto/pbtypes/block.proto";
 import "gogoproto-1.4.3/protobuf/google/protobuf/timestamp.proto";
 import "gogoproto-1.4.3/gogoproto/gogo.proto";
 
-message Proposal {
+message Prepare {
   int64 height = 1;
   pbtypes.Block block = 2;
   google.protobuf.Timestamp timestamp = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];

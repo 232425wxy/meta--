@@ -8,16 +8,18 @@ import (
 )
 
 type Config struct {
-	BasicConfig   *BasicConfig   `mapstructure:"basic"`
-	P2PConfig     *P2PConfig     `mapstructure:"p2p"`
-	TxsPoolConfig *TxsPoolConfig `mapstructure:"txs_pool"`
+	BasicConfig     *BasicConfig     `mapstructure:"basic"`
+	P2PConfig       *P2PConfig       `mapstructure:"p2p"`
+	TxsPoolConfig   *TxsPoolConfig   `mapstructure:"txs_pool"`
+	ConsensusConfig *ConsensusConfig `mapstructure:"consensus"`
 }
 
 func DefaultConfig() *Config {
 	return &Config{
-		BasicConfig:   DefaultBasicConfig(),
-		P2PConfig:     DefaultP2PConfig(),
-		TxsPoolConfig: DefaultTxsPoolConfig(),
+		BasicConfig:     DefaultBasicConfig(),
+		P2PConfig:       DefaultP2PConfig(),
+		TxsPoolConfig:   DefaultTxsPoolConfig(),
+		ConsensusConfig: DefaultConsensusConfig(),
 	}
 }
 
@@ -25,6 +27,7 @@ func (c *Config) SetHome(home string) {
 	c.BasicConfig.Home = home
 	c.P2PConfig.Home = home
 	c.TxsPoolConfig.Home = home
+	c.ConsensusConfig.Home = home
 }
 
 func (c *Config) SaveAs(file string) {
@@ -124,6 +127,23 @@ func DefaultTxsPoolConfig() *TxsPoolConfig {
 	return &TxsPoolConfig{
 		MaxSize:    2000,
 		MaxTxBytes: 1024, // 1KB
+	}
+}
+
+type ConsensusConfig struct {
+	Home             string        `mapstructure:"home"`
+	TimeoutPrepare   time.Duration `mapstructure:"timeout_prepare"`
+	TimeoutPreCommit time.Duration `mapstructure:"timeout_pre_commit"`
+	TimeoutCommit    time.Duration `mapstructure:"timeout_commit"`
+	TimeoutDecide    time.Duration `mapstructure:"timeout_decide"`
+}
+
+func DefaultConsensusConfig() *ConsensusConfig {
+	return &ConsensusConfig{
+		TimeoutPrepare:   3000 * time.Millisecond,
+		TimeoutPreCommit: 1000 * time.Millisecond,
+		TimeoutCommit:    1000 * time.Millisecond,
+		TimeoutDecide:    1000 * time.Millisecond,
 	}
 }
 

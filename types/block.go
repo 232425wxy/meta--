@@ -174,18 +174,3 @@ func (d *Data) ValidateBasic() error {
 	}
 	return nil
 }
-
-/*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
-
-// 共识投票
-
-type Decision struct {
-	Signature *bls12.AggregateSignature
-}
-
-func DecisionFromProto(pb *pbtypes.Decision) *Decision {
-	if pb == nil {
-		return nil
-	}
-	return &Decision{Signature: bls12.AggregateSignatureFromProto(pb.Signature)}
-}
