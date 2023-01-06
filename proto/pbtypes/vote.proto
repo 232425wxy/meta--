@@ -9,9 +9,9 @@ import "gogoproto-1.4.3/protobuf/google/protobuf/timestamp.proto";
 enum VoteType {
   option (gogoproto.goproto_enum_stringer) = true;
   option (gogoproto.goproto_enum_prefix)   = false;
-  PREPARE_VOTE = 0 [(gogoproto.enumvalue_customname) = "PrepareVote"];
-  PRE_COMMIT_VOTE = 1 [(gogoproto.enumvalue_customname) = "PreCommitVote"];
-  COMMIT_VOTE = 2 [(gogoproto.enumvalue_customname) = "CommitVote"];
+  PREPARE_VOTE_TYPE = 0 [(gogoproto.enumvalue_customname) = "PrepareVoteType"];
+  PRE_COMMIT_VOTE_TYPE = 1 [(gogoproto.enumvalue_customname) = "PreCommitVoteType"];
+  COMMIT_VOTE_TYPE = 2 [(gogoproto.enumvalue_customname) = "CommitVoteType"];
 }
 
 message Vote {

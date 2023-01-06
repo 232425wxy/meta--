@@ -9,16 +9,18 @@ import (
 )
 
 type NextView struct {
-	Height int64     `json:"height"`
-	ID     crypto.ID `json:"ID"`
+	Type   pbtypes.ConsensusMessageType `json:"type"`
+	ID     crypto.ID                    `json:"ID"`
+	Height int64                        `json:"height"`
 }
 
 type Prepare struct {
-	ID        crypto.ID        `json:"ID"`
-	Height    int64            `json:"height"`
-	Block     *Block           `json:"block"`
-	Timestamp time.Time        `json:"timestamp"`
-	Signature *bls12.Signature `json:"signature"`
+	Type      pbtypes.ConsensusMessageType `json:"type"`
+	ID        crypto.ID                    `json:"ID"`
+	Height    int64                        `json:"height"`
+	Block     *Block                       `json:"block"`
+	Timestamp time.Time                    `json:"timestamp"`
+	Signature *bls12.Signature             `json:"signature"`
 }
 
 func NewPrepare(height int64, block *Block) *Prepare {
@@ -54,7 +56,7 @@ type PrepareVote struct {
 type PreCommit struct {
 	ID                 crypto.ID                 `json:"ID"`
 	Height             int64                     `json:"height"`
-	BlockHash          []byte                    `json:"block_hash"`
+	PrepareHash        []byte                    `json:"prepare_hash"` // 这个字段的值等于 Hash("Prepare"||BlockHash)
 	Timestamp          time.Time                 `json:"timestamp"`
 	AggregateSignature *bls12.AggregateSignature `json:"aggregate_signature"`
 }
@@ -66,10 +68,16 @@ type PreCommitVote struct {
 /**********************************************************************************************************************/
 
 type Commit struct {
-	Vote *Vote `json:"vote"`
+	Type               pbtypes.ConsensusMessageType `json:"type"`
+	ID                 crypto.ID                    `json:"ID"`
+	Height             int64                        `json:"height"`
+	BlockHash          []byte                       `json:"block_hash"`
+	Timestamp          time.Time                    `json:"timestamp"`
+	AggregateSignature *bls12.AggregateSignature    `json:"aggregate_signature"`
 }
 
 type CommitVote struct {
+	Vote *Vote `json:"vote"`
 }
 
 type Decide struct {
