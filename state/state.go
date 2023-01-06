@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-var StateKey = []byte("meta--/state")
+var StoreStateKey = []byte("meta--/store-state")
+var StoreBlockKey = []byte("meta--/store-block")
 var ValidatorsKey = []byte("meta--/state/validators")
 
 type State struct {

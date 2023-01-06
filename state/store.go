@@ -31,7 +31,7 @@ func (s *StoreState) LoadFromDBOrGenesis(genesis *types.Genesis) *State {
 }
 
 func (s *StoreState) LoadState() (*State, error) {
-	bz, err := s.db.Get(StateKey)
+	bz, err := s.db.Get(StoreStateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (s *StoreState) LoadState() (*State, error) {
 }
 
 func (s *StoreState) SaveState(state *State) error {
-	return s.db.SetSync(StateKey, state.ToBytes())
+	return s.db.SetSync(StoreStateKey, state.ToBytes())
 }
 
 func (s *StoreState) Bootstrap(state *State) error {
@@ -83,9 +83,52 @@ func calcValidatorsKey(height int64) []byte {
 	return append(ValidatorsKey, fmt.Sprintf("%d", height)...)
 }
 
+/**********************************************************************************************************************/
+
 type StoreBlock struct {
 	db     database.DB
 	mu     sync.RWMutex
-	base   int64
 	height int64
+}
+
+func NewStoreBlock(db database.DB) *StoreBlock {
+	sb := new(StoreBlock)
+	bz, err := db.Get(StoreBlockKey)
+	if err != nil {
+		panic(err)
+	}
+	if len(bz) == 0 {
+		sb.height = 0
+		return sb
+	}
+	pb := new(pbstate.StoreBlock)
+	if err = proto.Unmarshal(bz, pb); err != nil {
+		panic(err)
+	}
+	return &StoreBlock{db: db, height: pb.Height}
+}
+
+// Height
+//
+// Height 反映当前区块链的高度和区块数量。
+func (sb *StoreBlock) Height() int64 {
+	sb.mu.RLock()
+	sb.mu.RUnlock()
+	return sb.height
+}
+
+func (sb *StoreBlock) LoadBlock(height int64) *types.Block {
+	pb := &pbtypes.Block{}
+	bz, err := sb.db.Get(calcBlockHeightKey(height))
+	if err != nil {
+		panic(err)
+	}
+	if err = proto.Unmarshal(bz, pb); err != nil {
+		panic(err)
+	}
+	block := types.bloc
+}
+
+func calcBlockHeightKey(height int64) []byte {
+	return append([]byte("block-height:"), fmt.Sprintf("%d", height)...)
 }

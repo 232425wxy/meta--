@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package pbstate;
+
+message StoreBlock {
+  int64 height = 1;
+}

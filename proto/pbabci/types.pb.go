@@ -4283,7 +4283,7 @@ func (m *RequestQuery) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field height", wireType)
 			}
 			m.Height = 0
 			for shift := uint(0); ; shift += 7 {
@@ -4386,7 +4386,7 @@ func (m *RequestBeginBlock) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field height", wireType)
 			}
 			m.Height = 0
 			for shift := uint(0); ; shift += 7 {
@@ -4623,7 +4623,7 @@ func (m *RequestEndBlock) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field height", wireType)
 			}
 			m.Height = 0
 			for shift := uint(0); ; shift += 7 {
@@ -4742,7 +4742,7 @@ func (m *RequestRedact) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field height", wireType)
 			}
 			m.Height = 0
 			for shift := uint(0); ; shift += 7 {
@@ -5546,7 +5546,7 @@ func (m *ResponseQuery) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field height", wireType)
 			}
 			m.Height = 0
 			for shift := uint(0); ; shift += 7 {
@@ -5912,7 +5912,7 @@ func (m *ResponseEndBlock) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field height", wireType)
 			}
 			m.Height = 0
 			for shift := uint(0); ; shift += 7 {
@@ -6293,7 +6293,7 @@ func (m *Evidence) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field height", wireType)
 			}
 			m.Height = 0
 			for shift := uint(0); ; shift += 7 {

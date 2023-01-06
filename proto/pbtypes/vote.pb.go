@@ -345,7 +345,7 @@ func (m *Vote) Unmarshal(dAtA []byte) error {
 			}
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field height", wireType)
 			}
 			m.Height = 0
 			for shift := uint(0); ; shift += 7 {
