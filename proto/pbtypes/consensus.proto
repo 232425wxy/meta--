@@ -59,4 +59,26 @@ message PreCommitVote {
   Vote vote = 1;
 }
 
-// protoc --gogofaster_out=. -I=$GOPATH/src/meta-- -I=$GOPATH/src -I=$GOPATH/src/gogoproto-1.4.3/protobuf -I=. proposal.proto
+message Commit {
+  ConsensusMessageType type = 1;
+  string id = 2 [(gogoproto.customname) = "ID"];
+  int64 height = 3;
+  bytes pre_commit_hash = 4;
+  google.protobuf.Timestamp timestamp = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  pbcrypto.AggregateSignature aggregate_signature = 6;
+}
+
+message CommitVote {
+  Vote vote = 1;
+}
+
+message Decide {
+  ConsensusMessageType type = 1;
+  string id = 2 [(gogoproto.customname) = "ID"];
+  int64 height = 3;
+  bytes commit_hash = 4;
+  google.protobuf.Timestamp timestamp = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  pbcrypto.AggregateSignature aggregate_signature = 6;
+}
+
+// protoc --gogofaster_out=. -I=$GOPATH/src/meta-- -I=$GOPATH/src -I=$GOPATH/src/gogoproto-1.4.3/protobuf -I=. consensus.proto
