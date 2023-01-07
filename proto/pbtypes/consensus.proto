@@ -17,11 +17,46 @@ enum ConsensusMessageType {
   DECIDE_TYPE = 4 [(gogoproto.enumvalue_customname) = "DecideType"];
 }
 
+enum VoteType {
+  option (gogoproto.goproto_enum_stringer) = true;
+  option (gogoproto.goproto_enum_prefix)   = false;
+  PREPARE_VOTE_TYPE = 0 [(gogoproto.enumvalue_customname) = "PrepareVoteType"];
+  PRE_COMMIT_VOTE_TYPE = 1 [(gogoproto.enumvalue_customname) = "PreCommitVoteType"];
+  COMMIT_VOTE_TYPE = 2 [(gogoproto.enumvalue_customname) = "CommitVoteType"];
+}
+
+message Vote {
+  VoteType vote_type = 1;
+  int64 height = 2;
+  bytes value_hash = 3;
+  google.protobuf.Timestamp timestamp = 4 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  pbcrypto.Signature signature = 5;
+}
+
 message Prepare {
-  int64 height = 1;
-  pbtypes.Block block = 2;
-  google.protobuf.Timestamp timestamp = 3 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  pbcrypto.Signature signature = 4;
+  ConsensusMessageType type = 1;
+  string id = 2 [(gogoproto.customname) = "ID"];
+  int64 height = 3;
+  pbtypes.Block block = 4;
+  google.protobuf.Timestamp timestamp = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  pbcrypto.Signature signature = 6;
+}
+
+message PrepareVote {
+  Vote vote = 1;
+}
+
+message PreCommit {
+  ConsensusMessageType type = 1;
+  string id = 2 [(gogoproto.customname) = "ID"];
+  int64 height = 3;
+  bytes prepare_hash = 4;
+  google.protobuf.Timestamp timestamp = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  pbcrypto.AggregateSignature aggregate_signature = 6;
+}
+
+message PreCommitVote {
+  Vote vote = 1;
 }
 
 // protoc --gogofaster_out=. -I=$GOPATH/src/meta-- -I=$GOPATH/src -I=$GOPATH/src/gogoproto-1.4.3/protobuf -I=. proposal.proto

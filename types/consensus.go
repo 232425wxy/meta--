@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12"
+	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/proto/pbtypes"
 	"time"
 )
@@ -13,6 +14,8 @@ type NextView struct {
 	ID     crypto.ID                    `json:"ID"`
 	Height int64                        `json:"height"`
 }
+
+/**********************************************************************************************************************/
 
 type Prepare struct {
 	Type      pbtypes.ConsensusMessageType `json:"type"`
@@ -47,6 +50,20 @@ func (p *Prepare) ToProto() *pbtypes.Prepare {
 	}
 }
 
+func PrepareFromProto(pb *pbtypes.Prepare) *Prepare {
+	if pb == nil {
+		return nil
+	}
+	return &Prepare{
+		Type:      pbty,
+		ID:        "",
+		Height:    0,
+		Block:     nil,
+		Timestamp: time.Time{},
+		Signature: nil,
+	}
+}
+
 type PrepareVote struct {
 	Vote *Vote `json:"vote"`
 }
@@ -54,11 +71,12 @@ type PrepareVote struct {
 /**********************************************************************************************************************/
 
 type PreCommit struct {
-	ID                 crypto.ID                 `json:"ID"`
-	Height             int64                     `json:"height"`
-	PrepareHash        []byte                    `json:"prepare_hash"` // 这个字段的值等于 Hash("Prepare"||BlockHash)
-	Timestamp          time.Time                 `json:"timestamp"`
-	AggregateSignature *bls12.AggregateSignature `json:"aggregate_signature"`
+	Type               pbtypes.ConsensusMessageType `json:"type"`
+	ID                 crypto.ID                    `json:"ID"`
+	Height             int64                        `json:"height"`
+	PrepareHash        sha256.Hash                  `json:"prepare_hash"` // 这个字段的值等于 Hash("Prepare"||ValueHash)
+	Timestamp          time.Time                    `json:"timestamp"`
+	AggregateSignature *bls12.AggregateSignature    `json:"aggregate_signature"`
 }
 
 type PreCommitVote struct {
@@ -71,7 +89,7 @@ type Commit struct {
 	Type               pbtypes.ConsensusMessageType `json:"type"`
 	ID                 crypto.ID                    `json:"ID"`
 	Height             int64                        `json:"height"`
-	BlockHash          []byte                       `json:"block_hash"`
+	PreCommitHash      sha256.Hash                  `json:"block_hash"`
 	Timestamp          time.Time                    `json:"timestamp"`
 	AggregateSignature *bls12.AggregateSignature    `json:"aggregate_signature"`
 }
@@ -80,5 +98,13 @@ type CommitVote struct {
 	Vote *Vote `json:"vote"`
 }
 
+/**********************************************************************************************************************/
+
 type Decide struct {
+	Type               pbtypes.ConsensusMessageType `json:"type"`
+	ID                 crypto.ID                    `json:"ID"`
+	Height             int64                        `json:"height"`
+	CommitHash         sha256.Hash                  `json:"commit_hash"`
+	Timestamp          time.Time                    `json:"timestamp"`
+	AggregateSignature *bls12.AggregateSignature
 }
