@@ -378,8 +378,11 @@ func (agg *AggregateSignature) Type() string {
 	return "BLS12-381 THRESHOLD SIGNATURE"
 }
 
-func (agg *AggregateSignature) ToProto() pbcrypto.AggregateSignature {
-	pb := pbcrypto.AggregateSignature{
+func (agg *AggregateSignature) ToProto() *pbcrypto.AggregateSignature {
+	if agg == nil {
+		return nil
+	}
+	pb := &pbcrypto.AggregateSignature{
 		Participants: make([]string, 0),
 	}
 	pb.Sig = agg.ToBytes()

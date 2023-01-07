@@ -25,6 +25,12 @@ enum VoteType {
   COMMIT_VOTE_TYPE = 2 [(gogoproto.enumvalue_customname) = "CommitVoteType"];
 }
 
+message NextView {
+  ConsensusMessageType type = 1;
+  string id = 2 [(gogoproto.customname) = "ID"];
+  int64 height = 3;
+}
+
 message Vote {
   VoteType vote_type = 1;
   int64 height = 2;
