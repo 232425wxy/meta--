@@ -545,7 +545,7 @@ func (cb *CryptoBLS12) VerifyThresholdSignatureForMessageSet(signature *Aggregat
 // CreateThresholdSignature ♏ |作者：吴翔宇| 🍁 |日期：2022/11/30|
 //
 // CreateThresholdSignature 根据给定的部分签名创建聚合签名。
-func (cb *CryptoBLS12) CreateThresholdSignature(partialSignatures []*Signature, _ sha256.Hash, quorumSize int) (_ *AggregateSignature, err error) {
+func (cb *CryptoBLS12) CreateThresholdSignature(partialSignatures []*Signature, quorumSize int) (_ *AggregateSignature, err error) {
 	if len(partialSignatures) < quorumSize {
 		return nil, fmt.Errorf("bls12: not reach quorum size: %q", quorumSize)
 	}
@@ -567,7 +567,7 @@ func (cb *CryptoBLS12) CreateThresholdSignature(partialSignatures []*Signature, 
 //
 // CreateThresholdSignatureForMessageSet 将若干个为不同消息签名的签名聚合成聚合签名。
 func (cb *CryptoBLS12) CreateThresholdSignatureForMessageSet(partialSignatures []*Signature, hashes map[crypto.ID]sha256.Hash, quorumSize int) (*AggregateSignature, error) {
-	return cb.CreateThresholdSignature(partialSignatures, sha256.Hash{}, quorumSize)
+	return cb.CreateThresholdSignature(partialSignatures, quorumSize)
 
 }
 

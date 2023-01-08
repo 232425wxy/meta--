@@ -100,8 +100,58 @@ func TestThreshold(t *testing.T) {
 	sigs := []*Signature{sig1, sig2, sig3, sig4}
 
 	cb := NewCryptoBLS12()
-	thresholdSig, err := cb.CreateThresholdSignature(sigs, h, 4)
+	thresholdSig, err := cb.CreateThresholdSignature(sigs, 3)
 	assert.Nil(t, err)
 
 	assert.True(t, cb.VerifyThresholdSignature(thresholdSig, h, 4))
+}
+
+func TestAnyThreshold(t *testing.T) {
+	private1, err := GeneratePrivateKey()
+	public1 := private1.PublicKey()
+	assert.Nil(t, err)
+
+	private2, err := GeneratePrivateKey()
+	public2 := private2.PublicKey()
+	assert.Nil(t, err)
+
+	private3, err := GeneratePrivateKey()
+	public3 := private3.PublicKey()
+	assert.Nil(t, err)
+
+	private4, err := GeneratePrivateKey()
+	public4 := private4.PublicKey()
+	assert.Nil(t, err)
+
+	private5, err := GeneratePrivateKey()
+	public5 := private5.PublicKey()
+	assert.Nil(t, err)
+
+	err = AddBLSPublicKey(public1.ToBytes())
+	assert.Nil(t, err)
+	err = AddBLSPublicKey(public2.ToBytes())
+	assert.Nil(t, err)
+	err = AddBLSPublicKey(public3.ToBytes())
+	assert.Nil(t, err)
+	err = AddBLSPublicKey(public4.ToBytes())
+	assert.Nil(t, err)
+	err = AddBLSPublicKey(public5.ToBytes())
+	assert.Nil(t, err)
+
+	msg := []byte("blockchain")
+	h := sha256.Sum(msg)
+
+	sig1, _ := private1.Sign(h)
+	sig2, _ := private2.Sign(h)
+	sig3, _ := private3.Sign(h)
+	sig4, _ := private4.Sign(h)
+	sig5, _ := private5.Sign(h)
+	_ = sig5
+
+	sig1234 := []*Signature{sig1, sig2, sig3, sig4}
+
+	cb := NewCryptoBLS12()
+	thresholdSig1234, err := cb.CreateThresholdSignature(sig1234, 4)
+
+	assert.True(t, cb.VerifyThresholdSignature(thresholdSig1234, h, 4))
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/proto/pbtypes"
+	"github.com/cosmos/gogoproto/proto"
 	"time"
 )
 
@@ -103,8 +104,32 @@ func PrepareFromProto(pb *pbtypes.Prepare) *Prepare {
 	}
 }
 
+func (p *Prepare) Hash() sha256.Hash {
+	pb := p.ToProto()
+	bz, err := proto.Marshal(pb)
+	if err != nil {
+		panic(err)
+	}
+	return sha256.Sum(bz)
+}
+
 type PrepareVote struct {
 	Vote *Vote `json:"vote"`
+}
+
+func NewPrepareVote(height int64, hash sha256.Hash, privateKey *bls12.PrivateKey) *PrepareVote {
+	vote := &PrepareVote{Vote: &Vote{
+		VoteType:  pbtypes.PrepareVoteType,
+		Height:    height,
+		ValueHash: hash,
+		Timestamp: time.Now(),
+	}}
+	var err error
+	vote.Vote.Signature, err = privateKey.Sign(vote.Vote.ValueHash)
+	if err != nil {
+		panic(err)
+	}
+	return vote
 }
 
 func (pv *PrepareVote) ToProto() *pbtypes.PrepareVote {

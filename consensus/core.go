@@ -56,6 +56,8 @@ func (c *Core) receiveRoutine() {
 	select {
 	case <-c.txsPool.TxsAvailable():
 
+	case tock := <-c.scheduledTicker.TockChan():
+		c.handleScheduled(tock, *c.stepInfo)
 	}
 }
 
@@ -75,6 +77,19 @@ func (c *Core) handleAvailableTxs() {
 		c.scheduleStep(duration, c.stepInfo.height, 0, NewRoundStep)
 	case NewRoundStep:
 		c.enterPrepareStep(c.stepInfo.height, 0)
+	}
+}
+
+func (c *Core) handleScheduled(info timeoutInfo, stepInfo StepInfo) {
+	if info.Height != stepInfo.height || info.Round < stepInfo.round || (info.Round == stepInfo.round && info.Step < stepInfo.step) {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	switch info.Step {
+	case NewViewStep:
+		c.enterNewRound(info.Height, 0)
 	}
 }
 
@@ -130,12 +145,8 @@ func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 		return
 	}
 	logger.Debug("Prepare message is valid, decide to vote for it")
-	c.voteForPrepare(height, round)
-}
-
-func (c *Core) voteForPrepare(height int64, round int16) {
-	logger := c.Logger.New("height", height, "round", round)
-
+	vote := types.NewPrepareVote(height, c.stepInfo.prepare.Hash(), c.privateKey)
+	c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
 }
 
 func (c *Core) createBlock() *types.Block {
