@@ -9,6 +9,7 @@ import (
 	"github.com/232425wxy/meta--/txspool"
 	"github.com/232425wxy/meta--/types"
 	"runtime/debug"
+	"time"
 )
 
 type Core struct {
@@ -21,6 +22,7 @@ type Core struct {
 	txsPool          *txspool.TxsPool
 	eventBus         *types.EventBus
 	stepInfo         *StepInfo
+	scheduledTicker  *TimeoutTicker
 }
 
 func (c *Core) SetLogger(logger log.Logger) {
@@ -44,3 +46,9 @@ func (c *Core) receiveRoutine() {
 
 	}
 }
+
+func (c *Core) schedule(duration time.Duration, height int64, round int16, step Step) {
+	c.scheduledTicker.ScheduleTimeout(timeoutInfo{Duration: duration, Height: height, Round: round, Step: step})
+}
+
+func ()

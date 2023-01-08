@@ -46,6 +46,10 @@ func (tt *TimeoutTicker) ScheduleTimeout(ti timeoutInfo) {
 	tt.tickChan <- ti
 }
 
+func (tt *TimeoutTicker) TockChan() <-chan timeoutInfo {
+	return tt.tockChan
+}
+
 func (tt *TimeoutTicker) stopTimer() {
 	if !tt.timer.Stop() { // 已经关闭了或者已经超时触发了
 		select {
