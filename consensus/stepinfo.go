@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	"github.com/232425wxy/meta--/event"
+	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/types"
 	"time"
 )
@@ -46,18 +46,18 @@ func (s Step) String() string {
 }
 
 type StepInfo struct {
-	height    int64
-	round     int16
-	step      Step
-	startTime time.Time
-	block     *types.Block
-	blockHash []byte
-	prepare   *types.Prepare
-	preCommit *types.PreCommit
+	height        int64
+	round         int16
+	step          Step
+	startTime     time.Time
+	block         *types.Block
+	previousBlock *types.Block
+	prepare       *types.Prepare
+	preCommit     *types.PreCommit
 }
 
-func (si *StepInfo) EventStepInfo() event.EventDataStep {
-	return event.EventDataStep{
+func (si *StepInfo) EventStepInfo() events.EventDataStep {
+	return events.EventDataStep{
 		Height: si.height,
 		Round:  si.round,
 		Step:   si.step.String(),

@@ -57,6 +57,10 @@ type ValidatorSet struct {
 	TotalVotingPower int64        `json:"total_voting_power"`
 }
 
+func (set *ValidatorSet) GetLeader() *Validator {
+	return set.Leader
+}
+
 func (set *ValidatorSet) Copy() *ValidatorSet {
 	cpy := &ValidatorSet{
 		Validators:       make([]*Validator, len(set.Validators)),
