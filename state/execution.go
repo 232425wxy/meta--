@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/crypto"
+	"github.com/232425wxy/meta--/event"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbabci"
 	"github.com/232425wxy/meta--/proxy"
@@ -15,7 +16,7 @@ type BlockExecutor struct {
 	store          *StoreState
 	proxyConsensus *proxy.AppConnConsensus
 	txsPool        *txspool.TxsPool
-	eventBus       *types.EventBus
+	eventBus       *event.EventBus
 	cfg            *config.TxsPoolConfig
 	logger         log.Logger
 }
@@ -29,7 +30,7 @@ func NewBlockExecutor(store *StoreState, consensus *proxy.AppConnConsensus, txsP
 	}
 }
 
-func (be *BlockExecutor) SetEventBUs(bus *types.EventBus) {
+func (be *BlockExecutor) SetEventBUs(bus *event.EventBus) {
 	be.eventBus = bus
 }
 
@@ -50,7 +51,7 @@ func (be *BlockExecutor) ApplyBlock(state *State, block *types.Block) (*State, e
 	if err = be.store.SaveState(state); err != nil {
 		return state, err
 	}
-	if err = be.eventBus.PublishEventNewBlock(types.EventDataNewBlock{
+	if err = be.eventBus.PublishEventNewBlock(event.EventDataNewBlock{
 		Block:            block,
 		ResultBeginBlock: responses.BeginBlock,
 		ResultEndBlock:   responses.EndBlock,
@@ -58,7 +59,7 @@ func (be *BlockExecutor) ApplyBlock(state *State, block *types.Block) (*State, e
 		be.logger.Error("failed to publish new block", "err", err)
 	}
 	for i, tx := range block.Body.Txs {
-		if err = be.eventBus.PublishEventTx(types.EventDataTx{
+		if err = be.eventBus.PublishEventTx(event.EventDataTx{
 			Height:            block.Header.Height,
 			Tx:                tx,
 			ResponseDeliverTx: responses.DeliverTxs[i],
@@ -69,7 +70,7 @@ func (be *BlockExecutor) ApplyBlock(state *State, block *types.Block) (*State, e
 	validatorUpdates := responses.EndBlock.ValidatorUpdates
 	if len(validatorUpdates) > 0 {
 		be.logger.Info("update validators", "num_validators_update", len(validatorUpdates))
-		if err = be.eventBus.PublishEventValidatorUpdates(types.EventDataValidatorUpdates{ValidatorUpdates: validatorUpdates}); err != nil {
+		if err = be.eventBus.PublishEventValidatorUpdates(event.EventDataValidatorUpdates{ValidatorUpdates: validatorUpdates}); err != nil {
 			be.logger.Error("failed to publish event validator updates", "err", err)
 		}
 	}

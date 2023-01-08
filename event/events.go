@@ -1,4 +1,4 @@
-package types
+package event
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"github.com/232425wxy/meta--/common/service"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbabci"
+	"github.com/232425wxy/meta--/types"
 )
 
 const (
@@ -25,19 +26,25 @@ const (
 type EventData interface{}
 
 type EventDataNewBlock struct {
-	Block            *Block                     `json:"block"`
+	Block            *types.Block               `json:"block"`
 	ResultBeginBlock *pbabci.ResponseBeginBlock `json:"result_begin_block"`
 	ResultEndBlock   *pbabci.ResponseEndBlock   `json:"result_end_block"`
 }
 
 type EventDataTx struct {
-	Height            int64 `json:"height"`
-	Tx                Tx    `json:"tx"`
+	Height            int64    `json:"height"`
+	Tx                types.Tx `json:"tx"`
 	ResponseDeliverTx *pbabci.ResponseDeliverTx
 }
 
 type EventDataValidatorUpdates struct {
 	ValidatorUpdates []*pbabci.ValidatorUpdate
+}
+
+type EventDataStep struct {
+	Height int64  `json:"height"`
+	Round  int16  `json:"round"`
+	Step   string `json:"step"`
 }
 
 type EventBus struct {
@@ -105,5 +112,10 @@ func (bus *EventBus) PublishEventTx(data EventDataTx) error {
 
 func (bus *EventBus) PublishEventValidatorUpdates(data EventDataValidatorUpdates) error {
 	events := map[string][]string{EventKey: {EventValidatorUpdates}}
+	return bus.server.PublishWithEvents(data, events)
+}
+
+func (bus *EventBus) PublishEventNewRoundStep(data EventDataStep) error {
+	events := map[string][]string{EventKey: {EventNewRoundStep}}
 	return bus.server.PublishWithEvents(data, events)
 }
