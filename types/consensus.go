@@ -156,9 +156,20 @@ type PreCommit struct {
 	Type               pbtypes.ConsensusMessageType `json:"type"`
 	ID                 crypto.ID                    `json:"ID"`
 	Height             int64                        `json:"height"`
-	PrepareHash        sha256.Hash                  `json:"prepare_hash"` // 这个字段的值等于 Hash("Prepare"||ValueHash)
+	ValueHash          sha256.Hash                  `json:"value_hash"`
 	Timestamp          time.Time                    `json:"timestamp"`
-	AggregateSignature *bls12.AggregateSignature    `json:"aggregate_signature"`
+	AggregateSignature *bls12.AggregateSignature    `json:"aggregate_signature"` // 这个签名是对PrepareVote消息的聚合签名
+}
+
+func NewPreCommit(agg *bls12.AggregateSignature, hash sha256.Hash, id crypto.ID, height int64) *PreCommit {
+	return &PreCommit{
+		Type:               pbtypes.PreCommitType,
+		ID:                 id,
+		Height:             height,
+		ValueHash:          hash,
+		Timestamp:          time.Now(),
+		AggregateSignature: agg,
+	}
 }
 
 func (pc *PreCommit) ToProto() *pbtypes.PreCommit {
@@ -169,7 +180,7 @@ func (pc *PreCommit) ToProto() *pbtypes.PreCommit {
 		Type:               pc.Type,
 		ID:                 string(pc.ID),
 		Height:             pc.Height,
-		PrepareHash:        pc.PrepareHash[:],
+		PrepareHash:        pc.ValueHash[:],
 		Timestamp:          pc.Timestamp,
 		AggregateSignature: pc.AggregateSignature.ToProto(),
 	}
@@ -185,7 +196,7 @@ func PreCommitFromProto(pb *pbtypes.PreCommit) *PreCommit {
 		Type:               pb.Type,
 		ID:                 crypto.ID(pb.ID),
 		Height:             pb.Height,
-		PrepareHash:        hash,
+		ValueHash:          hash,
 		Timestamp:          pb.Timestamp,
 		AggregateSignature: bls12.AggregateSignatureFromProto(pb.AggregateSignature),
 	}
@@ -223,7 +234,7 @@ type Commit struct {
 	Type               pbtypes.ConsensusMessageType `json:"type"`
 	ID                 crypto.ID                    `json:"ID"`
 	Height             int64                        `json:"height"`
-	PreCommitHash      sha256.Hash                  `json:"block_hash"`
+	ValueHash          sha256.Hash                  `json:"value_hash"`
 	Timestamp          time.Time                    `json:"timestamp"`
 	AggregateSignature *bls12.AggregateSignature    `json:"aggregate_signature"`
 }
@@ -236,7 +247,7 @@ func (c *Commit) ToProto() *pbtypes.Commit {
 		Type:               c.Type,
 		ID:                 string(c.ID),
 		Height:             c.Height,
-		PreCommitHash:      c.PreCommitHash[:],
+		PreCommitHash:      c.ValueHash[:],
 		Timestamp:          c.Timestamp,
 		AggregateSignature: c.AggregateSignature.ToProto(),
 	}
@@ -252,7 +263,7 @@ func CommitFromProto(pb *pbtypes.Commit) *Commit {
 		Type:               pb.Type,
 		ID:                 crypto.ID(pb.ID),
 		Height:             pb.Height,
-		PreCommitHash:      hash,
+		ValueHash:          hash,
 		Timestamp:          pb.Timestamp,
 		AggregateSignature: bls12.AggregateSignatureFromProto(pb.AggregateSignature),
 	}
@@ -290,7 +301,7 @@ type Decide struct {
 	Type               pbtypes.ConsensusMessageType `json:"type"`
 	ID                 crypto.ID                    `json:"ID"`
 	Height             int64                        `json:"height"`
-	CommitHash         sha256.Hash                  `json:"commit_hash"`
+	ValueHash          sha256.Hash                  `json:"value_hash"`
 	Timestamp          time.Time                    `json:"timestamp"`
 	AggregateSignature *bls12.AggregateSignature
 }
@@ -303,7 +314,7 @@ func (d *Decide) ToProto() *pbtypes.Decide {
 		Type:               d.Type,
 		ID:                 string(d.ID),
 		Height:             d.Height,
-		CommitHash:         d.CommitHash[:],
+		CommitHash:         d.ValueHash[:],
 		Timestamp:          d.Timestamp,
 		AggregateSignature: d.AggregateSignature.ToProto(),
 	}
@@ -319,7 +330,7 @@ func DecideFromProto(pb *pbtypes.Decide) *Decide {
 		Type:               pb.Type,
 		ID:                 crypto.ID(pb.ID),
 		Height:             pb.Height,
-		CommitHash:         hash,
+		ValueHash:          hash,
 		Timestamp:          pb.Timestamp,
 		AggregateSignature: bls12.AggregateSignatureFromProto(pb.AggregateSignature),
 	}
@@ -327,4 +338,13 @@ func DecideFromProto(pb *pbtypes.Decide) *Decide {
 
 func (d *Decide) ValidateBasic() error {
 	return nil
+}
+
+func GeneratePrepareVoteValueHash(blockHash []byte) sha256.Hash {
+	value := append([]byte("PrepareVote-"), blockHash...)
+	return sha256.Sum(value)
+}
+
+func GeneratePreCommitValueHash(blockHash []byte) sha256.Hash {
+	return GeneratePrepareVoteValueHash(blockHash)
 }

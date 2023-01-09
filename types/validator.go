@@ -79,6 +79,25 @@ func NewValidatorSet(validators []*Validator) *ValidatorSet {
 	return set
 }
 
+func (set *ValidatorSet) GetValidatorByID(id crypto.ID) *Validator {
+	for _, val := range set.Validators {
+		if val.ID == id {
+			return val
+		}
+	}
+	return nil
+}
+
+func (set *ValidatorSet) Major23() int64 {
+	set.TotalVotingPower = 0
+	for _, val := range set.Validators {
+		set.TotalVotingPower += val.VotingPower
+	}
+	major23 := set.TotalVotingPower * 2
+	major23 /= 3
+	return major23
+}
+
 func (set *ValidatorSet) Update(validatorUpdates []*pbabci.ValidatorUpdate) {
 	for _, update := range validatorUpdates {
 		var exists bool = false

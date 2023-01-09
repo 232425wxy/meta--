@@ -100,10 +100,10 @@ func TestThreshold(t *testing.T) {
 	sigs := []*Signature{sig1, sig2, sig3, sig4}
 
 	cb := NewCryptoBLS12()
-	thresholdSig, err := cb.CreateThresholdSignature(sigs, 3)
+	thresholdSig, err := cb.CreateThresholdSignature(sigs)
 	assert.Nil(t, err)
 
-	assert.True(t, cb.VerifyThresholdSignature(thresholdSig, h, 4))
+	assert.True(t, cb.VerifyThresholdSignature(thresholdSig, h))
 }
 
 func TestAnyThreshold(t *testing.T) {
@@ -151,7 +151,7 @@ func TestAnyThreshold(t *testing.T) {
 	sig1234 := []*Signature{sig1, sig2, sig3, sig4}
 
 	cb := NewCryptoBLS12()
-	thresholdSig1234, err := cb.CreateThresholdSignature(sig1234, 4)
+	thresholdSig1234, err := cb.CreateThresholdSignature(sig1234)
 
-	assert.True(t, cb.VerifyThresholdSignature(thresholdSig1234, h, 4))
+	assert.True(t, cb.VerifyThresholdSignature(thresholdSig1234, h))
 }

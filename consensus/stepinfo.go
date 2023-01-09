@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"github.com/232425wxy/meta--/crypto"
+	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/types"
 	"time"
@@ -86,5 +87,39 @@ type HeightVoteSet struct {
 	height        int64
 	round         int16
 	validators    *types.ValidatorSet
-	roundVoteSets map[int16]RoundVoteSet
+	roundVoteSets map[int16]*RoundVoteSet // round -> RoundVoteSet
+}
+
+func (hvs *HeightVoteSet) AddPrepareVote(round int16, vote *types.PrepareVote) {
+	if hvs.roundVoteSets == nil {
+		hvs.roundVoteSets = make(map[int16]*RoundVoteSet)
+	}
+	roundVoteSet := hvs.roundVoteSets[round]
+	if roundVoteSet == nil {
+		roundVoteSet = &RoundVoteSet{
+			PrepareVoteSet:   make(map[crypto.ID]*types.PrepareVote),
+			PreCommitVoteSet: make(map[crypto.ID]*types.PreCommitVote),
+			CommitVoteSet:    make(map[crypto.ID]*types.CommitVote),
+		}
+	}
+	roundVoteSet.PrepareVoteSet[vote.Vote.Signature.Signer()] = vote
+}
+
+func (hvs *HeightVoteSet) CheckPrepareVoteIsComplete(round int16, cb *bls12.CryptoBLS12) (bool, *bls12.AggregateSignature) {
+	roundVoteSet := hvs.roundVoteSets[round]
+	var hasVoePower int64 = 0
+	sigs := make([]*bls12.Signature, 0)
+	for id, vote := range roundVoteSet.PrepareVoteSet {
+		validator := hvs.validators.GetValidatorByID(id)
+		hasVoePower += validator.VotingPower
+		sigs = append(sigs, vote.Vote.Signature)
+	}
+	if hasVoePower >= hvs.validators.Major23() {
+		aggregateSignature, err := cb.CreateThresholdSignature(sigs)
+		if err != nil {
+			return false, nil
+		}
+		return true, aggregateSignature
+	}
+	return false, nil
 }

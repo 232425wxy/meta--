@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/232425wxy/meta--/common/service"
 	"github.com/232425wxy/meta--/config"
@@ -9,6 +10,7 @@ import (
 	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/log"
+	"github.com/232425wxy/meta--/proto/pbtypes"
 	"github.com/232425wxy/meta--/state"
 	"github.com/232425wxy/meta--/txspool"
 	"github.com/232425wxy/meta--/types"
@@ -35,6 +37,7 @@ type Core struct {
 	internalMsgQueue chan MessageInfo
 	peerMsgQueue     chan MessageInfo
 	mu               sync.RWMutex
+	cryptoBLS12      *bls12.CryptoBLS12
 }
 
 func (c *Core) SetLogger(logger log.Logger) {
@@ -58,6 +61,8 @@ func (c *Core) receiveRoutine() {
 
 	case tock := <-c.scheduledTicker.TockChan():
 		c.handleScheduled(tock, *c.stepInfo)
+	case mi := <-c.internalMsgQueue:
+		c.handleMsg(mi)
 	}
 }
 
@@ -109,9 +114,66 @@ func (c *Core) handleMsg(mi MessageInfo) {
 
 	switch msg := m.(type) {
 	case *types.Prepare:
-		err = c.setPrepare(msg)
-
+		err = c.handlePrepare(msg)
+	case *types.PrepareVote:
+		err = c.handlePrepareVote(msg)
 	}
+}
+
+func (c *Core) handlePrepare(prepare *types.Prepare) error {
+	if c.stepInfo.prepare != nil {
+		return nil
+	}
+	if prepare.Height != c.stepInfo.height {
+		return nil
+	}
+	hash := sha256.Hash{}
+	copy(hash[:], prepare.Block.Header.Hash)
+	ok := c.validators.GetLeader().PublicKey.Verify(prepare.Signature, hash)
+	if !ok {
+		return fmt.Errorf("node %s sent an invalid prepare message to me", prepare.Signature.Signer())
+	}
+	c.stepInfo.prepare = prepare
+	if c.validators.GetLeader().ID != c.publicKey.ToID() {
+		c.Logger.Info("received prepare message, plan to vote for it", "from", prepare.Signature.Signer())
+		// 如果我自己不是主节点，那么在收到Prepare消息后，就应该进入PREPARE_VOTE阶段
+		c.enterPrepareVoteStep(c.stepInfo.height, c.stepInfo.round)
+	}
+	return nil
+}
+
+func (c *Core) handlePrepareVote(vote *types.PrepareVote) error {
+	if c.validators.GetLeader().ID != c.publicKey.ToID() {
+		// 不是主节点，直接忽略
+		return nil
+	}
+	if vote.Vote.Height != c.stepInfo.height {
+		return fmt.Errorf("invalid PrepareVote message, my height: %d, message's height: %d", c.stepInfo.height, vote.Vote.Height)
+	}
+	if vote.Vote.VoteType != pbtypes.PrepareVoteType {
+		return fmt.Errorf("invalid vote type, want %s, got %s", pbtypes.PrepareVoteType.String(), vote.Vote.VoteType.String())
+	}
+	validator := c.validators.GetValidatorByID(vote.Vote.Signature.Signer())
+	if validator == nil {
+		return fmt.Errorf("cannot find this validator: %s", vote.Vote.Signature.Signer())
+	}
+	valueHash := types.GeneratePrepareVoteValueHash(c.stepInfo.block.Header.Hash)
+	equal := bytes.Equal(valueHash[:], vote.Vote.ValueHash[:])
+	if !equal {
+		return fmt.Errorf("validator %s vote for different block", vote.Vote.Signature.Signer())
+	}
+	ok := validator.PublicKey.Verify(vote.Vote.Signature, vote.Vote.ValueHash)
+	if !ok {
+		return fmt.Errorf("validator %s sent invalid PrepareVote message to me", vote.Vote.Signature.Signer())
+	}
+	c.stepInfo.heightVoteSet.AddPrepareVote(c.stepInfo.round, vote)
+	ok, aggregateSignature := c.stepInfo.heightVoteSet.CheckPrepareVoteIsComplete(c.stepInfo.round, c.cryptoBLS12)
+	if ok {
+		// 收集齐了副本节点对Prepare消息的投票，那么开始构造PreCommit消息
+		preCommit := types.NewPreCommit(aggregateSignature, types.GeneratePreCommitValueHash(c.stepInfo.block.Header.Hash), c.publicKey.ToID(), c.stepInfo.height)
+		c.sendInternalMessage(MessageInfo{Msg: preCommit, NodeID: ""})
+	}
+	return nil
 }
 
 func (c *Core) enterNewRound(height int64, round int16) {
@@ -187,7 +249,7 @@ func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 		return
 	}
 	logger.Debug("Prepare message is valid, decide to vote for it")
-	vote := types.NewPrepareVote(height, c.stepInfo.prepare.Hash(), c.privateKey)
+	vote := types.NewPrepareVote(height, types.GeneratePrepareVoteValueHash(c.stepInfo.prepare.Block.Header.Hash), c.privateKey)
 	c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
 }
 
@@ -202,24 +264,6 @@ func (c *Core) createBlock() *types.Block {
 		c.Logger.Error("PREPARE step: cannot propose Prepare message")
 		return nil
 	}
-}
-
-func (c *Core) setPrepare(prepare *types.Prepare) error {
-	if c.stepInfo.prepare != nil {
-		return nil
-	}
-	if prepare.Height != c.stepInfo.height {
-		return nil
-	}
-	hash := sha256.Hash{}
-	copy(hash[:], prepare.Block.Header.Hash)
-	ok := c.validators.GetLeader().PublicKey.Verify(prepare.Signature, hash)
-	if !ok {
-		return fmt.Errorf("node %s sent an invalid prepare message to me", prepare.Signature.Signer())
-	}
-	c.stepInfo.prepare = prepare
-	c.Logger.Info("received prepare message", "from", prepare.Signature.Signer())
-	return nil
 }
 
 func (c *Core) hasPrepare() bool {

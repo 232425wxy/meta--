@@ -2176,7 +2176,7 @@ func (m *PreCommit) Unmarshal(dAtA []byte) error {
 			}
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PrepareHash", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ValueHash", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -2485,7 +2485,7 @@ func (m *Commit) Unmarshal(dAtA []byte) error {
 			}
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PreCommitHash", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ValueHash", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -2794,7 +2794,7 @@ func (m *Decide) Unmarshal(dAtA []byte) error {
 			}
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CommitHash", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ValueHash", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
