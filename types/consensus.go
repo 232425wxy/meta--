@@ -303,6 +303,21 @@ type CommitVote struct {
 	Vote *Vote `json:"vote"`
 }
 
+func NewCommitVote(height int64, hash sha256.Hash, privateKey *bls12.PrivateKey) *CommitVote {
+	vote := &CommitVote{Vote: &Vote{
+		VoteType:  pbtypes.CommitVoteType,
+		Height:    height,
+		ValueHash: hash,
+		Timestamp: time.Now(),
+	}}
+	var err error
+	vote.Vote.Signature, err = privateKey.Sign(vote.Vote.ValueHash)
+	if err != nil {
+		panic(err)
+	}
+	return vote
+}
+
 func (cv *CommitVote) ToProto() *pbtypes.CommitVote {
 	if cv == nil {
 		return nil
@@ -382,4 +397,9 @@ func GeneratePreCommitVoteValueHash(blockHash []byte) sha256.Hash {
 
 func GenerateCommitValueHash(blockHash []byte) sha256.Hash {
 	return GeneratePreCommitVoteValueHash(blockHash)
+}
+
+func GenerateCommitVoteValueHash(blockHash []byte) sha256.Hash {
+	value := append([]byte("CommitVote-"), blockHash...)
+	return sha256.Sum(value)
 }

@@ -56,6 +56,7 @@ type StepInfo struct {
 	previousBlock *types.Block
 	prepare       *types.Prepare
 	preCommit     *types.PreCommit
+	commit        *types.Commit
 	heightVoteSet *HeightVoteSet
 	validators    *types.ValidatorSet
 }

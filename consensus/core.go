@@ -117,6 +117,8 @@ func (c *Core) handleMsg(mi MessageInfo) {
 		err = c.handlePreCommit(msg)
 	case *types.PreCommitVote:
 		err = c.handlePreCommitVote(msg)
+	case *types.Commit:
+		err = c.handleCommit(msg)
 	}
 }
 
@@ -200,7 +202,7 @@ func (c *Core) handlePreCommit(preCommit *types.PreCommit) error {
 	}
 	c.stepInfo.preCommit = preCommit
 	if c.validators.GetLeader().ID != c.publicKey.ToID() {
-		c.Logger.Info("received PreCommit message, plan to vote for it", "from", preCommit.ID)
+		c.Logger.Info("received PreCommit message, plan to vote for it", "PreCommit message from", preCommit.ID)
 	}
 	c.enterPreCommitVoteStep(c.stepInfo.height, c.stepInfo.round)
 	return nil
@@ -234,6 +236,36 @@ func (c *Core) handlePreCommitVote(vote *types.PreCommitVote) error {
 	if ok {
 		c.enterCommit(c.stepInfo.height, c.stepInfo.round)
 	}
+	return nil
+}
+
+func (c *Core) handleCommit(commit *types.Commit) error {
+	if c.stepInfo.commit != nil { // 已经收到了
+		return nil
+	}
+	if c.stepInfo.height != commit.Height {
+		return nil
+	}
+	if c.stepInfo.block == nil {
+		return nil
+	}
+	if commit.ID != c.validators.GetLeader().ID {
+		return fmt.Errorf("Commit message is not from leader %s at height %d", c.validators.GetLeader().ID, c.stepInfo.height)
+	}
+	hash := types.GenerateCommitValueHash(c.stepInfo.block.Header.Hash)
+	equal := bytes.Equal(hash[:], commit.ValueHash[:])
+	if !equal {
+		return fmt.Errorf("leader %s sent invalid Commit message to me", commit.ID)
+	}
+	ok := c.cryptoBLS12.VerifyThresholdSignature(commit.AggregateSignature, hash)
+	if !ok {
+		return fmt.Errorf("leader %s sent invalid Commit message to me, aggregated signature is wrong", commit.ID)
+	}
+	c.stepInfo.commit = commit
+	if c.validators.GetLeader().ID != c.publicKey.ToID() {
+		c.Logger.Info("received PreCommit message, plan to vote for it", "Commit message from", commit.ID)
+	}
+	c.enterCommitVote(c.stepInfo.height, c.stepInfo.round)
 	return nil
 }
 
@@ -301,7 +333,9 @@ func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 		c.stepInfo.step = PrepareVoteStep
 		c.newStep()
 	}()
-
+	if c.validators.GetLeader().ID == c.publicKey.ToID() {
+		return
+	}
 	if !c.hasPrepare() {
 		logger.Error("PREPARE_VOTE step: Prepare message is nil")
 		return
@@ -331,6 +365,7 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= PrepareVoteStep) {
 		logger.Warn("entering PRE_COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		return
 	}
 	logger.Info("entering PRE_COMMIT_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
@@ -338,6 +373,9 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 		c.stepInfo.round = round
 		c.stepInfo.step = PreCommitVoteStep
 	}()
+	if c.validators.GetLeader().ID == c.publicKey.ToID() {
+		return
+	}
 	if !c.hasPreCommit() {
 		logger.Error("PRE_COMMIT_VOTE step: PreCommit message is nil")
 		return
@@ -349,7 +387,7 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 
 func (c *Core) enterCommit(height int64, round int16) {
 	logger := c.Logger.New("height", height, "round", round)
-	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= PreCommitStep) {
+	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= CommitStep) {
 		logger.Warn("entering COMMIT step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	}
 	logger.Info("entering COMMIT step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
@@ -361,6 +399,29 @@ func (c *Core) enterCommit(height int64, round int16) {
 	agg := c.stepInfo.heightVoteSet.CreateThresholdSigForPreCommitVote(round, c.cryptoBLS12)
 	commit := types.NewCommit(agg, types.GenerateCommitValueHash(c.stepInfo.block.Header.Hash), c.publicKey.ToID(), height)
 	c.sendInternalMessage(MessageInfo{Msg: commit, NodeID: ""})
+}
+
+func (c *Core) enterCommitVote(height int64, round int16) {
+	logger := c.Logger.New("height", height, "round", round)
+	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= CommitVoteStep) {
+		logger.Warn("entering COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	}
+	logger.Info("entering PRE_COMMIT_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	defer func() {
+		c.stepInfo.height = height
+		c.stepInfo.round = round
+		c.stepInfo.step = CommitVoteStep
+	}()
+	if c.validators.GetLeader().ID == c.publicKey.ToID() {
+		return
+	}
+	if !c.hasCommit() {
+		logger.Error("COMMIT_VOTE step: Commit message is nil")
+		return
+	}
+	logger.Debug("Commit message is valid, decide to vote for it")
+	vote := types.NewCommitVote(height, types.GenerateCommitVoteValueHash(c.stepInfo.block.Header.Hash), c.privateKey)
+	c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
 }
 
 func (c *Core) createBlock() *types.Block {
@@ -382,6 +443,10 @@ func (c *Core) hasPrepare() bool {
 
 func (c *Core) hasPreCommit() bool {
 	return c.stepInfo.preCommit != nil
+}
+
+func (c *Core) hasCommit() bool {
+	return c.stepInfo.commit != nil
 }
 
 func (c *Core) newStep() {
