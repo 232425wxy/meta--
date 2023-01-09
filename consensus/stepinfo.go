@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/types"
 	"time"
@@ -9,7 +10,7 @@ import (
 type Step int8
 
 const (
-	NewViewStep Step = iota
+	NewHeightStep Step = iota
 	NewRoundStep
 	PrepareStep
 	PrepareVoteStep
@@ -22,8 +23,8 @@ const (
 
 func (s Step) String() string {
 	switch s {
-	case NewViewStep:
-		return "NEW_VIEW_STEP 1/9"
+	case NewHeightStep:
+		return "NEW_HEIGHT_STEP 1/9"
 	case NewRoundStep:
 		return "NEW_ROUND_STEP 2/9"
 	case PrepareStep:
@@ -54,6 +55,8 @@ type StepInfo struct {
 	previousBlock *types.Block
 	prepare       *types.Prepare
 	preCommit     *types.PreCommit
+	heightVoteSet *HeightVoteSet
+	validators    *types.ValidatorSet
 }
 
 func (si *StepInfo) EventStepInfo() events.EventDataStep {
@@ -62,4 +65,26 @@ func (si *StepInfo) EventStepInfo() events.EventDataStep {
 		Round:  si.round,
 		Step:   si.step.String(),
 	}
+}
+
+func (si *StepInfo) EventNewRound() events.EventDataNewRound {
+	return events.EventDataNewRound{
+		Height:   si.height,
+		Round:    si.round,
+		Step:     si.step.String(),
+		LeaderID: si.validators.GetLeader().ID,
+	}
+}
+
+type RoundVoteSet struct {
+	PrepareVoteSet   map[crypto.ID]*types.PrepareVote
+	PreCommitVoteSet map[crypto.ID]*types.PreCommitVote
+	CommitVoteSet    map[crypto.ID]*types.CommitVote
+}
+
+type HeightVoteSet struct {
+	height        int64
+	round         int16
+	validators    *types.ValidatorSet
+	roundVoteSets map[int16]RoundVoteSet
 }

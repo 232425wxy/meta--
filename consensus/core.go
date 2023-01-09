@@ -69,7 +69,7 @@ func (c *Core) handleAvailableTxs() {
 		return
 	}
 	switch c.stepInfo.step {
-	case NewViewStep:
+	case NewHeightStep:
 		if c.isFirstBlock(c.stepInfo.height) {
 			return
 		}
@@ -88,9 +88,50 @@ func (c *Core) handleScheduled(info timeoutInfo, stepInfo StepInfo) {
 	defer c.mu.Unlock()
 
 	switch info.Step {
-	case NewViewStep:
+	case NewHeightStep:
 		c.enterNewRound(info.Height, 0)
+	case NewRoundStep:
+		c.enterPrepareStep(info.Height, 0)
+	case PrepareStep:
+		if err := c.eventBus.PublishEventTimeoutToProposePrepare(c.stepInfo.EventStepInfo()); err != nil {
+			c.Logger.Error("failed to publish timeout to propose prepare", "err", err)
+		}
+		c.enterPrepareVoteStep(info.Height, info.Round) // TODO 存疑
+
 	}
+}
+
+func (c *Core) handleMsg(mi MessageInfo) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	m, nodeID := mi.Msg, mi.NodeID
+	var err error
+
+	switch msg := m.(type) {
+	case *types.Prepare:
+		err = c.setPrepare(msg)
+
+	}
+}
+
+func (c *Core) enterNewRound(height int64, round int16) {
+	logger := c.Logger.New("height", height, "round", round)
+	if c.stepInfo.height != height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step != NewHeightStep) {
+		logger.Warn("entering NEW ROUND step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		return
+	}
+	logger.Info("entering NEW ROUND step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	c.stepInfo.round = round
+	c.stepInfo.step = NewRoundStep
+	if round != 0 {
+		c.stepInfo.prepare = nil
+		c.stepInfo.block = nil
+	}
+	c.stepInfo.heightVoteSet.round = round + 1
+	if err := c.eventBus.PublishEventNewRound(c.stepInfo.EventNewRound()); err != nil {
+		logger.Error("failed to publish new round event", "err", err)
+	}
+	c.enterPrepareStep(height, round)
 }
 
 func (c *Core) enterPrepareStep(height int64, round int16) {
@@ -109,6 +150,7 @@ func (c *Core) enterPrepareStep(height int64, round int16) {
 			c.enterPrepareVoteStep(height, round)
 		}
 	}()
+	// 非leader节点在将来收到prepare消息后会将这个超时时间顶替掉
 	c.scheduleStep(c.cfg.TimeoutPrepare, height, round, PrepareStep) // 计划提出Prepare消息
 	if c.validators.GetLeader().ID == c.publicKey.ToID() {
 		logger.Debug("leader is me, it's my responsibility to propose Prepare message", "validator_id", c.publicKey.ToID())
@@ -162,6 +204,24 @@ func (c *Core) createBlock() *types.Block {
 	}
 }
 
+func (c *Core) setPrepare(prepare *types.Prepare) error {
+	if c.stepInfo.prepare != nil {
+		return nil
+	}
+	if prepare.Height != c.stepInfo.height {
+		return nil
+	}
+	hash := sha256.Hash{}
+	copy(hash[:], prepare.Block.Header.Hash)
+	ok := c.validators.GetLeader().PublicKey.Verify(prepare.Signature, hash)
+	if !ok {
+		return fmt.Errorf("node %s sent an invalid prepare message to me", prepare.Signature.Signer())
+	}
+	c.stepInfo.prepare = prepare
+	c.Logger.Info("received prepare message", "from", prepare.Signature.Signer())
+	return nil
+}
+
 func (c *Core) hasPrepare() bool {
 	return c.stepInfo.prepare != nil
 }
@@ -187,7 +247,7 @@ func (c *Core) scheduleStep(duration time.Duration, height int64, round int16, s
 
 func (c *Core) scheduleRound0(stepInfo *StepInfo) {
 	duration := stepInfo.startTime.Sub(time.Now())
-	c.scheduledTicker.ScheduleTimeout(timeoutInfo{Duration: duration, Height: stepInfo.height, Round: 0, Step: NewViewStep})
+	c.scheduledTicker.ScheduleTimeout(timeoutInfo{Duration: duration, Height: stepInfo.height, Round: 0, Step: NewHeightStep})
 }
 
 func (c *Core) sendInternalMessage(info MessageInfo) {

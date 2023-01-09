@@ -5,6 +5,7 @@ import (
 	"github.com/232425wxy/meta--/common/pubsub"
 	"github.com/232425wxy/meta--/common/pubsub/query"
 	"github.com/232425wxy/meta--/common/service"
+	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbabci"
 	"github.com/232425wxy/meta--/types"
@@ -45,6 +46,13 @@ type EventDataStep struct {
 	Height int64  `json:"height"`
 	Round  int16  `json:"round"`
 	Step   string `json:"step"`
+}
+
+type EventDataNewRound struct {
+	Height   int64     `json:"height"`
+	Round    int16     `json:"round"`
+	Step     string    `json:"step"`
+	LeaderID crypto.ID `json:"leader_id"`
 }
 
 type EventBus struct {
@@ -117,5 +125,15 @@ func (bus *EventBus) PublishEventValidatorUpdates(data EventDataValidatorUpdates
 
 func (bus *EventBus) PublishEventNewRoundStep(data EventDataStep) error {
 	events := map[string][]string{EventKey: {EventNewRoundStep}}
+	return bus.server.PublishWithEvents(data, events)
+}
+
+func (bus *EventBus) PublishEventNewRound(data EventDataNewRound) error {
+	events := map[string][]string{EventKey: {EventNewRound}}
+	return bus.server.PublishWithEvents(data, events)
+}
+
+func (bus *EventBus) PublishEventTimeoutToProposePrepare(data EventDataStep) error {
+	events := map[string][]string{EventKey: {EventTimeoutToProposePrepare}}
 	return bus.server.PublishWithEvents(data, events)
 }
