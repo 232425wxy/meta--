@@ -2,12 +2,10 @@ package events
 
 import (
 	"fmt"
-	"github.com/232425wxy/meta--/common/service"
 	"sync"
 )
 
 type EventSwitch struct {
-	service.BaseService
 	mu         sync.RWMutex
 	eventCells map[string]*eventCell     // event -> eventCell
 	listeners  map[string]*eventListener // listener name -> eventListener
@@ -30,9 +28,8 @@ type EventCallback func(data EventData)
 
 func NewEventSwitch() *EventSwitch {
 	return &EventSwitch{
-		BaseService: *service.NewBaseService(nil, "EventSwitch"),
-		eventCells:  make(map[string]*eventCell),
-		listeners:   make(map[string]*eventListener),
+		eventCells: make(map[string]*eventCell),
+		listeners:  make(map[string]*eventListener),
 	}
 }
 

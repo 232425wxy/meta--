@@ -210,6 +210,21 @@ type PreCommitVote struct {
 	Vote *Vote `json:"vote"`
 }
 
+func NewPreCommitVote(height int64, hash sha256.Hash, privateKey *bls12.PrivateKey) *PreCommitVote {
+	vote := &PreCommitVote{Vote: &Vote{
+		VoteType:  pbtypes.PrepareVoteType,
+		Height:    height,
+		ValueHash: hash,
+		Timestamp: time.Now(),
+	}}
+	var err error
+	vote.Vote.Signature, err = privateKey.Sign(vote.Vote.ValueHash)
+	if err != nil {
+		panic(err)
+	}
+	return vote
+}
+
 func (pcv *PreCommitVote) ToProto() *pbtypes.PreCommitVote {
 	if pcv == nil {
 		return nil
@@ -237,6 +252,17 @@ type Commit struct {
 	ValueHash          sha256.Hash                  `json:"value_hash"`
 	Timestamp          time.Time                    `json:"timestamp"`
 	AggregateSignature *bls12.AggregateSignature    `json:"aggregate_signature"`
+}
+
+func NewCommit(agg *bls12.AggregateSignature, hash sha256.Hash, id crypto.ID, height int64) *Commit {
+	return &Commit{
+		Type:               pbtypes.CommitType,
+		ID:                 id,
+		Height:             height,
+		ValueHash:          hash,
+		Timestamp:          time.Now(),
+		AggregateSignature: agg,
+	}
 }
 
 func (c *Commit) ToProto() *pbtypes.Commit {
@@ -347,4 +373,13 @@ func GeneratePrepareVoteValueHash(blockHash []byte) sha256.Hash {
 
 func GeneratePreCommitValueHash(blockHash []byte) sha256.Hash {
 	return GeneratePrepareVoteValueHash(blockHash)
+}
+
+func GeneratePreCommitVoteValueHash(blockHash []byte) sha256.Hash {
+	value := append([]byte("PreCommitVote-"), blockHash...)
+	return sha256.Sum(value)
+}
+
+func GenerateCommitValueHash(blockHash []byte) sha256.Hash {
+	return GeneratePreCommitVoteValueHash(blockHash)
 }

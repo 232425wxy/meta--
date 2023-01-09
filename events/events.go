@@ -104,10 +104,6 @@ func (bus *EventBus) UnsubscribeAll(subscriber string) error {
 	return bus.server.UnsubscribeAll(subscriber)
 }
 
-func (bus *EventBus) Publish(event string, data EventData) error {
-	return bus.server.PublishWithEvents(data, map[string][]string{EventKey: {event}})
-}
-
 func (bus *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	events := map[string][]string{EventKey: {EventNewBlock}}
 	return bus.server.PublishWithEvents(data, events)
@@ -115,25 +111,5 @@ func (bus *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 
 func (bus *EventBus) PublishEventTx(data EventDataTx) error {
 	events := map[string][]string{EventKey: {EventTx}, TxHashKey: {fmt.Sprintf("%x", data.Tx.Hash())}, HeightKey: {fmt.Sprintf("%d", data.Height)}}
-	return bus.server.PublishWithEvents(data, events)
-}
-
-func (bus *EventBus) PublishEventValidatorUpdates(data EventDataValidatorUpdates) error {
-	events := map[string][]string{EventKey: {EventValidatorUpdates}}
-	return bus.server.PublishWithEvents(data, events)
-}
-
-func (bus *EventBus) PublishEventNewRoundStep(data EventDataStep) error {
-	events := map[string][]string{EventKey: {EventNewRoundStep}}
-	return bus.server.PublishWithEvents(data, events)
-}
-
-func (bus *EventBus) PublishEventNewRound(data EventDataNewRound) error {
-	events := map[string][]string{EventKey: {EventNewRound}}
-	return bus.server.PublishWithEvents(data, events)
-}
-
-func (bus *EventBus) PublishEventTimeoutToProposePrepare(data EventDataStep) error {
-	events := map[string][]string{EventKey: {EventTimeoutToProposePrepare}}
 	return bus.server.PublishWithEvents(data, events)
 }

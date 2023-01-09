@@ -68,12 +68,7 @@ func (be *BlockExecutor) ApplyBlock(state *State, block *types.Block) (*State, e
 		}
 	}
 	validatorUpdates := responses.EndBlock.ValidatorUpdates
-	if len(validatorUpdates) > 0 {
-		be.logger.Info("update validators", "num_validators_update", len(validatorUpdates))
-		if err = be.eventBus.PublishEventValidatorUpdates(events.EventDataValidatorUpdates{ValidatorUpdates: validatorUpdates}); err != nil {
-			be.logger.Error("failed to publish events validator updates", "err", err)
-		}
-	}
+	// TODO 这里还差一个 fireEvents
 	updateState(state, validatorUpdates, block)
 	return state, nil
 }

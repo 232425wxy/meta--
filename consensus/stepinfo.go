@@ -105,21 +105,69 @@ func (hvs *HeightVoteSet) AddPrepareVote(round int16, vote *types.PrepareVote) {
 	roundVoteSet.PrepareVoteSet[vote.Vote.Signature.Signer()] = vote
 }
 
-func (hvs *HeightVoteSet) CheckPrepareVoteIsComplete(round int16, cb *bls12.CryptoBLS12) (bool, *bls12.AggregateSignature) {
+func (hvs *HeightVoteSet) AddPreCommitVote(round int16, vote *types.PreCommitVote) {
+	if hvs.roundVoteSets == nil {
+		hvs.roundVoteSets = make(map[int16]*RoundVoteSet)
+	}
 	roundVoteSet := hvs.roundVoteSets[round]
-	var hasVoePower int64 = 0
-	sigs := make([]*bls12.Signature, 0)
-	for id, vote := range roundVoteSet.PrepareVoteSet {
+	if roundVoteSet == nil {
+		roundVoteSet = &RoundVoteSet{
+			PrepareVoteSet:   make(map[crypto.ID]*types.PrepareVote),
+			PreCommitVoteSet: make(map[crypto.ID]*types.PreCommitVote),
+			CommitVoteSet:    make(map[crypto.ID]*types.CommitVote),
+		}
+	}
+	roundVoteSet.PreCommitVoteSet[vote.Vote.Signature.Signer()] = vote
+}
+
+func (hvs *HeightVoteSet) CheckPrepareVoteIsComplete(round int16) bool {
+	roundVoteSet := hvs.roundVoteSets[round]
+	var hasVotePower int64 = 0
+	for id := range roundVoteSet.PrepareVoteSet {
 		validator := hvs.validators.GetValidatorByID(id)
-		hasVoePower += validator.VotingPower
+		hasVotePower += validator.VotingPower
+	}
+	if hasVotePower >= hvs.validators.PowerMajor23() {
+		return true
+	}
+	return false
+}
+
+func (hvs *HeightVoteSet) CheckPreCommitVoteIsComplete(round int16) bool {
+	roundVoteSet := hvs.roundVoteSets[round]
+	var hasVotePower int64 = 0
+	for id := range roundVoteSet.PreCommitVoteSet {
+		validator := hvs.validators.GetValidatorByID(id)
+		hasVotePower += validator.VotingPower
+	}
+	if hasVotePower >= hvs.validators.PowerMajor23() {
+		return true
+	}
+	return false
+}
+
+func (hvs *HeightVoteSet) CreateThresholdSigForPrepareVote(round int16, cb *bls12.CryptoBLS12) *bls12.AggregateSignature {
+	roundVoteSet := hvs.roundVoteSets[round]
+	sigs := make([]*bls12.Signature, 0)
+	for _, vote := range roundVoteSet.PrepareVoteSet {
 		sigs = append(sigs, vote.Vote.Signature)
 	}
-	if hasVoePower >= hvs.validators.Major23() {
-		aggregateSignature, err := cb.CreateThresholdSignature(sigs)
-		if err != nil {
-			return false, nil
-		}
-		return true, aggregateSignature
+	agg, err := cb.CreateThresholdSignature(sigs)
+	if err != nil {
+		return nil
 	}
-	return false, nil
+	return agg
+}
+
+func (hvs *HeightVoteSet) CreateThresholdSigForPreCommitVote(round int16, cb *bls12.CryptoBLS12) *bls12.AggregateSignature {
+	roundVoteSet := hvs.roundVoteSets[round]
+	sigs := make([]*bls12.Signature, 0)
+	for _, vote := range roundVoteSet.PreCommitVoteSet {
+		sigs = append(sigs, vote.Vote.Signature)
+	}
+	agg, err := cb.CreateThresholdSignature(sigs)
+	if err != nil {
+		return nil
+	}
+	return agg
 }

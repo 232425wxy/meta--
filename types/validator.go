@@ -88,7 +88,7 @@ func (set *ValidatorSet) GetValidatorByID(id crypto.ID) *Validator {
 	return nil
 }
 
-func (set *ValidatorSet) Major23() int64 {
+func (set *ValidatorSet) PowerMajor23() int64 {
 	set.TotalVotingPower = 0
 	for _, val := range set.Validators {
 		set.TotalVotingPower += val.VotingPower
