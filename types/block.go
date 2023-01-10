@@ -29,6 +29,9 @@ func (b *Block) ValidateBasic() error {
 	return nil
 }
 
+// Hash
+// 计算区块的哈希值
+// TODO 将来换成变色龙哈希
 func (b *Block) Hash() []byte {
 	h := sha256.New()
 	h.Write(b.Header.PreviousBlockHash)

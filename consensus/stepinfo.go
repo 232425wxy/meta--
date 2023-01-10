@@ -48,18 +48,33 @@ func (s Step) String() string {
 }
 
 type StepInfo struct {
-	height        int64
-	round         int16
-	step          Step
-	startTime     time.Time
-	block         *types.Block
-	previousBlock *types.Block
-	prepare       *types.Prepare
-	preCommit     *types.PreCommit
-	commit        *types.Commit
-	decide        *types.Decide
-	heightVoteSet *HeightVoteSet
-	validators    *types.ValidatorSet
+	height          int64
+	round           int16
+	step            Step
+	startTime       time.Time
+	block           *types.Block
+	previousBlock   *types.Block
+	prepare         *types.Prepare
+	preCommit       *types.PreCommit
+	commit          *types.Commit
+	decide          *types.Decide
+	voteSet         *VoteSet
+	collectNextView map[crypto.ID]*types.NextView
+}
+
+func NewStepInfo() *StepInfo {
+	return &StepInfo{voteSet: NewVoteSet(), collectNextView: make(map[crypto.ID]*types.NextView)}
+}
+
+func (si *StepInfo) Reset() {
+	si.round = 0
+	si.step = NewHeightStep
+	si.block = nil
+	si.prepare = nil
+	si.preCommit = nil
+	si.commit = nil
+	si.decide = nil
+	si.voteSet.Reset()
 }
 
 func (si *StepInfo) EventStepInfo() events.EventDataStep {
@@ -70,13 +85,25 @@ func (si *StepInfo) EventStepInfo() events.EventDataStep {
 	}
 }
 
-func (si *StepInfo) EventNewRound() events.EventDataNewRound {
-	return events.EventDataNewRound{
-		Height:   si.height,
-		Round:    si.round,
-		Step:     si.step.String(),
-		LeaderID: si.validators.GetLeader().ID,
+func (si *StepInfo) AddNextView(view *types.NextView) {
+	collect := si.collectNextView
+	if collect == nil {
+		collect = make(map[crypto.ID]*types.NextView)
 	}
+	collect[view.ID] = view
+	si.collectNextView = collect
+}
+
+func (si *StepInfo) CheckCollectNextViewIsComplete(validators *types.ValidatorSet) bool {
+	var hasPower int64 = 0
+	for id := range si.collectNextView {
+		validator := validators.GetValidatorByID(id)
+		hasPower += validator.VotingPower
+	}
+	if hasPower >= validators.PowerMajor23() {
+		return true
+	}
+	return false
 }
 
 type RoundVoteSet struct {
@@ -85,18 +112,25 @@ type RoundVoteSet struct {
 	CommitVoteSet    map[crypto.ID]*types.CommitVote
 }
 
-type HeightVoteSet struct {
-	height        int64
-	round         int16
-	validators    *types.ValidatorSet
+type VoteSet struct {
 	roundVoteSets map[int16]*RoundVoteSet // round -> RoundVoteSet
 }
 
-func (hvs *HeightVoteSet) AddPrepareVote(round int16, vote *types.PrepareVote) {
-	if hvs.roundVoteSets == nil {
-		hvs.roundVoteSets = make(map[int16]*RoundVoteSet)
+func NewVoteSet() *VoteSet {
+	return &VoteSet{
+		roundVoteSets: make(map[int16]*RoundVoteSet),
 	}
-	roundVoteSet := hvs.roundVoteSets[round]
+}
+
+func (vs *VoteSet) Reset() {
+	vs.roundVoteSets = make(map[int16]*RoundVoteSet)
+}
+
+func (vs *VoteSet) AddPrepareVote(round int16, vote *types.PrepareVote) {
+	if vs.roundVoteSets == nil {
+		vs.roundVoteSets = make(map[int16]*RoundVoteSet)
+	}
+	roundVoteSet := vs.roundVoteSets[round]
 	if roundVoteSet == nil {
 		roundVoteSet = &RoundVoteSet{
 			PrepareVoteSet:   make(map[crypto.ID]*types.PrepareVote),
@@ -105,13 +139,14 @@ func (hvs *HeightVoteSet) AddPrepareVote(round int16, vote *types.PrepareVote) {
 		}
 	}
 	roundVoteSet.PrepareVoteSet[vote.Vote.Signature.Signer()] = vote
+	vs.roundVoteSets[round] = roundVoteSet
 }
 
-func (hvs *HeightVoteSet) AddPreCommitVote(round int16, vote *types.PreCommitVote) {
-	if hvs.roundVoteSets == nil {
-		hvs.roundVoteSets = make(map[int16]*RoundVoteSet)
+func (vs *VoteSet) AddPreCommitVote(round int16, vote *types.PreCommitVote) {
+	if vs.roundVoteSets == nil {
+		vs.roundVoteSets = make(map[int16]*RoundVoteSet)
 	}
-	roundVoteSet := hvs.roundVoteSets[round]
+	roundVoteSet := vs.roundVoteSets[round]
 	if roundVoteSet == nil {
 		roundVoteSet = &RoundVoteSet{
 			PrepareVoteSet:   make(map[crypto.ID]*types.PrepareVote),
@@ -120,13 +155,14 @@ func (hvs *HeightVoteSet) AddPreCommitVote(round int16, vote *types.PreCommitVot
 		}
 	}
 	roundVoteSet.PreCommitVoteSet[vote.Vote.Signature.Signer()] = vote
+	vs.roundVoteSets[round] = roundVoteSet
 }
 
-func (hvs *HeightVoteSet) AddCommitVote(round int16, vote *types.CommitVote) {
-	if hvs.roundVoteSets == nil {
-		hvs.roundVoteSets = make(map[int16]*RoundVoteSet)
+func (vs *VoteSet) AddCommitVote(round int16, vote *types.CommitVote) {
+	if vs.roundVoteSets == nil {
+		vs.roundVoteSets = make(map[int16]*RoundVoteSet)
 	}
-	roundVoteSet := hvs.roundVoteSets[round]
+	roundVoteSet := vs.roundVoteSets[round]
 	if roundVoteSet == nil {
 		roundVoteSet = &RoundVoteSet{
 			PrepareVoteSet:   make(map[crypto.ID]*types.PrepareVote),
@@ -135,49 +171,50 @@ func (hvs *HeightVoteSet) AddCommitVote(round int16, vote *types.CommitVote) {
 		}
 	}
 	roundVoteSet.CommitVoteSet[vote.Vote.Signature.Signer()] = vote
+	vs.roundVoteSets[round] = roundVoteSet
 }
 
-func (hvs *HeightVoteSet) CheckPrepareVoteIsComplete(round int16) bool {
-	roundVoteSet := hvs.roundVoteSets[round]
+func (vs *VoteSet) CheckPrepareVoteIsComplete(round int16, validators *types.ValidatorSet) bool {
+	roundVoteSet := vs.roundVoteSets[round]
 	var hasVotePower int64 = 0
 	for id := range roundVoteSet.PrepareVoteSet {
-		validator := hvs.validators.GetValidatorByID(id)
+		validator := validators.GetValidatorByID(id)
 		hasVotePower += validator.VotingPower
 	}
-	if hasVotePower >= hvs.validators.PowerMajor23() {
+	if hasVotePower >= validators.PowerMajor23() {
 		return true
 	}
 	return false
 }
 
-func (hvs *HeightVoteSet) CheckPreCommitVoteIsComplete(round int16) bool {
-	roundVoteSet := hvs.roundVoteSets[round]
+func (vs *VoteSet) CheckPreCommitVoteIsComplete(round int16, validators *types.ValidatorSet) bool {
+	roundVoteSet := vs.roundVoteSets[round]
 	var hasVotePower int64 = 0
 	for id := range roundVoteSet.PreCommitVoteSet {
-		validator := hvs.validators.GetValidatorByID(id)
+		validator := validators.GetValidatorByID(id)
 		hasVotePower += validator.VotingPower
 	}
-	if hasVotePower >= hvs.validators.PowerMajor23() {
+	if hasVotePower >= validators.PowerMajor23() {
 		return true
 	}
 	return false
 }
 
-func (hvs *HeightVoteSet) CheckCommitVoteIsComplete(round int16) bool {
-	roundVoteSet := hvs.roundVoteSets[round]
+func (vs *VoteSet) CheckCommitVoteIsComplete(round int16, validators *types.ValidatorSet) bool {
+	roundVoteSet := vs.roundVoteSets[round]
 	var hasVotePower int64 = 0
 	for id := range roundVoteSet.CommitVoteSet {
-		validator := hvs.validators.GetValidatorByID(id)
+		validator := validators.GetValidatorByID(id)
 		hasVotePower += validator.VotingPower
 	}
-	if hasVotePower >= hvs.validators.PowerMajor23() {
+	if hasVotePower >= validators.PowerMajor23() {
 		return true
 	}
 	return false
 }
 
-func (hvs *HeightVoteSet) CreateThresholdSigForPrepareVote(round int16, cb *bls12.CryptoBLS12) *bls12.AggregateSignature {
-	roundVoteSet := hvs.roundVoteSets[round]
+func (vs *VoteSet) CreateThresholdSigForPrepareVote(round int16, cb *bls12.CryptoBLS12) *bls12.AggregateSignature {
+	roundVoteSet := vs.roundVoteSets[round]
 	sigs := make([]*bls12.Signature, 0)
 	for _, vote := range roundVoteSet.PrepareVoteSet {
 		sigs = append(sigs, vote.Vote.Signature)
@@ -189,8 +226,8 @@ func (hvs *HeightVoteSet) CreateThresholdSigForPrepareVote(round int16, cb *bls1
 	return agg
 }
 
-func (hvs *HeightVoteSet) CreateThresholdSigForPreCommitVote(round int16, cb *bls12.CryptoBLS12) *bls12.AggregateSignature {
-	roundVoteSet := hvs.roundVoteSets[round]
+func (vs *VoteSet) CreateThresholdSigForPreCommitVote(round int16, cb *bls12.CryptoBLS12) *bls12.AggregateSignature {
+	roundVoteSet := vs.roundVoteSets[round]
 	sigs := make([]*bls12.Signature, 0)
 	for _, vote := range roundVoteSet.PreCommitVoteSet {
 		sigs = append(sigs, vote.Vote.Signature)
@@ -202,8 +239,8 @@ func (hvs *HeightVoteSet) CreateThresholdSigForPreCommitVote(round int16, cb *bl
 	return agg
 }
 
-func (hvs *HeightVoteSet) CreateThresholdSigForCommitVote(round int16, cb *bls12.CryptoBLS12) *bls12.AggregateSignature {
-	roundVoteSet := hvs.roundVoteSets[round]
+func (vs *VoteSet) CreateThresholdSigForCommitVote(round int16, cb *bls12.CryptoBLS12) *bls12.AggregateSignature {
+	roundVoteSet := vs.roundVoteSets[round]
 	sigs := make([]*bls12.Signature, 0)
 	for _, vote := range roundVoteSet.CommitVoteSet {
 		sigs = append(sigs, vote.Vote.Signature)

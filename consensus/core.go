@@ -19,6 +19,8 @@ import (
 	"time"
 )
 
+const msgQueueSize = 10000
+
 type Core struct {
 	service.BaseService
 	cfg              *config.ConsensusConfig
@@ -34,9 +36,38 @@ type Core struct {
 	stepInfo         *StepInfo
 	scheduledTicker  *TimeoutTicker
 	internalMsgQueue chan MessageInfo
-	peerMsgQueue     chan MessageInfo
+	externalMsgQueue chan MessageInfo
 	mu               sync.RWMutex
 	cryptoBLS12      *bls12.CryptoBLS12
+}
+
+func NewCore(cfg *config.ConsensusConfig, state *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, cryptoBLS12 *bls12.CryptoBLS12) *Core {
+	core := &Core{
+		BaseService:      *service.NewBaseService(nil, "Consensus_Core"),
+		cfg:              cfg,
+		blockStore:       blockStore,
+		blockExec:        blockExec,
+		state:            state,
+		txsPool:          txsPool,
+		eventSwitch:      events.NewEventSwitch(),
+		stepInfo:         NewStepInfo(),
+		scheduledTicker:  NewTimeoutTicker(),
+		internalMsgQueue: make(chan MessageInfo, msgQueueSize),
+		externalMsgQueue: make(chan MessageInfo, msgQueueSize),
+		cryptoBLS12:      cryptoBLS12,
+	}
+	core.stepInfo.height = state.InitialHeight
+	core.stepInfo.startTime = time.Now().Add(time.Second)
+	return core
+}
+
+func (c *Core) Start() error {
+	if err := c.scheduledTicker.Start(); err != nil {
+		return err
+	}
+	go c.receiveRoutine()
+	c.scheduleRound0(c.stepInfo)
+	return nil
 }
 
 func (c *Core) SetLogger(logger log.Logger) {
@@ -54,14 +85,19 @@ func (c *Core) receiveRoutine() {
 			c.Logger.Error("CONSENSUS FAILURE!!!", "err", r, "stack", string(debug.Stack()))
 		}
 	}()
-
-	select {
-	case <-c.txsPool.TxsAvailable():
-
-	case tock := <-c.scheduledTicker.TockChan():
-		c.handleScheduled(tock, *c.stepInfo)
-	case mi := <-c.internalMsgQueue:
-		c.handleMsg(mi)
+	for {
+		select {
+		case <-c.txsPool.TxsAvailable():
+			c.handleAvailableTxs()
+		case tock := <-c.scheduledTicker.TockChan():
+			c.handleScheduled(tock, *c.stepInfo)
+		case mi := <-c.internalMsgQueue:
+			c.handleMsg(mi)
+		case mi := <-c.externalMsgQueue:
+			c.handleMsg(mi)
+		case <-c.WaitStop():
+			return
+		}
 	}
 }
 
@@ -96,33 +132,90 @@ func (c *Core) handleScheduled(info timeoutInfo, stepInfo StepInfo) {
 		c.enterNewRound(info.Height, 0)
 	case NewRoundStep:
 		c.enterPrepareStep(info.Height, 0)
-	case PrepareStep:
-		c.enterPrepareVoteStep(info.Height, info.Round) // TODO 存疑
 	}
 }
 
 func (c *Core) handleMsg(mi MessageInfo) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	m, nodeID := mi.Msg, mi.NodeID
 	var err error
 
-	switch msg := m.(type) {
+	switch msg := mi.Msg.(type) {
+	case *types.NextView:
+		err = c.handleNextView(msg)
+		if err != nil {
+			c.Logger.Error("failed to handle NextView message", "err", err)
+			err = nil
+		}
 	case *types.Prepare:
 		err = c.handlePrepare(msg)
+		if err != nil {
+			c.Logger.Error("failed to handle Prepare message", "err", err)
+			err = nil
+		}
 	case *types.PrepareVote:
 		err = c.handlePrepareVote(msg)
+		if err != nil {
+			c.Logger.Error("failed to handle PrepareVote message", "err", err)
+			err = nil
+		}
 	case *types.PreCommit:
 		err = c.handlePreCommit(msg)
+		if err != nil {
+			c.Logger.Error("failed to handle PreCommit message", "err", err)
+			err = nil
+		}
 	case *types.PreCommitVote:
 		err = c.handlePreCommitVote(msg)
+		if err != nil {
+			c.Logger.Error("failed to handle PreCommitVote message", "err", err)
+			err = nil
+		}
 	case *types.Commit:
 		err = c.handleCommit(msg)
+		if err != nil {
+			c.Logger.Error("failed to handle Commit message", "err", err)
+			err = nil
+		}
 	case *types.CommitVote:
 		err = c.handleCommitVote(msg)
+		if err != nil {
+			c.Logger.Error("failed to handle CommitVote message", "err", err)
+			err = nil
+		}
 	case *types.Decide:
 		err = c.handleDecide(msg)
+		if err != nil {
+			c.Logger.Error("failed to handle Decide message", "err", err)
+			err = nil
+		}
+	default:
+		c.Logger.Error("unknown message type", "type", fmt.Sprintf("%T", msg))
+		return
 	}
+}
+
+func (c *Core) handleNextView(view *types.NextView) error {
+	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
+		// 只有主节点才会处理其他节点发送过来的NextView消息
+		return nil
+	}
+	if view.Type != pbtypes.NextViewType {
+		return fmt.Errorf("want message type %s, but got %s", pbtypes.NextViewType.String(), view.Type.String())
+	}
+	if validator := c.state.Validators.GetValidatorByID(view.ID); validator == nil {
+		return fmt.Errorf("an unknown validator %s sent NextView message to me", view.ID)
+	}
+	if view.Height != c.stepInfo.height {
+		return fmt.Errorf("validator %s sent invalid NextView message to me, because \"height\" is wrong", view.ID)
+	}
+	c.Logger.Debug("receive a valid NextView message", "from", view.ID)
+	c.stepInfo.AddNextView(view)
+	if c.stepInfo.CheckCollectNextViewIsComplete(c.state.Validators) {
+		c.Logger.Info("receive enough NextView messages", "height", c.stepInfo.height)
+		c.scheduleRound0(c.stepInfo)
+	}
+	return nil
 }
 
 func (c *Core) handlePrepare(prepare *types.Prepare) error {
@@ -172,8 +265,8 @@ func (c *Core) handlePrepareVote(vote *types.PrepareVote) error {
 	if !ok {
 		return fmt.Errorf("validator %s sent invalid PrepareVote message to me", vote.Vote.Signature.Signer())
 	}
-	c.stepInfo.heightVoteSet.AddPrepareVote(c.stepInfo.round, vote)
-	ok = c.stepInfo.heightVoteSet.CheckPrepareVoteIsComplete(c.stepInfo.round)
+	c.stepInfo.voteSet.AddPrepareVote(c.stepInfo.round, vote)
+	ok = c.stepInfo.voteSet.CheckPrepareVoteIsComplete(c.stepInfo.round, c.state.Validators)
 	if ok {
 		// 收集齐了副本节点对Prepare消息的投票，那么开始构造PreCommit消息
 		c.enterPreCommitStep(c.stepInfo.height, c.stepInfo.round)
@@ -234,8 +327,8 @@ func (c *Core) handlePreCommitVote(vote *types.PreCommitVote) error {
 	if !ok {
 		return fmt.Errorf("validator %s sent invalid PreCommitVote message to me", vote.Vote.Signature.Signer())
 	}
-	c.stepInfo.heightVoteSet.AddPreCommitVote(c.stepInfo.round, vote)
-	ok = c.stepInfo.heightVoteSet.CheckPreCommitVoteIsComplete(c.stepInfo.round)
+	c.stepInfo.voteSet.AddPreCommitVote(c.stepInfo.round, vote)
+	ok = c.stepInfo.voteSet.CheckPreCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
 	if ok {
 		c.enterCommit(c.stepInfo.height, c.stepInfo.round)
 	}
@@ -295,8 +388,8 @@ func (c *Core) handleCommitVote(vote *types.CommitVote) error {
 	if !ok {
 		return fmt.Errorf("validator %s sent invalid CommitVote message to me", vote.Vote.Signature.Signer())
 	}
-	c.stepInfo.heightVoteSet.AddCommitVote(c.stepInfo.round, vote)
-	ok = c.stepInfo.heightVoteSet.CheckCommitVoteIsComplete(c.stepInfo.round)
+	c.stepInfo.voteSet.AddCommitVote(c.stepInfo.round, vote)
+	ok = c.stepInfo.voteSet.CheckCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
 	if ok {
 		c.enterDecide(c.stepInfo.height, c.stepInfo.round)
 	}
@@ -327,6 +420,7 @@ func (c *Core) handleDecide(decide *types.Decide) error {
 	}
 	c.stepInfo.decide = decide
 	c.applyBlock()
+	c.stepInfo.startTime = decide.Timestamp
 	return nil
 }
 
@@ -340,10 +434,12 @@ func (c *Core) enterNewRound(height int64, round int16) {
 	c.stepInfo.round = round
 	c.stepInfo.step = NewRoundStep
 	if round != 0 {
-		c.stepInfo.prepare = nil
 		c.stepInfo.block = nil
+		c.stepInfo.prepare = nil
+		c.stepInfo.preCommit = nil
+		c.stepInfo.commit = nil
+		c.stepInfo.decide = nil
 	}
-	c.stepInfo.heightVoteSet.round = round + 1
 	c.enterPrepareStep(height, round)
 }
 
@@ -417,7 +513,7 @@ func (c *Core) enterPreCommitStep(height int64, round int16) {
 		c.stepInfo.step = PreCommitStep
 		c.newStep()
 	}()
-	agg := c.stepInfo.heightVoteSet.CreateThresholdSigForPrepareVote(round, c.cryptoBLS12)
+	agg := c.stepInfo.voteSet.CreateThresholdSigForPrepareVote(round, c.cryptoBLS12)
 	preCommit := types.NewPreCommit(agg, types.GeneratePreCommitValueHash(c.stepInfo.block.Header.Hash), c.publicKey.ToID(), height)
 	c.sendInternalMessage(MessageInfo{Msg: preCommit, NodeID: ""})
 }
@@ -457,7 +553,7 @@ func (c *Core) enterCommit(height int64, round int16) {
 		c.stepInfo.step = CommitStep
 		c.newStep()
 	}()
-	agg := c.stepInfo.heightVoteSet.CreateThresholdSigForPreCommitVote(round, c.cryptoBLS12)
+	agg := c.stepInfo.voteSet.CreateThresholdSigForPreCommitVote(round, c.cryptoBLS12)
 	commit := types.NewCommit(agg, types.GenerateCommitValueHash(c.stepInfo.block.Header.Hash), c.publicKey.ToID(), height)
 	c.sendInternalMessage(MessageInfo{Msg: commit, NodeID: ""})
 }
@@ -496,7 +592,7 @@ func (c *Core) enterDecide(height int64, round int16) {
 		c.stepInfo.step = DecideStep
 		c.newStep()
 	}()
-	agg := c.stepInfo.heightVoteSet.CreateThresholdSigForCommitVote(round, c.cryptoBLS12)
+	agg := c.stepInfo.voteSet.CreateThresholdSigForCommitVote(round, c.cryptoBLS12)
 	decide := types.NewDecide(agg, types.GenerateDecideValueHash(c.stepInfo.block.Header.Hash), c.publicKey.ToID(), height)
 	c.sendInternalMessage(MessageInfo{Msg: decide, NodeID: ""})
 }
@@ -506,9 +602,16 @@ func (c *Core) applyBlock() {
 	newState, err := c.blockExec.ApplyBlock(c.state, c.stepInfo.block)
 	if err != nil {
 		c.Logger.Error("failed to apply block", "err", err)
+		return
 	}
 	c.state = newState
+	c.stepInfo.previousBlock = c.stepInfo.block
 	c.Logger.Debug("距离提交上一个区块过去的时间", "时间(秒)", period.Seconds())
+	c.stepInfo.Reset()
+	c.stepInfo.height += 1
+	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
+		c.eventSwitch.FireEvent(events.EventNextView, c.nextView())
+	}
 	c.scheduleRound0(c.stepInfo)
 }
 
@@ -563,5 +666,13 @@ func (c *Core) sendInternalMessage(info MessageInfo) {
 	case c.internalMsgQueue <- info:
 	default:
 		go func() { c.internalMsgQueue <- info }()
+	}
+}
+
+func (c *Core) nextView() *types.NextView {
+	return &types.NextView{
+		Type:   pbtypes.NextViewType,
+		ID:     c.publicKey.ToID(),
+		Height: c.stepInfo.height,
 	}
 }

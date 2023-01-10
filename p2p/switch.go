@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/232425wxy/meta--/common/cmap"
 	"github.com/232425wxy/meta--/common/service"
+	"github.com/232425wxy/meta--/crypto"
 	"math/rand"
 	"time"
 )
@@ -178,6 +179,15 @@ func (sw *Switch) Broadcast(chID byte, msg []byte) {
 		go func(p *Peer) {
 			peer.Send(chID, msg)
 		}(peer)
+	}
+}
+
+func (sw *Switch) SendToPeer(chID byte, peerID crypto.ID, msg []byte) {
+	for _, peer := range sw.peers.peers {
+		if peer.nodeInfo.NodeID == peerID {
+			go func(p *Peer) { peer.Send(chID, msg) }(peer)
+			return
+		}
 	}
 }
 
