@@ -24,7 +24,6 @@ type Core struct {
 	cfg              *config.ConsensusConfig
 	privateKey       *bls12.PrivateKey // 为共识消息签名的私钥
 	publicKey        *bls12.PublicKey
-	validators       *types.ValidatorSet
 	id               crypto.ID            // 自己的节点ID
 	blockStore       *state.StoreBlock    // 存储区块，也可以通过区块高度和区块哈希值加载指定的区块
 	blockExec        *state.BlockExecutor // 创建区块和执行区块里的交易指令
@@ -119,6 +118,10 @@ func (c *Core) handleMsg(mi MessageInfo) {
 		err = c.handlePreCommitVote(msg)
 	case *types.Commit:
 		err = c.handleCommit(msg)
+	case *types.CommitVote:
+		err = c.handleCommitVote(msg)
+	case *types.Decide:
+		err = c.handleDecide(msg)
 	}
 }
 
@@ -131,13 +134,13 @@ func (c *Core) handlePrepare(prepare *types.Prepare) error {
 	}
 	hash := sha256.Hash{}
 	copy(hash[:], prepare.Block.Header.Hash)
-	ok := c.validators.GetLeader().PublicKey.Verify(prepare.Signature, hash)
+	ok := c.state.Validators.GetLeader().PublicKey.Verify(prepare.Signature, hash)
 	if !ok {
 		return fmt.Errorf("node %s sent an invalid prepare message to me", prepare.Signature.Signer())
 	}
 	c.stepInfo.prepare = prepare
 	c.stepInfo.block = prepare.Block
-	if c.validators.GetLeader().ID != c.publicKey.ToID() {
+	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
 		c.Logger.Info("received Prepare message, plan to vote for it", "from", prepare.Signature.Signer())
 		// 如果我自己不是主节点，那么在收到Prepare消息后，就应该进入PREPARE_VOTE阶段
 	}
@@ -146,7 +149,7 @@ func (c *Core) handlePrepare(prepare *types.Prepare) error {
 }
 
 func (c *Core) handlePrepareVote(vote *types.PrepareVote) error {
-	if c.validators.GetLeader().ID != c.publicKey.ToID() {
+	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
 		// 不是主节点，直接忽略
 		return nil
 	}
@@ -156,7 +159,7 @@ func (c *Core) handlePrepareVote(vote *types.PrepareVote) error {
 	if vote.Vote.VoteType != pbtypes.PrepareVoteType {
 		return fmt.Errorf("invalid vote type, want %s, got %s", pbtypes.PrepareVoteType.String(), vote.Vote.VoteType.String())
 	}
-	validator := c.validators.GetValidatorByID(vote.Vote.Signature.Signer())
+	validator := c.state.Validators.GetValidatorByID(vote.Vote.Signature.Signer())
 	if validator == nil {
 		return fmt.Errorf("cannot find this validator: %s", vote.Vote.Signature.Signer())
 	}
@@ -188,8 +191,8 @@ func (c *Core) handlePreCommit(preCommit *types.PreCommit) error {
 	if c.stepInfo.block == nil {
 		return nil
 	}
-	if preCommit.ID != c.validators.GetLeader().ID {
-		return fmt.Errorf("PreCommit message is not from leader %s at height %d", c.validators.GetLeader().ID, c.stepInfo.height)
+	if preCommit.ID != c.state.Validators.GetLeader().ID {
+		return fmt.Errorf("PreCommit message is not from leader %s at height %d", c.state.Validators.GetLeader().ID, c.stepInfo.height)
 	}
 	hash := types.GeneratePreCommitValueHash(c.stepInfo.block.Header.Hash)
 	equal := bytes.Equal(hash[:], preCommit.ValueHash[:])
@@ -201,7 +204,7 @@ func (c *Core) handlePreCommit(preCommit *types.PreCommit) error {
 		return fmt.Errorf("leader %s sent invalid PreCommit message to me, aggregated signature is wrong", preCommit.ID)
 	}
 	c.stepInfo.preCommit = preCommit
-	if c.validators.GetLeader().ID != c.publicKey.ToID() {
+	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
 		c.Logger.Info("received PreCommit message, plan to vote for it", "PreCommit message from", preCommit.ID)
 	}
 	c.enterPreCommitVoteStep(c.stepInfo.height, c.stepInfo.round)
@@ -209,7 +212,7 @@ func (c *Core) handlePreCommit(preCommit *types.PreCommit) error {
 }
 
 func (c *Core) handlePreCommitVote(vote *types.PreCommitVote) error {
-	if c.validators.GetLeader().ID != c.publicKey.ToID() {
+	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
 		return nil
 	}
 	if vote.Vote.Height != c.stepInfo.height {
@@ -218,7 +221,7 @@ func (c *Core) handlePreCommitVote(vote *types.PreCommitVote) error {
 	if vote.Vote.VoteType != pbtypes.PreCommitVoteType {
 		return fmt.Errorf("invalid vote type, want %s, got %s", pbtypes.PreCommitVoteType.String(), vote.Vote.VoteType.String())
 	}
-	validator := c.validators.GetValidatorByID(vote.Vote.Signature.Signer())
+	validator := c.state.Validators.GetValidatorByID(vote.Vote.Signature.Signer())
 	if validator == nil {
 		return fmt.Errorf("cannot find this validator: %s", vote.Vote.Signature.Signer())
 	}
@@ -229,7 +232,7 @@ func (c *Core) handlePreCommitVote(vote *types.PreCommitVote) error {
 	}
 	ok := validator.PublicKey.Verify(vote.Vote.Signature, vote.Vote.ValueHash)
 	if !ok {
-		return fmt.Errorf("validator %s sent invalid PrepareVote message to me", vote.Vote.Signature.Signer())
+		return fmt.Errorf("validator %s sent invalid PreCommitVote message to me", vote.Vote.Signature.Signer())
 	}
 	c.stepInfo.heightVoteSet.AddPreCommitVote(c.stepInfo.round, vote)
 	ok = c.stepInfo.heightVoteSet.CheckPreCommitVoteIsComplete(c.stepInfo.round)
@@ -249,8 +252,8 @@ func (c *Core) handleCommit(commit *types.Commit) error {
 	if c.stepInfo.block == nil {
 		return nil
 	}
-	if commit.ID != c.validators.GetLeader().ID {
-		return fmt.Errorf("Commit message is not from leader %s at height %d", c.validators.GetLeader().ID, c.stepInfo.height)
+	if commit.ID != c.state.Validators.GetLeader().ID {
+		return fmt.Errorf("Commit message is not from leader %s at height %d", c.state.Validators.GetLeader().ID, c.stepInfo.height)
 	}
 	hash := types.GenerateCommitValueHash(c.stepInfo.block.Header.Hash)
 	equal := bytes.Equal(hash[:], commit.ValueHash[:])
@@ -262,10 +265,68 @@ func (c *Core) handleCommit(commit *types.Commit) error {
 		return fmt.Errorf("leader %s sent invalid Commit message to me, aggregated signature is wrong", commit.ID)
 	}
 	c.stepInfo.commit = commit
-	if c.validators.GetLeader().ID != c.publicKey.ToID() {
+	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
 		c.Logger.Info("received PreCommit message, plan to vote for it", "Commit message from", commit.ID)
 	}
 	c.enterCommitVote(c.stepInfo.height, c.stepInfo.round)
+	return nil
+}
+
+func (c *Core) handleCommitVote(vote *types.CommitVote) error {
+	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
+		return nil
+	}
+	if vote.Vote.Height != c.stepInfo.height {
+		return fmt.Errorf("invalid CommitVote message, my height: %d, message's height: %d", c.stepInfo.height, vote.Vote.Height)
+	}
+	if vote.Vote.VoteType != pbtypes.CommitVoteType {
+		return fmt.Errorf("invalid vote type, want %s, got %s", pbtypes.CommitVoteType.String(), vote.Vote.VoteType.String())
+	}
+	validator := c.state.Validators.GetValidatorByID(vote.Vote.Signature.Signer())
+	if validator == nil {
+		return fmt.Errorf("cannot find this validator: %s", vote.Vote.Signature.Signer())
+	}
+	valueHash := types.GenerateCommitVoteValueHash(c.stepInfo.block.Header.Hash)
+	equal := bytes.Equal(valueHash[:], vote.Vote.ValueHash[:])
+	if !equal {
+		return fmt.Errorf("validator %s vote for different block", vote.Vote.Signature.Signer())
+	}
+	ok := validator.PublicKey.Verify(vote.Vote.Signature, vote.Vote.ValueHash)
+	if !ok {
+		return fmt.Errorf("validator %s sent invalid CommitVote message to me", vote.Vote.Signature.Signer())
+	}
+	c.stepInfo.heightVoteSet.AddCommitVote(c.stepInfo.round, vote)
+	ok = c.stepInfo.heightVoteSet.CheckCommitVoteIsComplete(c.stepInfo.round)
+	if ok {
+		c.enterDecide(c.stepInfo.height, c.stepInfo.round)
+	}
+	return nil
+}
+
+func (c *Core) handleDecide(decide *types.Decide) error {
+	if c.stepInfo.decide != nil {
+		return nil
+	}
+	if c.stepInfo.height != decide.Height {
+		return nil
+	}
+	if c.stepInfo.block == nil {
+		return nil
+	}
+	if decide.ID != c.state.Validators.GetLeader().ID {
+		return fmt.Errorf("Decide message is not from leader %s at height %d", c.state.Validators.GetLeader().ID, c.stepInfo.height)
+	}
+	hash := types.GenerateDecideValueHash(c.stepInfo.block.Header.Hash)
+	equal := bytes.Equal(hash[:], decide.ValueHash[:])
+	if !equal {
+		return fmt.Errorf("leader %s sent invalid Decide message to me", decide.ID)
+	}
+	ok := c.cryptoBLS12.VerifyThresholdSignature(decide.AggregateSignature, hash)
+	if !ok {
+		return fmt.Errorf("leader %s sent invalid Decide message to me, aggregated signature is wrong", decide.ID)
+	}
+	c.stepInfo.decide = decide
+	c.applyBlock()
 	return nil
 }
 
@@ -304,7 +365,7 @@ func (c *Core) enterPrepareStep(height int64, round int16) {
 	}()
 	// 非leader节点在将来收到prepare消息后会将这个超时时间顶替掉
 	c.scheduleStep(c.cfg.TimeoutPrepare, height, round, PrepareStep) // 计划提出Prepare消息
-	if c.validators.GetLeader().ID == c.publicKey.ToID() {
+	if c.state.Validators.GetLeader().ID == c.publicKey.ToID() {
 		logger.Debug("leader is me, it's my responsibility to propose Prepare message", "validator_id", c.publicKey.ToID())
 		// 开始打包Prepare消息
 		var block *types.Block
@@ -333,7 +394,7 @@ func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 		c.stepInfo.step = PrepareVoteStep
 		c.newStep()
 	}()
-	if c.validators.GetLeader().ID == c.publicKey.ToID() {
+	if c.state.Validators.GetLeader().ID == c.publicKey.ToID() {
 		return
 	}
 	if !c.hasPrepare() {
@@ -373,7 +434,7 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 		c.stepInfo.round = round
 		c.stepInfo.step = PreCommitVoteStep
 	}()
-	if c.validators.GetLeader().ID == c.publicKey.ToID() {
+	if c.state.Validators.GetLeader().ID == c.publicKey.ToID() {
 		return
 	}
 	if !c.hasPreCommit() {
@@ -412,7 +473,7 @@ func (c *Core) enterCommitVote(height int64, round int16) {
 		c.stepInfo.round = round
 		c.stepInfo.step = CommitVoteStep
 	}()
-	if c.validators.GetLeader().ID == c.publicKey.ToID() {
+	if c.state.Validators.GetLeader().ID == c.publicKey.ToID() {
 		return
 	}
 	if !c.hasCommit() {
@@ -422,6 +483,33 @@ func (c *Core) enterCommitVote(height int64, round int16) {
 	logger.Debug("Commit message is valid, decide to vote for it")
 	vote := types.NewCommitVote(height, types.GenerateCommitVoteValueHash(c.stepInfo.block.Header.Hash), c.privateKey)
 	c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
+}
+
+func (c *Core) enterDecide(height int64, round int16) {
+	logger := c.Logger.New("height", height, "round", round)
+	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= DecideStep) {
+		logger.Warn("entering DECIDE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	}
+	logger.Info("entering DECIDE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	defer func() {
+		c.stepInfo.round = round
+		c.stepInfo.step = DecideStep
+		c.newStep()
+	}()
+	agg := c.stepInfo.heightVoteSet.CreateThresholdSigForCommitVote(round, c.cryptoBLS12)
+	decide := types.NewDecide(agg, types.GenerateDecideValueHash(c.stepInfo.block.Header.Hash), c.publicKey.ToID(), height)
+	c.sendInternalMessage(MessageInfo{Msg: decide, NodeID: ""})
+}
+
+func (c *Core) applyBlock() {
+	period := time.Now().Sub(c.state.LastBlockTime)
+	newState, err := c.blockExec.ApplyBlock(c.state, c.stepInfo.block)
+	if err != nil {
+		c.Logger.Error("failed to apply block", "err", err)
+	}
+	c.state = newState
+	c.Logger.Debug("距离提交上一个区块过去的时间", "时间(秒)", period.Seconds())
+	c.scheduleRound0(c.stepInfo)
 }
 
 func (c *Core) createBlock() *types.Block {

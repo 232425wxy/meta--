@@ -347,6 +347,17 @@ type Decide struct {
 	AggregateSignature *bls12.AggregateSignature
 }
 
+func NewDecide(agg *bls12.AggregateSignature, hash sha256.Hash, id crypto.ID, height int64) *Decide {
+	return &Decide{
+		Type:               pbtypes.DecideType,
+		ID:                 id,
+		Height:             height,
+		ValueHash:          hash,
+		Timestamp:          time.Now(),
+		AggregateSignature: agg,
+	}
+}
+
 func (d *Decide) ToProto() *pbtypes.Decide {
 	if d == nil {
 		return nil
@@ -402,4 +413,8 @@ func GenerateCommitValueHash(blockHash []byte) sha256.Hash {
 func GenerateCommitVoteValueHash(blockHash []byte) sha256.Hash {
 	value := append([]byte("CommitVote-"), blockHash...)
 	return sha256.Sum(value)
+}
+
+func GenerateDecideValueHash(blockHash []byte) sha256.Hash {
+	return GeneratePreCommitVoteValueHash(blockHash)
 }
