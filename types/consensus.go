@@ -180,7 +180,7 @@ func (pc *PreCommit) ToProto() *pbtypes.PreCommit {
 		Type:               pc.Type,
 		ID:                 string(pc.ID),
 		Height:             pc.Height,
-		PrepareHash:        pc.ValueHash[:],
+		ValueHash:          pc.ValueHash[:],
 		Timestamp:          pc.Timestamp,
 		AggregateSignature: pc.AggregateSignature.ToProto(),
 	}
@@ -191,7 +191,7 @@ func PreCommitFromProto(pb *pbtypes.PreCommit) *PreCommit {
 		return nil
 	}
 	hash := sha256.Hash{}
-	copy(hash[:], pb.PrepareHash)
+	copy(hash[:], pb.ValueHash)
 	return &PreCommit{
 		Type:               pb.Type,
 		ID:                 crypto.ID(pb.ID),
@@ -273,7 +273,7 @@ func (c *Commit) ToProto() *pbtypes.Commit {
 		Type:               c.Type,
 		ID:                 string(c.ID),
 		Height:             c.Height,
-		PreCommitHash:      c.ValueHash[:],
+		ValueHash:          c.ValueHash[:],
 		Timestamp:          c.Timestamp,
 		AggregateSignature: c.AggregateSignature.ToProto(),
 	}
@@ -284,7 +284,7 @@ func CommitFromProto(pb *pbtypes.Commit) *Commit {
 		return nil
 	}
 	hash := sha256.Hash{}
-	copy(hash[:], pb.PreCommitHash)
+	copy(hash[:], pb.ValueHash)
 	return &Commit{
 		Type:               pb.Type,
 		ID:                 crypto.ID(pb.ID),
@@ -366,7 +366,7 @@ func (d *Decide) ToProto() *pbtypes.Decide {
 		Type:               d.Type,
 		ID:                 string(d.ID),
 		Height:             d.Height,
-		CommitHash:         d.ValueHash[:],
+		ValueHash:          d.ValueHash[:],
 		Timestamp:          d.Timestamp,
 		AggregateSignature: d.AggregateSignature.ToProto(),
 	}
@@ -377,7 +377,7 @@ func DecideFromProto(pb *pbtypes.Decide) *Decide {
 		return nil
 	}
 	hash := sha256.Hash{}
-	copy(hash[:], pb.CommitHash)
+	copy(hash[:], pb.ValueHash)
 	return &Decide{
 		Type:               pb.Type,
 		ID:                 crypto.ID(pb.ID),

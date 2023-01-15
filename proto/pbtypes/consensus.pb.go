@@ -357,7 +357,7 @@ type PreCommit struct {
 	Type               ConsensusMessageType         `protobuf:"varint,1,opt,name=type,proto3,enum=pbtypes.ConsensusMessageType" json:"type,omitempty"`
 	ID                 string                       `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	Height             int64                        `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
-	PrepareHash        []byte                       `protobuf:"bytes,4,opt,name=prepare_hash,json=prepareHash,proto3" json:"prepare_hash,omitempty"`
+	ValueHash          []byte                       `protobuf:"bytes,4,opt,name=value_hash,json=valueHash,proto3" json:"value_hash,omitempty"`
 	Timestamp          time.Time                    `protobuf:"bytes,5,opt,name=timestamp,proto3,stdtime" json:"timestamp"`
 	AggregateSignature *pbcrypto.AggregateSignature `protobuf:"bytes,6,opt,name=aggregate_signature,json=aggregateSignature,proto3" json:"aggregate_signature,omitempty"`
 }
@@ -416,9 +416,9 @@ func (m *PreCommit) GetHeight() int64 {
 	return 0
 }
 
-func (m *PreCommit) GetPrepareHash() []byte {
+func (m *PreCommit) GetValueHash() []byte {
 	if m != nil {
-		return m.PrepareHash
+		return m.ValueHash
 	}
 	return nil
 }
@@ -485,7 +485,7 @@ type Commit struct {
 	Type               ConsensusMessageType         `protobuf:"varint,1,opt,name=type,proto3,enum=pbtypes.ConsensusMessageType" json:"type,omitempty"`
 	ID                 string                       `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	Height             int64                        `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
-	PreCommitHash      []byte                       `protobuf:"bytes,4,opt,name=pre_commit_hash,json=preCommitHash,proto3" json:"pre_commit_hash,omitempty"`
+	ValueHash          []byte                       `protobuf:"bytes,4,opt,name=value_hash,json=valueHash,proto3" json:"value_hash,omitempty"`
 	Timestamp          time.Time                    `protobuf:"bytes,5,opt,name=timestamp,proto3,stdtime" json:"timestamp"`
 	AggregateSignature *pbcrypto.AggregateSignature `protobuf:"bytes,6,opt,name=aggregate_signature,json=aggregateSignature,proto3" json:"aggregate_signature,omitempty"`
 }
@@ -544,9 +544,9 @@ func (m *Commit) GetHeight() int64 {
 	return 0
 }
 
-func (m *Commit) GetPreCommitHash() []byte {
+func (m *Commit) GetValueHash() []byte {
 	if m != nil {
-		return m.PreCommitHash
+		return m.ValueHash
 	}
 	return nil
 }
@@ -613,7 +613,7 @@ type Decide struct {
 	Type               ConsensusMessageType         `protobuf:"varint,1,opt,name=type,proto3,enum=pbtypes.ConsensusMessageType" json:"type,omitempty"`
 	ID                 string                       `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	Height             int64                        `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
-	CommitHash         []byte                       `protobuf:"bytes,4,opt,name=commit_hash,json=commitHash,proto3" json:"commit_hash,omitempty"`
+	ValueHash          []byte                       `protobuf:"bytes,4,opt,name=value_hash,json=valueHash,proto3" json:"value_hash,omitempty"`
 	Timestamp          time.Time                    `protobuf:"bytes,5,opt,name=timestamp,proto3,stdtime" json:"timestamp"`
 	AggregateSignature *pbcrypto.AggregateSignature `protobuf:"bytes,6,opt,name=aggregate_signature,json=aggregateSignature,proto3" json:"aggregate_signature,omitempty"`
 }
@@ -672,9 +672,9 @@ func (m *Decide) GetHeight() int64 {
 	return 0
 }
 
-func (m *Decide) GetCommitHash() []byte {
+func (m *Decide) GetValueHash() []byte {
 	if m != nil {
-		return m.CommitHash
+		return m.ValueHash
 	}
 	return nil
 }
@@ -693,6 +693,170 @@ func (m *Decide) GetAggregateSignature() *pbcrypto.AggregateSignature {
 	return nil
 }
 
+type Message struct {
+	// Types that are valid to be assigned to Msg:
+	//
+	//	*Message_NextView
+	//	*Message_Prepare
+	//	*Message_PrepareVote
+	//	*Message_PreCommit
+	//	*Message_PreCommitVote
+	//	*Message_Commit
+	//	*Message_CommitVote
+	//	*Message_Decide
+	Msg isMessage_Msg `protobuf_oneof:"Msg"`
+}
+
+func (m *Message) Reset()         { *m = Message{} }
+func (m *Message) String() string { return proto.CompactTextString(m) }
+func (*Message) ProtoMessage()    {}
+func (*Message) Descriptor() ([]byte, []int) {
+	return fileDescriptor_56f0f2c53b3de771, []int{9}
+}
+func (m *Message) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Message) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Message.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Message) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Message.Merge(m, src)
+}
+func (m *Message) XXX_Size() int {
+	return m.Size()
+}
+func (m *Message) XXX_DiscardUnknown() {
+	xxx_messageInfo_Message.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Message proto.InternalMessageInfo
+
+type isMessage_Msg interface {
+	isMessage_Msg()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type Message_NextView struct {
+	NextView *NextView `protobuf:"bytes,1,opt,name=next_view,json=nextView,proto3,oneof" json:"next_view,omitempty"`
+}
+type Message_Prepare struct {
+	Prepare *Prepare `protobuf:"bytes,2,opt,name=prepare,proto3,oneof" json:"prepare,omitempty"`
+}
+type Message_PrepareVote struct {
+	PrepareVote *PrepareVote `protobuf:"bytes,3,opt,name=prepare_vote,json=prepareVote,proto3,oneof" json:"prepare_vote,omitempty"`
+}
+type Message_PreCommit struct {
+	PreCommit *PreCommit `protobuf:"bytes,4,opt,name=pre_commit,json=preCommit,proto3,oneof" json:"pre_commit,omitempty"`
+}
+type Message_PreCommitVote struct {
+	PreCommitVote *PreCommitVote `protobuf:"bytes,5,opt,name=pre_commit_vote,json=preCommitVote,proto3,oneof" json:"pre_commit_vote,omitempty"`
+}
+type Message_Commit struct {
+	Commit *Commit `protobuf:"bytes,6,opt,name=commit,proto3,oneof" json:"commit,omitempty"`
+}
+type Message_CommitVote struct {
+	CommitVote *CommitVote `protobuf:"bytes,7,opt,name=commit_vote,json=commitVote,proto3,oneof" json:"commit_vote,omitempty"`
+}
+type Message_Decide struct {
+	Decide *Decide `protobuf:"bytes,8,opt,name=decide,proto3,oneof" json:"decide,omitempty"`
+}
+
+func (*Message_NextView) isMessage_Msg()      {}
+func (*Message_Prepare) isMessage_Msg()       {}
+func (*Message_PrepareVote) isMessage_Msg()   {}
+func (*Message_PreCommit) isMessage_Msg()     {}
+func (*Message_PreCommitVote) isMessage_Msg() {}
+func (*Message_Commit) isMessage_Msg()        {}
+func (*Message_CommitVote) isMessage_Msg()    {}
+func (*Message_Decide) isMessage_Msg()        {}
+
+func (m *Message) GetMsg() isMessage_Msg {
+	if m != nil {
+		return m.Msg
+	}
+	return nil
+}
+
+func (m *Message) GetNextView() *NextView {
+	if x, ok := m.GetMsg().(*Message_NextView); ok {
+		return x.NextView
+	}
+	return nil
+}
+
+func (m *Message) GetPrepare() *Prepare {
+	if x, ok := m.GetMsg().(*Message_Prepare); ok {
+		return x.Prepare
+	}
+	return nil
+}
+
+func (m *Message) GetPrepareVote() *PrepareVote {
+	if x, ok := m.GetMsg().(*Message_PrepareVote); ok {
+		return x.PrepareVote
+	}
+	return nil
+}
+
+func (m *Message) GetPreCommit() *PreCommit {
+	if x, ok := m.GetMsg().(*Message_PreCommit); ok {
+		return x.PreCommit
+	}
+	return nil
+}
+
+func (m *Message) GetPreCommitVote() *PreCommitVote {
+	if x, ok := m.GetMsg().(*Message_PreCommitVote); ok {
+		return x.PreCommitVote
+	}
+	return nil
+}
+
+func (m *Message) GetCommit() *Commit {
+	if x, ok := m.GetMsg().(*Message_Commit); ok {
+		return x.Commit
+	}
+	return nil
+}
+
+func (m *Message) GetCommitVote() *CommitVote {
+	if x, ok := m.GetMsg().(*Message_CommitVote); ok {
+		return x.CommitVote
+	}
+	return nil
+}
+
+func (m *Message) GetDecide() *Decide {
+	if x, ok := m.GetMsg().(*Message_Decide); ok {
+		return x.Decide
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*Message) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*Message_NextView)(nil),
+		(*Message_Prepare)(nil),
+		(*Message_PrepareVote)(nil),
+		(*Message_PreCommit)(nil),
+		(*Message_PreCommitVote)(nil),
+		(*Message_Commit)(nil),
+		(*Message_CommitVote)(nil),
+		(*Message_Decide)(nil),
+	}
+}
+
 func init() {
 	proto.RegisterEnum("pbtypes.ConsensusMessageType", ConsensusMessageType_name, ConsensusMessageType_value)
 	proto.RegisterEnum("pbtypes.VoteType", VoteType_name, VoteType_value)
@@ -705,58 +869,67 @@ func init() {
 	proto.RegisterType((*Commit)(nil), "pbtypes.Commit")
 	proto.RegisterType((*CommitVote)(nil), "pbtypes.CommitVote")
 	proto.RegisterType((*Decide)(nil), "pbtypes.Decide")
+	proto.RegisterType((*Message)(nil), "pbtypes.Message")
 }
 
 func init() { proto.RegisterFile("consensus.proto", fileDescriptor_56f0f2c53b3de771) }
 
 var fileDescriptor_56f0f2c53b3de771 = []byte{
-	// 729 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x95, 0x3f, 0x6f, 0xda, 0x4c,
-	0x18, 0xc0, 0x39, 0x87, 0x10, 0x78, 0x20, 0x10, 0x9c, 0xbc, 0x11, 0xaf, 0xd5, 0x18, 0x07, 0x45,
-	0x11, 0x8a, 0x54, 0xbb, 0x21, 0x1d, 0xba, 0x06, 0xb0, 0x54, 0x06, 0x12, 0xe4, 0x22, 0xda, 0x4e,
-	0x96, 0x21, 0x57, 0x63, 0x35, 0xc4, 0x96, 0x6d, 0xd2, 0xe6, 0x1b, 0xb4, 0x9e, 0xb2, 0x57, 0x56,
-	0x87, 0x46, 0x55, 0x3f, 0x4a, 0xc6, 0x48, 0x5d, 0x3a, 0xa5, 0x15, 0xe9, 0x07, 0xa9, 0x38, 0xdb,
-	0xd8, 0x84, 0x0e, 0x69, 0x55, 0xa1, 0x6c, 0xf7, 0xe7, 0x77, 0xf7, 0x3c, 0xf7, 0x7b, 0xee, 0x6c,
-	0xc8, 0xf5, 0xf4, 0x13, 0x0b, 0x9f, 0x58, 0x43, 0x8b, 0x37, 0x4c, 0xdd, 0xd6, 0xe9, 0x25, 0xa3,
-	0x6b, 0x9f, 0x19, 0xd8, 0x62, 0x58, 0xd2, 0x17, 0x8c, 0x6e, 0xcf, 0x3c, 0x33, 0x6c, 0x5d, 0xb0,
-	0x34, 0xf5, 0x44, 0xb1, 0x87, 0x26, 0xf6, 0x40, 0xe6, 0xff, 0x60, 0x9e, 0xe0, 0x42, 0xf7, 0x58,
-	0xef, 0xbd, 0xf6, 0xa7, 0x9e, 0xa8, 0xba, 0xaa, 0x93, 0xe6, 0xc3, 0x5d, 0xfe, 0x31, 0xbf, 0x27,
-	0x90, 0x76, 0x77, 0xf8, 0x4a, 0x50, 0x75, 0x5d, 0x3d, 0xc6, 0x61, 0xdf, 0xd6, 0x06, 0xd8, 0xb2,
-	0x95, 0x81, 0xe1, 0xaf, 0xdc, 0xba, 0xbd, 0x72, 0xd2, 0x27, 0x2d, 0x8f, 0x2a, 0x0d, 0x20, 0x79,
-	0x80, 0xdf, 0xda, 0x1d, 0x0d, 0xbf, 0xa1, 0x77, 0x21, 0x3e, 0x4e, 0xa0, 0x80, 0x38, 0x54, 0xce,
-	0x56, 0x36, 0x78, 0x3f, 0x1f, 0xbe, 0x16, 0x9c, 0xab, 0x89, 0x2d, 0x4b, 0x51, 0x71, 0xfb, 0xcc,
-	0xc0, 0x12, 0x41, 0xe9, 0x75, 0xa0, 0xb4, 0xa3, 0x02, 0xc5, 0xa1, 0x72, 0xaa, 0x9a, 0x18, 0x5d,
-	0x17, 0xa9, 0x46, 0x5d, 0xa2, 0xb4, 0x23, 0x7a, 0x1d, 0x12, 0x7d, 0xac, 0xa9, 0x7d, 0xbb, 0xb0,
-	0xc0, 0xa1, 0xf2, 0x82, 0xe4, 0xf7, 0x4a, 0x3f, 0x11, 0xc4, 0x3b, 0xba, 0x8d, 0x69, 0x1e, 0x52,
-	0xa7, 0xba, 0x8d, 0xe5, 0x48, 0xc0, 0xfc, 0x24, 0xe0, 0x98, 0x20, 0x41, 0x92, 0xa7, 0x7e, 0x2b,
-	0xb2, 0x21, 0x15, 0xdd, 0x90, 0xde, 0x00, 0x38, 0x55, 0x8e, 0x87, 0x58, 0xee, 0x2b, 0x56, 0x9f,
-	0x04, 0xcb, 0x48, 0x29, 0x32, 0xf2, 0x54, 0xb1, 0xfa, 0x74, 0x15, 0x52, 0x13, 0x2f, 0x85, 0x38,
-	0x87, 0xca, 0xe9, 0x0a, 0xc3, 0x7b, 0xe6, 0xf8, 0xc0, 0x1c, 0xdf, 0x0e, 0x88, 0x6a, 0xf2, 0xf2,
-	0xba, 0x18, 0x3b, 0xff, 0x5e, 0x44, 0x52, 0xb8, 0x8c, 0xde, 0x85, 0xd4, 0xa4, 0x60, 0x85, 0x45,
-	0xb2, 0xc7, 0x2a, 0x1f, 0xd4, 0x92, 0x7f, 0x16, 0x4c, 0x49, 0x21, 0x55, 0x7a, 0x4f, 0xc1, 0x52,
-	0xcb, 0xc4, 0x86, 0x62, 0xe2, 0x39, 0x58, 0xa5, 0xb7, 0x60, 0x91, 0xdc, 0x19, 0xff, 0x84, 0xd9,
-	0x49, 0x8c, 0xea, 0x78, 0x54, 0xf2, 0x26, 0xa7, 0x5d, 0x2c, 0xfe, 0x03, 0x17, 0x89, 0x3b, 0xb9,
-	0x78, 0x04, 0x69, 0x5f, 0x05, 0x29, 0xfc, 0x26, 0xc4, 0xc7, 0x45, 0x25, 0x3a, 0xd2, 0x95, 0xe5,
-	0xa9, 0x9a, 0x4b, 0x64, 0xaa, 0x74, 0x41, 0x41, 0xaa, 0x65, 0xe2, 0x9a, 0x3e, 0x18, 0x68, 0xf6,
-	0x3c, 0xfc, 0x6d, 0x42, 0xc6, 0xf0, 0x52, 0xf4, 0xae, 0x51, 0x9c, 0x5c, 0xa3, 0xb4, 0x3f, 0x36,
-	0x7b, 0x91, 0xfe, 0x52, 0x5e, 0x13, 0x56, 0x15, 0x55, 0x35, 0xb1, 0xaa, 0xd8, 0x58, 0xbe, 0xad,
-	0xf1, 0x41, 0xa8, 0x71, 0x3f, 0x80, 0x42, 0x9f, 0xb4, 0x32, 0x33, 0x56, 0xaa, 0xc0, 0xf2, 0xc4,
-	0xd2, 0x5d, 0xd5, 0x7e, 0xa6, 0x20, 0x31, 0x3f, 0xaf, 0xdb, 0x90, 0x33, 0x4c, 0x2c, 0xf7, 0x48,
-	0xc0, 0xa8, 0xda, 0x65, 0x23, 0x48, 0xfc, 0xbe, 0xca, 0x15, 0x00, 0xfe, 0xcc, 0xec, 0x47, 0x0a,
-	0x12, 0x75, 0xdc, 0xd3, 0x8e, 0xe6, 0xf2, 0xe2, 0x8b, 0x90, 0x9e, 0xb5, 0x0a, 0xbd, 0xfb, 0xac,
-	0x74, 0xe7, 0x2b, 0x82, 0xb5, 0xdf, 0x29, 0xa0, 0xb7, 0x20, 0x7b, 0x20, 0xbe, 0x68, 0xcb, 0x9d,
-	0x86, 0xf8, 0x5c, 0x6e, 0xbf, 0x6c, 0x89, 0x2b, 0x31, 0x66, 0xc5, 0x71, 0xb9, 0x4c, 0xf0, 0x67,
-	0x22, 0xd4, 0x26, 0x64, 0x5a, 0x92, 0xd8, 0xda, 0x97, 0x44, 0x8f, 0x41, 0x4c, 0xce, 0x71, 0xb9,
-	0xe0, 0xdb, 0x42, 0x90, 0x6d, 0xc8, 0xb5, 0x24, 0x51, 0xae, 0x1d, 0x36, 0x9b, 0x8d, 0xb6, 0x47,
-	0x51, 0x4c, 0xde, 0x71, 0xb9, 0xf0, 0xa1, 0x10, 0xae, 0x08, 0xe9, 0x28, 0xb3, 0xc0, 0x64, 0x1d,
-	0x97, 0x83, 0x69, 0xa0, 0x2e, 0xd6, 0x1a, 0x75, 0x3f, 0x54, 0xdc, 0x03, 0xbc, 0xf2, 0x8e, 0x01,
-	0x26, 0xf9, 0xee, 0x13, 0x1b, 0xfb, 0x72, 0xc1, 0xa2, 0x9d, 0x0f, 0x08, 0x92, 0xc1, 0xff, 0x8a,
-	0xde, 0x81, 0x7c, 0x90, 0x63, 0xe7, 0xb0, 0x2d, 0x06, 0x87, 0x59, 0x75, 0x5c, 0x2e, 0x17, 0xf9,
-	0x08, 0x12, 0x56, 0x80, 0xb5, 0x48, 0xb2, 0x21, 0x8e, 0x98, 0xff, 0x1c, 0x97, 0xcb, 0x4f, 0x3d,
-	0x6d, 0xb2, 0xa0, 0x0c, 0x2b, 0x33, 0x30, 0xc5, 0xd0, 0x8e, 0xcb, 0x65, 0xa7, 0xc9, 0x30, 0xbb,
-	0x6a, 0xe1, 0x72, 0xc4, 0xa2, 0xab, 0x11, 0x8b, 0x7e, 0x8c, 0x58, 0x74, 0x7e, 0xc3, 0xc6, 0xae,
-	0x6e, 0xd8, 0xd8, 0xb7, 0x1b, 0x36, 0xd6, 0x4d, 0x90, 0x5b, 0xb0, 0xf7, 0x2b, 0x00, 0x00, 0xff,
-	0xff, 0x31, 0x41, 0x5b, 0xf0, 0xb6, 0x08, 0x00, 0x00,
+	// 860 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xec, 0x96, 0xcf, 0x6f, 0xe2, 0x46,
+	0x14, 0xc7, 0x6d, 0x43, 0x00, 0x3f, 0x12, 0x48, 0x26, 0x69, 0x44, 0xad, 0xae, 0xf1, 0xa2, 0xa8,
+	0xa2, 0x51, 0x6b, 0x36, 0xa4, 0xaa, 0xda, 0x5b, 0x17, 0xb0, 0x04, 0x07, 0x76, 0x91, 0x8b, 0x68,
+	0x7b, 0xb2, 0x0c, 0x4c, 0x8d, 0xd5, 0x80, 0x2d, 0xdb, 0xb0, 0x9b, 0xff, 0xa0, 0xe5, 0xb4, 0xf7,
+	0xca, 0x52, 0xa5, 0xf6, 0xd0, 0x63, 0xff, 0x8c, 0x3d, 0xae, 0xd4, 0x4b, 0x4f, 0xdb, 0x8a, 0xf4,
+	0x0f, 0xa9, 0x18, 0x8f, 0x7f, 0x91, 0x6d, 0xb5, 0xad, 0x56, 0x7b, 0xca, 0x6d, 0x7e, 0x7c, 0xde,
+	0x7c, 0x67, 0xbe, 0xef, 0xf1, 0x0c, 0x94, 0x27, 0xd6, 0xc2, 0xc5, 0x0b, 0x77, 0xe9, 0xca, 0xb6,
+	0x63, 0x79, 0x16, 0xca, 0xdb, 0x63, 0xef, 0xda, 0xc6, 0xae, 0x20, 0x92, 0x79, 0xc3, 0x1e, 0x4f,
+	0x9c, 0x6b, 0xdb, 0xb3, 0x1a, 0xae, 0x69, 0x2c, 0x74, 0x6f, 0xe9, 0xe0, 0x00, 0x14, 0xde, 0x0d,
+	0xf7, 0x09, 0xde, 0x18, 0x5f, 0x59, 0x93, 0x6f, 0xe9, 0xd6, 0xa7, 0x86, 0x65, 0x58, 0x64, 0xf8,
+	0xd1, 0x85, 0xfc, 0xb1, 0x7c, 0xd9, 0x20, 0xe3, 0xf1, 0xf2, 0x9b, 0x86, 0x61, 0x59, 0xc6, 0x15,
+	0x8e, 0xe7, 0x9e, 0x39, 0xc7, 0xae, 0xa7, 0xcf, 0x6d, 0x1a, 0x79, 0xb6, 0x1b, 0x19, 0xcd, 0xc9,
+	0x28, 0xa0, 0x6a, 0x73, 0x28, 0x3c, 0xc2, 0x4f, 0xbd, 0x91, 0x89, 0x9f, 0xa0, 0x0b, 0xc8, 0x6e,
+	0x2f, 0x50, 0x61, 0x25, 0xb6, 0x5e, 0x6a, 0xde, 0x93, 0xe9, 0x7d, 0xe4, 0x76, 0xf8, 0xae, 0x3e,
+	0x76, 0x5d, 0xdd, 0xc0, 0xc3, 0x6b, 0x1b, 0xab, 0x04, 0x45, 0xa7, 0xc0, 0x99, 0xd3, 0x0a, 0x27,
+	0xb1, 0x75, 0xbe, 0x95, 0xdb, 0xbc, 0xac, 0x72, 0xbd, 0x8e, 0xca, 0x99, 0x53, 0x74, 0x0a, 0xb9,
+	0x19, 0x36, 0x8d, 0x99, 0x57, 0xc9, 0x48, 0x6c, 0x3d, 0xa3, 0xd2, 0x59, 0xed, 0x2f, 0x16, 0xb2,
+	0x23, 0xcb, 0xc3, 0x48, 0x06, 0x7e, 0x65, 0x79, 0x58, 0x4b, 0x08, 0x1e, 0x45, 0x82, 0x5b, 0x82,
+	0x88, 0x14, 0x56, 0x74, 0x94, 0x38, 0x90, 0x4b, 0x1e, 0x88, 0xee, 0x01, 0xac, 0xf4, 0xab, 0x25,
+	0xd6, 0x66, 0xba, 0x3b, 0x23, 0x62, 0xfb, 0x2a, 0x4f, 0x56, 0xba, 0xba, 0x3b, 0x43, 0x2d, 0xe0,
+	0x23, 0x5f, 0x2a, 0x59, 0x89, 0xad, 0x17, 0x9b, 0x82, 0x1c, 0x38, 0x27, 0x87, 0xce, 0xc9, 0xc3,
+	0x90, 0x68, 0x15, 0x9e, 0xbf, 0xac, 0x32, 0xcf, 0xfe, 0xa8, 0xb2, 0x6a, 0x1c, 0x86, 0x2e, 0x80,
+	0x8f, 0x12, 0x56, 0xd9, 0x23, 0x67, 0x1c, 0xcb, 0x61, 0x2e, 0xe5, 0x2f, 0xc2, 0x2d, 0x35, 0xa6,
+	0x6a, 0xdf, 0x73, 0x90, 0x1f, 0x38, 0xd8, 0xd6, 0x1d, 0xfc, 0x16, 0x5c, 0x45, 0x67, 0xb0, 0x47,
+	0x6a, 0x86, 0xbe, 0xb0, 0x14, 0x69, 0xb4, 0xb6, 0xab, 0x6a, 0xb0, 0x99, 0xf6, 0x62, 0xef, 0x0d,
+	0x78, 0x91, 0x7b, 0x2d, 0x2f, 0x1e, 0x40, 0x91, 0x5a, 0x41, 0x12, 0x7f, 0x1f, 0xb2, 0xdb, 0xa4,
+	0x12, 0x3b, 0x8a, 0xcd, 0x83, 0x54, 0xce, 0x55, 0xb2, 0x55, 0xfb, 0x91, 0x03, 0x7e, 0xe0, 0xe0,
+	0xb6, 0x35, 0x9f, 0x9b, 0xde, 0xdb, 0xf0, 0x2f, 0x5d, 0x44, 0xd9, 0x7f, 0x2d, 0xa2, 0xff, 0x69,
+	0x5c, 0x1f, 0x8e, 0x75, 0xc3, 0x70, 0xb0, 0xa1, 0x7b, 0x58, 0xdb, 0xb5, 0xf0, 0xbd, 0xd8, 0xc2,
+	0x87, 0x21, 0x14, 0x7b, 0x89, 0xf4, 0x5b, 0x6b, 0xb5, 0x26, 0x1c, 0x44, 0x0e, 0xbd, 0xae, 0xad,
+	0x3e, 0x07, 0xb9, 0x3b, 0x4f, 0xff, 0xd9, 0xd3, 0x06, 0xc0, 0x7f, 0x37, 0xb4, 0x83, 0x27, 0xe6,
+	0x14, 0xdf, 0x19, 0xfa, 0x2a, 0x43, 0x7f, 0xcd, 0x40, 0x9e, 0xbe, 0x1b, 0x3d, 0x00, 0x7e, 0x81,
+	0x9f, 0x7a, 0xda, 0xca, 0xc4, 0x4f, 0xa8, 0xa7, 0x71, 0xbf, 0x0f, 0xbf, 0x40, 0x5d, 0x46, 0x2d,
+	0x2c, 0xc2, 0xaf, 0xd1, 0x87, 0x90, 0xb7, 0x83, 0xbe, 0x41, 0x4c, 0x2a, 0x36, 0x0f, 0x23, 0x9e,
+	0xf6, 0x93, 0x2e, 0xa3, 0x86, 0x08, 0xfa, 0x0c, 0xf6, 0xe9, 0x50, 0x23, 0x69, 0xcb, 0x90, 0x90,
+	0x93, 0xdd, 0x90, 0x6d, 0xf6, 0xba, 0x8c, 0x5a, 0xb4, 0x13, 0x1d, 0xe9, 0x12, 0xc0, 0x76, 0xb0,
+	0x36, 0x21, 0xb9, 0xa7, 0x2d, 0x14, 0x25, 0x03, 0x83, 0xaa, 0xe8, 0x32, 0x2a, 0x6f, 0x47, 0x5d,
+	0xe9, 0x73, 0x28, 0xc7, 0x41, 0x81, 0x64, 0x60, 0xfa, 0xe9, 0xed, 0x48, 0x2a, 0x7a, 0x60, 0xa7,
+	0x7e, 0xb1, 0x1f, 0x40, 0x8e, 0x4a, 0x06, 0xfe, 0x96, 0x13, 0x45, 0x43, 0xf5, 0x28, 0x80, 0x3e,
+	0x81, 0x62, 0x52, 0x28, 0x1f, 0xf5, 0xdd, 0x24, 0x4f, 0x55, 0x60, 0x92, 0x92, 0x98, 0x92, 0xfa,
+	0xac, 0x14, 0x76, 0x24, 0x82, 0xb2, 0xdd, 0x4a, 0x04, 0x40, 0x6b, 0x0f, 0x32, 0x7d, 0xd7, 0x38,
+	0xff, 0x8d, 0x85, 0x93, 0x57, 0xd5, 0x2c, 0x3a, 0x83, 0xd2, 0x23, 0xe5, 0xab, 0xa1, 0x36, 0xea,
+	0x29, 0x5f, 0x6a, 0xc3, 0xaf, 0x07, 0xca, 0x21, 0x23, 0x1c, 0xae, 0x7d, 0x69, 0x3f, 0xcc, 0x1d,
+	0xa1, 0xee, 0xc3, 0xfe, 0x40, 0x55, 0x06, 0x0f, 0x55, 0x25, 0x60, 0x58, 0xa1, 0xbc, 0xf6, 0xa5,
+	0xb0, 0xff, 0x13, 0xe4, 0x7d, 0x28, 0x0f, 0x54, 0x45, 0x6b, 0x3f, 0xee, 0xf7, 0x7b, 0xc3, 0x80,
+	0xe2, 0x84, 0xa3, 0xb5, 0x2f, 0xc5, 0x0d, 0x8d, 0x70, 0x55, 0x28, 0x26, 0x99, 0x8c, 0x50, 0x5a,
+	0xfb, 0x12, 0xa4, 0x81, 0x8e, 0xd2, 0xee, 0x75, 0xa8, 0x54, 0x36, 0x00, 0x82, 0x87, 0x6d, 0x01,
+	0xa1, 0xf0, 0xdd, 0x4f, 0x22, 0xf3, 0xcb, 0xcf, 0x22, 0x7b, 0xfe, 0x03, 0x0b, 0x85, 0xf0, 0x3f,
+	0x05, 0x3a, 0x87, 0xa3, 0xf0, 0x8e, 0xa3, 0xc7, 0x43, 0x25, 0x7c, 0xcc, 0xf1, 0xda, 0x97, 0xca,
+	0x89, 0x2a, 0x21, 0x6c, 0x03, 0x4e, 0x12, 0x97, 0x8d, 0x71, 0x56, 0x78, 0x67, 0xed, 0x4b, 0x47,
+	0xa9, 0x0c, 0x93, 0x80, 0x3a, 0x1c, 0xde, 0x82, 0x39, 0x01, 0xad, 0x7d, 0xa9, 0x94, 0x26, 0xe3,
+	0xdb, 0xb5, 0x2a, 0xcf, 0x37, 0x22, 0xfb, 0x62, 0x23, 0xb2, 0x7f, 0x6e, 0x44, 0xf6, 0xd9, 0x8d,
+	0xc8, 0xbc, 0xb8, 0x11, 0x99, 0xdf, 0x6f, 0x44, 0x66, 0x9c, 0x23, 0x3f, 0xdc, 0xcb, 0xbf, 0x03,
+	0x00, 0x00, 0xff, 0xff, 0x59, 0xaf, 0xc5, 0x4a, 0x5a, 0x0a, 0x00, 0x00,
 }
 
 func (m *NextView) Marshal() (dAtA []byte, err error) {
@@ -1006,10 +1179,10 @@ func (m *PreCommit) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i = encodeVarintConsensus(dAtA, i, uint64(n8))
 	i--
 	dAtA[i] = 0x2a
-	if len(m.PrepareHash) > 0 {
-		i -= len(m.PrepareHash)
-		copy(dAtA[i:], m.PrepareHash)
-		i = encodeVarintConsensus(dAtA, i, uint64(len(m.PrepareHash)))
+	if len(m.ValueHash) > 0 {
+		i -= len(m.ValueHash)
+		copy(dAtA[i:], m.ValueHash)
+		i = encodeVarintConsensus(dAtA, i, uint64(len(m.ValueHash)))
 		i--
 		dAtA[i] = 0x22
 	}
@@ -1108,10 +1281,10 @@ func (m *Commit) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i = encodeVarintConsensus(dAtA, i, uint64(n11))
 	i--
 	dAtA[i] = 0x2a
-	if len(m.PreCommitHash) > 0 {
-		i -= len(m.PreCommitHash)
-		copy(dAtA[i:], m.PreCommitHash)
-		i = encodeVarintConsensus(dAtA, i, uint64(len(m.PreCommitHash)))
+	if len(m.ValueHash) > 0 {
+		i -= len(m.ValueHash)
+		copy(dAtA[i:], m.ValueHash)
+		i = encodeVarintConsensus(dAtA, i, uint64(len(m.ValueHash)))
 		i--
 		dAtA[i] = 0x22
 	}
@@ -1210,10 +1383,10 @@ func (m *Decide) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i = encodeVarintConsensus(dAtA, i, uint64(n14))
 	i--
 	dAtA[i] = 0x2a
-	if len(m.CommitHash) > 0 {
-		i -= len(m.CommitHash)
-		copy(dAtA[i:], m.CommitHash)
-		i = encodeVarintConsensus(dAtA, i, uint64(len(m.CommitHash)))
+	if len(m.ValueHash) > 0 {
+		i -= len(m.ValueHash)
+		copy(dAtA[i:], m.ValueHash)
+		i = encodeVarintConsensus(dAtA, i, uint64(len(m.ValueHash)))
 		i--
 		dAtA[i] = 0x22
 	}
@@ -1237,6 +1410,206 @@ func (m *Decide) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *Message) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Message) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Msg != nil {
+		{
+			size := m.Msg.Size()
+			i -= size
+			if _, err := m.Msg.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Message_NextView) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message_NextView) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.NextView != nil {
+		{
+			size, err := m.NextView.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintConsensus(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Message_Prepare) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message_Prepare) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Prepare != nil {
+		{
+			size, err := m.Prepare.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintConsensus(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Message_PrepareVote) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message_PrepareVote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.PrepareVote != nil {
+		{
+			size, err := m.PrepareVote.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintConsensus(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x1a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Message_PreCommit) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message_PreCommit) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.PreCommit != nil {
+		{
+			size, err := m.PreCommit.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintConsensus(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x22
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Message_PreCommitVote) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message_PreCommitVote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.PreCommitVote != nil {
+		{
+			size, err := m.PreCommitVote.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintConsensus(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Message_Commit) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message_Commit) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Commit != nil {
+		{
+			size, err := m.Commit.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintConsensus(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x32
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Message_CommitVote) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message_CommitVote) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.CommitVote != nil {
+		{
+			size, err := m.CommitVote.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintConsensus(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x3a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Message_Decide) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message_Decide) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Decide != nil {
+		{
+			size, err := m.Decide.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintConsensus(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x42
+	}
+	return len(dAtA) - i, nil
+}
 func encodeVarintConsensus(dAtA []byte, offset int, v uint64) int {
 	offset -= sovConsensus(v)
 	base := offset
@@ -1350,7 +1723,7 @@ func (m *PreCommit) Size() (n int) {
 	if m.Height != 0 {
 		n += 1 + sovConsensus(uint64(m.Height))
 	}
-	l = len(m.PrepareHash)
+	l = len(m.ValueHash)
 	if l > 0 {
 		n += 1 + l + sovConsensus(uint64(l))
 	}
@@ -1392,7 +1765,7 @@ func (m *Commit) Size() (n int) {
 	if m.Height != 0 {
 		n += 1 + sovConsensus(uint64(m.Height))
 	}
-	l = len(m.PreCommitHash)
+	l = len(m.ValueHash)
 	if l > 0 {
 		n += 1 + l + sovConsensus(uint64(l))
 	}
@@ -1434,7 +1807,7 @@ func (m *Decide) Size() (n int) {
 	if m.Height != 0 {
 		n += 1 + sovConsensus(uint64(m.Height))
 	}
-	l = len(m.CommitHash)
+	l = len(m.ValueHash)
 	if l > 0 {
 		n += 1 + l + sovConsensus(uint64(l))
 	}
@@ -1442,6 +1815,115 @@ func (m *Decide) Size() (n int) {
 	n += 1 + l + sovConsensus(uint64(l))
 	if m.AggregateSignature != nil {
 		l = m.AggregateSignature.Size()
+		n += 1 + l + sovConsensus(uint64(l))
+	}
+	return n
+}
+
+func (m *Message) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Msg != nil {
+		n += m.Msg.Size()
+	}
+	return n
+}
+
+func (m *Message_NextView) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.NextView != nil {
+		l = m.NextView.Size()
+		n += 1 + l + sovConsensus(uint64(l))
+	}
+	return n
+}
+func (m *Message_Prepare) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Prepare != nil {
+		l = m.Prepare.Size()
+		n += 1 + l + sovConsensus(uint64(l))
+	}
+	return n
+}
+func (m *Message_PrepareVote) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.PrepareVote != nil {
+		l = m.PrepareVote.Size()
+		n += 1 + l + sovConsensus(uint64(l))
+	}
+	return n
+}
+func (m *Message_PreCommit) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.PreCommit != nil {
+		l = m.PreCommit.Size()
+		n += 1 + l + sovConsensus(uint64(l))
+	}
+	return n
+}
+func (m *Message_PreCommitVote) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.PreCommitVote != nil {
+		l = m.PreCommitVote.Size()
+		n += 1 + l + sovConsensus(uint64(l))
+	}
+	return n
+}
+func (m *Message_Commit) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Commit != nil {
+		l = m.Commit.Size()
+		n += 1 + l + sovConsensus(uint64(l))
+	}
+	return n
+}
+func (m *Message_CommitVote) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.CommitVote != nil {
+		l = m.CommitVote.Size()
+		n += 1 + l + sovConsensus(uint64(l))
+	}
+	return n
+}
+func (m *Message_Decide) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Decide != nil {
+		l = m.Decide.Size()
 		n += 1 + l + sovConsensus(uint64(l))
 	}
 	return n
@@ -2203,9 +2685,9 @@ func (m *PreCommit) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PrepareHash = append(m.PrepareHash[:0], dAtA[iNdEx:postIndex]...)
-			if m.PrepareHash == nil {
-				m.PrepareHash = []byte{}
+			m.ValueHash = append(m.ValueHash[:0], dAtA[iNdEx:postIndex]...)
+			if m.ValueHash == nil {
+				m.ValueHash = []byte{}
 			}
 			iNdEx = postIndex
 		case 5:
@@ -2512,9 +2994,9 @@ func (m *Commit) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PreCommitHash = append(m.PreCommitHash[:0], dAtA[iNdEx:postIndex]...)
-			if m.PreCommitHash == nil {
-				m.PreCommitHash = []byte{}
+			m.ValueHash = append(m.ValueHash[:0], dAtA[iNdEx:postIndex]...)
+			if m.ValueHash == nil {
+				m.ValueHash = []byte{}
 			}
 			iNdEx = postIndex
 		case 5:
@@ -2821,9 +3303,9 @@ func (m *Decide) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.CommitHash = append(m.CommitHash[:0], dAtA[iNdEx:postIndex]...)
-			if m.CommitHash == nil {
-				m.CommitHash = []byte{}
+			m.ValueHash = append(m.ValueHash[:0], dAtA[iNdEx:postIndex]...)
+			if m.ValueHash == nil {
+				m.ValueHash = []byte{}
 			}
 			iNdEx = postIndex
 		case 5:
@@ -2894,6 +3376,336 @@ func (m *Decide) Unmarshal(dAtA []byte) error {
 			if err := m.AggregateSignature.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipConsensus(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Message) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowConsensus
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Message: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Message: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NextView", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConsensus
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &NextView{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Msg = &Message_NextView{v}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Prepare", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConsensus
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Prepare{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Msg = &Message_Prepare{v}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PrepareVote", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConsensus
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &PrepareVote{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Msg = &Message_PrepareVote{v}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PreCommit", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConsensus
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &PreCommit{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Msg = &Message_PreCommit{v}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PreCommitVote", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConsensus
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &PreCommitVote{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Msg = &Message_PreCommitVote{v}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Commit", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConsensus
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Commit{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Msg = &Message_Commit{v}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CommitVote", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConsensus
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &CommitVote{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Msg = &Message_CommitVote{v}
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Decide", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConsensus
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthConsensus
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &Decide{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Msg = &Message_Decide{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

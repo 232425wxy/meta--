@@ -16,6 +16,10 @@ type Reactor struct {
 	mu   sync.RWMutex
 }
 
+func (r *Reactor) Receive(chID byte, src *p2p.Peer, msg []byte) {
+
+}
+
 func (r *Reactor) subscribeEvents() {
 	subscriber := "consensus-reactor"
 	if err := r.core.eventSwitch.AddListenerWithEvent(subscriber, events.EventNextView,
@@ -24,6 +28,15 @@ func (r *Reactor) subscribeEvents() {
 		}); err != nil {
 		r.Logger.Warn("failed to add listener for events", "err", err)
 	}
+}
+
+func (r *Reactor) unsubscribeEvents() {
+	subscriber := "consensus-reactor"
+	r.core.eventSwitch.RemoveListener(subscriber)
+}
+
+func (r *Reactor) gossipDataRoutine(peer *p2p.Peer) {
+
 }
 
 func (r *Reactor) sendNextViewToLeader(view *types.NextView) {
