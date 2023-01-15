@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+const PeerStateKey = "Consensus.Peer.State"
+
 type PeerState struct {
 	mu     sync.Mutex
 	Height int64 `json:"height"`

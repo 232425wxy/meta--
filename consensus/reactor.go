@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"fmt"
 	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/p2p"
 	"github.com/232425wxy/meta--/types"
@@ -16,7 +17,19 @@ type Reactor struct {
 	mu   sync.RWMutex
 }
 
-func (r *Reactor) Receive(chID byte, src *p2p.Peer, msg []byte) {
+func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
+	msg, err := MustDecode(bz)
+	if err != nil {
+		r.Switch.StopPeerForError(src, err)
+		r.Logger.Error("failed to decode message", "peer", src.NodeID(), "err", err)
+		return
+	}
+	r.Logger.Debug("receive message", "peer", src.NodeID(), "message", msg)
+	ps, ok := src.Get(PeerStateKey).(*PeerState)
+	if !ok {
+		panic(fmt.Sprintf("peer %v has no state", src.NodeID()))
+	}
+	case ProposalChannel:
 
 }
 

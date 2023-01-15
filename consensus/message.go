@@ -8,6 +8,11 @@ import (
 	"github.com/cosmos/gogoproto/proto"
 )
 
+const (
+	ProposalChannel byte = 0x01
+	VoteChannel     byte = 0x02
+)
+
 type Message interface {
 	ValidateBasic() error
 }
