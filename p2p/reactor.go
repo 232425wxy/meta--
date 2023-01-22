@@ -2,6 +2,13 @@ package p2p
 
 import "github.com/232425wxy/meta--/common/service"
 
+const (
+	LeaderProposeChannel byte = 0x01
+	ReplicaVoteChannel   byte = 0x02
+	ReplicaStateChannel  byte = 0x03 // 副本节点给主节点发送NextView消息时用到的通道
+	TxsChannel           byte = 0x04
+)
+
 type Reactor interface {
 	service.Service
 	SetSwitch(*Switch)

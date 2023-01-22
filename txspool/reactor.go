@@ -10,10 +10,6 @@ import (
 	"time"
 )
 
-const (
-	TxsPoolChannel = 0x10
-)
-
 type Reactor struct {
 	p2p.BaseReactor
 	cfg  *config.TxsPoolConfig
@@ -40,7 +36,7 @@ func (r *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 	largestTx := make([]byte, r.cfg.MaxTxBytes)
 	msg := pbtxspool.Message{Txs: &pbtxspool.Txs{Txs: [][]byte{largestTx}}}
 	return []*p2p.ChannelDescriptor{
-		{ID: TxsPoolChannel, Priority: 10, RecvMessageCapacity: msg.Size()},
+		{ID: p2p.TxsChannel, Priority: 10, RecvMessageCapacity: msg.Size()},
 	}
 }
 
@@ -103,7 +99,7 @@ func (r *Reactor) broadcastTxRoutine(peer *p2p.Peer) {
 			if err != nil {
 				panic(err)
 			}
-			success := peer.Send(TxsPoolChannel, bz)
+			success := peer.Send(p2p.TxsChannel, bz)
 			if !success {
 				time.Sleep(100 * time.Millisecond)
 				continue

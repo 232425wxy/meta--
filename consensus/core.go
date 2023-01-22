@@ -23,38 +23,40 @@ const msgQueueSize = 10000
 
 type Core struct {
 	service.BaseService
-	cfg              *config.ConsensusConfig
-	privateKey       *bls12.PrivateKey // 为共识消息签名的私钥
-	publicKey        *bls12.PublicKey
-	id               crypto.ID            // 自己的节点ID
-	blockStore       *state.StoreBlock    // 存储区块，也可以通过区块高度和区块哈希值加载指定的区块
-	blockExec        *state.BlockExecutor // 创建区块和执行区块里的交易指令
-	state            *state.State
-	txsPool          *txspool.TxsPool
-	eventBus         *events.EventBus
-	eventSwitch      *events.EventSwitch
-	stepInfo         *StepInfo
-	scheduledTicker  *TimeoutTicker
-	internalMsgQueue chan MessageInfo
-	externalMsgQueue chan MessageInfo
-	mu               sync.RWMutex
-	cryptoBLS12      *bls12.CryptoBLS12
+	cfg               *config.ConsensusConfig
+	privateKey        *bls12.PrivateKey // 为共识消息签名的私钥
+	publicKey         *bls12.PublicKey
+	id                crypto.ID            // 自己的节点ID
+	blockStore        *state.StoreBlock    // 存储区块，也可以通过区块高度和区块哈希值加载指定的区块
+	blockExec         *state.BlockExecutor // 创建区块和执行区块里的交易指令
+	state             *state.State
+	txsPool           *txspool.TxsPool
+	eventBus          *events.EventBus
+	eventSwitch       *events.EventSwitch
+	stepInfo          *StepInfo
+	scheduledTicker   *TimeoutTicker
+	internalMsgQueue  chan MessageInfo
+	externalMsgQueue  chan MessageInfo
+	prepareVotesQueue chan *types.PrepareVote
+	mu                sync.RWMutex
+	cryptoBLS12       *bls12.CryptoBLS12
 }
 
 func NewCore(cfg *config.ConsensusConfig, state *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, cryptoBLS12 *bls12.CryptoBLS12) *Core {
 	core := &Core{
-		BaseService:      *service.NewBaseService(nil, "Consensus_Core"),
-		cfg:              cfg,
-		blockStore:       blockStore,
-		blockExec:        blockExec,
-		state:            state,
-		txsPool:          txsPool,
-		eventSwitch:      events.NewEventSwitch(),
-		stepInfo:         NewStepInfo(),
-		scheduledTicker:  NewTimeoutTicker(),
-		internalMsgQueue: make(chan MessageInfo, msgQueueSize),
-		externalMsgQueue: make(chan MessageInfo, msgQueueSize),
-		cryptoBLS12:      cryptoBLS12,
+		BaseService:       *service.NewBaseService(nil, "Consensus_Core"),
+		cfg:               cfg,
+		blockStore:        blockStore,
+		blockExec:         blockExec,
+		state:             state,
+		txsPool:           txsPool,
+		eventSwitch:       events.NewEventSwitch(),
+		stepInfo:          NewStepInfo(),
+		scheduledTicker:   NewTimeoutTicker(),
+		internalMsgQueue:  make(chan MessageInfo, msgQueueSize),
+		externalMsgQueue:  make(chan MessageInfo, msgQueueSize),
+		prepareVotesQueue: make(chan *types.PrepareVote, msgQueueSize),
+		cryptoBLS12:       cryptoBLS12,
 	}
 	core.stepInfo.height = state.InitialHeight
 	core.stepInfo.startTime = time.Now().Add(time.Second)
@@ -154,10 +156,18 @@ func (c *Core) handleMsg(mi MessageInfo) {
 			err = nil
 		}
 	case *types.PrepareVote:
-		err = c.handlePrepareVote(msg)
-		if err != nil {
-			c.Logger.Error("failed to handle PrepareVote message", "err", err)
-			err = nil
+		if mi.NodeID != "" {
+			err = c.handlePrepareVote(msg)
+			if err != nil {
+				c.Logger.Error("failed to handle PrepareVote message", "err", err)
+				err = nil
+			}
+		} else {
+			select {
+			case c.prepareVotesQueue <- msg:
+			default:
+				go func() { c.prepareVotesQueue <- msg }()
+			}
 		}
 	case *types.PreCommit:
 		err = c.handlePreCommit(msg)
@@ -196,7 +206,7 @@ func (c *Core) handleMsg(mi MessageInfo) {
 }
 
 func (c *Core) handleNextView(view *types.NextView) error {
-	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
+	if !c.isLeader() {
 		// 只有主节点才会处理其他节点发送过来的NextView消息
 		return nil
 	}
@@ -233,7 +243,7 @@ func (c *Core) handlePrepare(prepare *types.Prepare) error {
 	}
 	c.stepInfo.prepare = prepare
 	c.stepInfo.block = prepare.Block
-	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
+	if !c.isLeader() {
 		c.Logger.Info("received Prepare message, plan to vote for it", "from", prepare.Signature.Signer())
 		// 如果我自己不是主节点，那么在收到Prepare消息后，就应该进入PREPARE_VOTE阶段
 	}
@@ -242,7 +252,7 @@ func (c *Core) handlePrepare(prepare *types.Prepare) error {
 }
 
 func (c *Core) handlePrepareVote(vote *types.PrepareVote) error {
-	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
+	if !c.isLeader() {
 		// 不是主节点，直接忽略
 		return nil
 	}
@@ -297,7 +307,7 @@ func (c *Core) handlePreCommit(preCommit *types.PreCommit) error {
 		return fmt.Errorf("leader %s sent invalid PreCommit message to me, aggregated signature is wrong", preCommit.ID)
 	}
 	c.stepInfo.preCommit = preCommit
-	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
+	if !c.isLeader() {
 		c.Logger.Info("received PreCommit message, plan to vote for it", "PreCommit message from", preCommit.ID)
 	}
 	c.enterPreCommitVoteStep(c.stepInfo.height, c.stepInfo.round)
@@ -305,7 +315,7 @@ func (c *Core) handlePreCommit(preCommit *types.PreCommit) error {
 }
 
 func (c *Core) handlePreCommitVote(vote *types.PreCommitVote) error {
-	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
+	if !c.isLeader() {
 		return nil
 	}
 	if vote.Vote.Height != c.stepInfo.height {
@@ -358,7 +368,7 @@ func (c *Core) handleCommit(commit *types.Commit) error {
 		return fmt.Errorf("leader %s sent invalid Commit message to me, aggregated signature is wrong", commit.ID)
 	}
 	c.stepInfo.commit = commit
-	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
+	if !c.isLeader() {
 		c.Logger.Info("received PreCommit message, plan to vote for it", "Commit message from", commit.ID)
 	}
 	c.enterCommitVote(c.stepInfo.height, c.stepInfo.round)
@@ -366,7 +376,7 @@ func (c *Core) handleCommit(commit *types.Commit) error {
 }
 
 func (c *Core) handleCommitVote(vote *types.CommitVote) error {
-	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
+	if !c.isLeader() {
 		return nil
 	}
 	if vote.Vote.Height != c.stepInfo.height {
@@ -461,7 +471,7 @@ func (c *Core) enterPrepareStep(height int64, round int16) {
 	}()
 	// 非leader节点在将来收到prepare消息后会将这个超时时间顶替掉
 	c.scheduleStep(c.cfg.TimeoutPrepare, height, round, PrepareStep) // 计划提出Prepare消息
-	if c.state.Validators.GetLeader().ID == c.publicKey.ToID() {
+	if c.isLeader() {
 		logger.Debug("leader is me, it's my responsibility to propose Prepare message", "validator_id", c.publicKey.ToID())
 		// 开始打包Prepare消息
 		var block *types.Block
@@ -490,7 +500,7 @@ func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 		c.stepInfo.step = PrepareVoteStep
 		c.newStep()
 	}()
-	if c.state.Validators.GetLeader().ID == c.publicKey.ToID() {
+	if c.isLeader() {
 		return
 	}
 	if !c.hasPrepare() {
@@ -530,7 +540,7 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 		c.stepInfo.round = round
 		c.stepInfo.step = PreCommitVoteStep
 	}()
-	if c.state.Validators.GetLeader().ID == c.publicKey.ToID() {
+	if c.isLeader() {
 		return
 	}
 	if !c.hasPreCommit() {
@@ -569,7 +579,7 @@ func (c *Core) enterCommitVote(height int64, round int16) {
 		c.stepInfo.round = round
 		c.stepInfo.step = CommitVoteStep
 	}()
-	if c.state.Validators.GetLeader().ID == c.publicKey.ToID() {
+	if c.isLeader() {
 		return
 	}
 	if !c.hasCommit() {
@@ -609,7 +619,7 @@ func (c *Core) applyBlock() {
 	c.Logger.Debug("距离提交上一个区块过去的时间", "时间(秒)", period.Seconds())
 	c.stepInfo.Reset()
 	c.stepInfo.height += 1
-	if c.state.Validators.GetLeader().ID != c.publicKey.ToID() {
+	if !c.isLeader() {
 		c.eventSwitch.FireEvent(events.EventNextView, c.nextView())
 	}
 	c.scheduleRound0(c.stepInfo)
@@ -669,10 +679,22 @@ func (c *Core) sendInternalMessage(info MessageInfo) {
 	}
 }
 
+func (c *Core) sendExternalMessage(info MessageInfo) {
+	select {
+	case c.externalMsgQueue <- info:
+	default:
+		go func() { c.externalMsgQueue <- info }()
+	}
+}
+
 func (c *Core) nextView() *types.NextView {
 	return &types.NextView{
 		Type:   pbtypes.NextViewType,
 		ID:     c.publicKey.ToID(),
 		Height: c.stepInfo.height,
 	}
+}
+
+func (c *Core) isLeader() bool {
+	return c.state.Validators.GetLeader().ID == c.publicKey.ToID()
 }
