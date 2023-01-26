@@ -16,12 +16,7 @@ type Reactor struct {
 }
 
 func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
-	msg, err := MustDecode(bz)
-	if err != nil {
-		r.Switch.StopPeerForError(src, err)
-		r.Logger.Error("failed to decode message", "peer", src.NodeID(), "err", err)
-		return
-	}
+	msg := MustDecode(bz)
 	r.Logger.Debug("receive message", "peer", src.NodeID(), "message", msg)
 	ps, ok := src.Get(PeerStateKey).(*PeerState)
 	if !ok {
@@ -77,25 +72,34 @@ func (r *Reactor) unsubscribeEvents() {
 
 func (r *Reactor) gossipRoutine(peer *p2p.Peer) {
 	logger := r.Logger.New("peer", peer.NodeID())
+	ps := peer.Data.Get(PeerStateKey).(*PeerState)
 	for {
 		if r.core.isLeader() {
 			switch {
-			case r.core.stepInfo.prepare != nil && r.core.stepInfo.step == PrepareStep:
+			case r.core.stepInfo.prepare != nil && r.core.stepInfo.step == PrepareStep && !ps.HasPrepare(r.core.stepInfo.prepare):
 				msg := MustEncode(r.core.stepInfo.prepare)
-				peer.Send(p2p.LeaderProposeChannel, msg)
-				logger.Info("leader is me, send Prepare message", "to", peer.NodeID())
-			case r.core.stepInfo.preCommit != nil && r.core.stepInfo.step == PreCommitStep:
+				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
+					ps.SetPrepare(r.core.stepInfo.prepare)
+					logger.Info("leader is me, send Prepare message", "to", peer.NodeID())
+				}
+			case r.core.stepInfo.preCommit != nil && r.core.stepInfo.step == PreCommitStep && !ps.HasPreCommit(r.core.stepInfo.preCommit):
 				msg := MustEncode(r.core.stepInfo.preCommit)
-				peer.Send(p2p.LeaderProposeChannel, msg)
-				logger.Info("leader is me, send PreCommit message", "to", peer.NodeID())
-			case r.core.stepInfo.commit != nil && r.core.stepInfo.step == CommitStep:
+				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
+					ps.SetPreCommit(r.core.stepInfo.preCommit)
+					logger.Info("leader is me, send PreCommit message", "to", peer.NodeID())
+				}
+			case r.core.stepInfo.commit != nil && r.core.stepInfo.step == CommitStep && !ps.HasCommit(r.core.stepInfo.commit):
 				msg := MustEncode(r.core.stepInfo.commit)
-				peer.Send(p2p.LeaderProposeChannel, msg)
-				logger.Info("leader is me, send Commit message", "to", peer.NodeID())
-			case r.core.stepInfo.decide != nil && r.core.stepInfo.step == DecideStep:
+				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
+					ps.SetCommit(r.core.stepInfo.commit)
+					logger.Info("leader is me, send Commit message", "to", peer.NodeID())
+				}
+			case r.core.stepInfo.decide != nil && r.core.stepInfo.step == DecideStep && !ps.HasDecide(r.core.stepInfo.decide):
 				msg := MustEncode(r.core.stepInfo.decide)
-				peer.Send(p2p.LeaderProposeChannel, msg)
-				logger.Info("leader is me, send Decide message", "to", peer.NodeID())
+				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
+					ps.SetDecide(r.core.stepInfo.decide)
+					logger.Info("leader is me, send Decide message", "to", peer.NodeID())
+				}
 			}
 		}
 

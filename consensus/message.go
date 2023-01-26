@@ -87,10 +87,11 @@ func MustEncode(msg Message) []byte {
 	return bz
 }
 
-func MustDecode(bz []byte) (msg Message, err error) {
+func MustDecode(bz []byte) (msg Message) {
 	pb := &pbtypes.Message{}
+	var err error
 	if err = proto.Unmarshal(bz, pb); err != nil {
-		return nil, err
+		panic(err)
 	}
 	switch m := pb.Msg.(type) {
 	case *pbtypes.Message_NextView:
@@ -110,7 +111,7 @@ func MustDecode(bz []byte) (msg Message, err error) {
 	case *pbtypes.Message_Decide:
 		msg = types.DecideFromProto(m.Decide)
 	default:
-		return nil, fmt.Errorf("unknown message type: %T", pb.Msg)
+		panic(fmt.Sprintf("unknown message type: %T", pb.Msg))
 	}
-	return msg, nil
+	return msg
 }

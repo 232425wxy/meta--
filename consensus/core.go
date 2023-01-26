@@ -259,6 +259,9 @@ func (c *Core) handlePrepare(prepare *types.Prepare) error {
 	copy(hash[:], prepare.Block.Header.Hash)
 	ok := c.state.Validators.GetLeader().PublicKey.Verify(prepare.Signature, hash)
 	if !ok {
+		if c.isLeader() {
+			panic("Why I created an invalid Prepare message?")
+		}
 		return fmt.Errorf("node %s sent an invalid prepare message to me", prepare.Signature.Signer())
 	}
 	c.stepInfo.prepare = prepare
@@ -485,12 +488,8 @@ func (c *Core) enterPrepareStep(height int64, round int16) {
 		c.stepInfo.round = round
 		c.stepInfo.step = PrepareStep
 		c.newStep()
-		if c.hasPrepare() {
-			c.enterPrepareVoteStep(height, round)
-		}
 	}()
-	// 非leader节点在将来收到prepare消息后会将这个超时时间顶替掉
-	c.scheduleStep(c.cfg.TimeoutPrepare, height, round, PrepareStep) // 计划提出Prepare消息
+	// 作为一个普通节点，执行到此处该方法就结束了，接下来就是等待主节点发送来Prepare消息
 	if c.isLeader() {
 		logger.Debug("leader is me, it's my responsibility to propose Prepare message", "validator_id", c.publicKey.ToID())
 		// 开始打包Prepare消息
@@ -504,10 +503,13 @@ func (c *Core) enterPrepareStep(height int64, round int16) {
 			}
 		}
 		prepare := types.NewPrepare(height, block, c.publicKey.ToID(), c.privateKey)
+		// 将Prepare消息发送到内部的消息通道里，这样在recvRoutine进程中可以捕获该消息，然后就会去处理该消息
 		c.sendInternalMessage(MessageInfo{Msg: prepare, NodeID: ""})
 	}
 }
 
+// enterPrepareVoteStep 主节点生成Prepare消息，并将其广播给其他节点，自己也保留这个Prepare消息，然后拥有Prepare消息的节点
+// 为Prepare消息进行投票，主节点也会为自己生成的Prepare消息进行投票。
 func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 	logger := c.Logger.New("height", height, "round", round)
 	logger.Info("entering PREPARE_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
@@ -520,9 +522,6 @@ func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 		c.stepInfo.step = PrepareVoteStep
 		c.newStep()
 	}()
-	if c.isLeader() {
-		return
-	}
 	if !c.hasPrepare() {
 		logger.Error("PREPARE_VOTE step: Prepare message is nil")
 		return
