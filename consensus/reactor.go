@@ -88,6 +88,14 @@ func (r *Reactor) gossipRoutine(peer *p2p.Peer) {
 				msg := MustEncode(r.core.stepInfo.preCommit)
 				peer.Send(p2p.LeaderProposeChannel, msg)
 				logger.Info("leader is me, send PreCommit message", "to", peer.NodeID())
+			case r.core.stepInfo.commit != nil && r.core.stepInfo.step == CommitStep:
+				msg := MustEncode(r.core.stepInfo.commit)
+				peer.Send(p2p.LeaderProposeChannel, msg)
+				logger.Info("leader is me, send Commit message", "to", peer.NodeID())
+			case r.core.stepInfo.decide != nil && r.core.stepInfo.step == DecideStep:
+				msg := MustEncode(r.core.stepInfo.decide)
+				peer.Send(p2p.LeaderProposeChannel, msg)
+				logger.Info("leader is me, send Decide message", "to", peer.NodeID())
 			}
 		}
 
@@ -98,7 +106,14 @@ func (r *Reactor) gossipRoutine(peer *p2p.Peer) {
 				msg := MustEncode(vote)
 				peer.Send(p2p.ReplicaVoteChannel, msg)
 				logger.Info("replica is me, send PrepareVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
-
+			case vote := <-r.core.preCommitVotesQueue:
+				msg := MustEncode(vote)
+				peer.Send(p2p.ReplicaVoteChannel, msg)
+				logger.Info("replica is me, send PreCommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
+			case vote := <-r.core.commitVotesQueue:
+				msg := MustEncode(vote)
+				peer.Send(p2p.ReplicaVoteChannel, msg)
+				logger.Info("replica is me, send CommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
 			}
 		}
 	}

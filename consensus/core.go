@@ -23,40 +23,44 @@ const msgQueueSize = 10000
 
 type Core struct {
 	service.BaseService
-	cfg               *config.ConsensusConfig
-	privateKey        *bls12.PrivateKey // 为共识消息签名的私钥
-	publicKey         *bls12.PublicKey
-	id                crypto.ID            // 自己的节点ID
-	blockStore        *state.StoreBlock    // 存储区块，也可以通过区块高度和区块哈希值加载指定的区块
-	blockExec         *state.BlockExecutor // 创建区块和执行区块里的交易指令
-	state             *state.State
-	txsPool           *txspool.TxsPool
-	eventBus          *events.EventBus
-	eventSwitch       *events.EventSwitch
-	stepInfo          *StepInfo
-	scheduledTicker   *TimeoutTicker
-	internalMsgQueue  chan MessageInfo
-	externalMsgQueue  chan MessageInfo
-	prepareVotesQueue chan *types.PrepareVote
-	mu                sync.RWMutex
-	cryptoBLS12       *bls12.CryptoBLS12
+	cfg                 *config.ConsensusConfig
+	privateKey          *bls12.PrivateKey // 为共识消息签名的私钥
+	publicKey           *bls12.PublicKey
+	id                  crypto.ID            // 自己的节点ID
+	blockStore          *state.StoreBlock    // 存储区块，也可以通过区块高度和区块哈希值加载指定的区块
+	blockExec           *state.BlockExecutor // 创建区块和执行区块里的交易指令
+	state               *state.State
+	txsPool             *txspool.TxsPool
+	eventBus            *events.EventBus
+	eventSwitch         *events.EventSwitch
+	stepInfo            *StepInfo
+	scheduledTicker     *TimeoutTicker
+	internalMsgQueue    chan MessageInfo
+	externalMsgQueue    chan MessageInfo
+	prepareVotesQueue   chan *types.PrepareVote
+	preCommitVotesQueue chan *types.PreCommitVote
+	commitVotesQueue    chan *types.CommitVote
+	mu                  sync.RWMutex
+	cryptoBLS12         *bls12.CryptoBLS12
 }
 
 func NewCore(cfg *config.ConsensusConfig, state *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, cryptoBLS12 *bls12.CryptoBLS12) *Core {
 	core := &Core{
-		BaseService:       *service.NewBaseService(nil, "Consensus_Core"),
-		cfg:               cfg,
-		blockStore:        blockStore,
-		blockExec:         blockExec,
-		state:             state,
-		txsPool:           txsPool,
-		eventSwitch:       events.NewEventSwitch(),
-		stepInfo:          NewStepInfo(),
-		scheduledTicker:   NewTimeoutTicker(),
-		internalMsgQueue:  make(chan MessageInfo, msgQueueSize),
-		externalMsgQueue:  make(chan MessageInfo, msgQueueSize),
-		prepareVotesQueue: make(chan *types.PrepareVote, msgQueueSize),
-		cryptoBLS12:       cryptoBLS12,
+		BaseService:         *service.NewBaseService(nil, "Consensus_Core"),
+		cfg:                 cfg,
+		blockStore:          blockStore,
+		blockExec:           blockExec,
+		state:               state,
+		txsPool:             txsPool,
+		eventSwitch:         events.NewEventSwitch(),
+		stepInfo:            NewStepInfo(),
+		scheduledTicker:     NewTimeoutTicker(),
+		internalMsgQueue:    make(chan MessageInfo, msgQueueSize),
+		externalMsgQueue:    make(chan MessageInfo, msgQueueSize),
+		prepareVotesQueue:   make(chan *types.PrepareVote, msgQueueSize/100),
+		preCommitVotesQueue: make(chan *types.PreCommitVote, msgQueueSize/100),
+		commitVotesQueue:    make(chan *types.CommitVote, msgQueueSize/100),
+		cryptoBLS12:         cryptoBLS12,
 	}
 	core.stepInfo.height = state.InitialHeight
 	core.stepInfo.startTime = time.Now().Add(time.Second)
@@ -176,10 +180,18 @@ func (c *Core) handleMsg(mi MessageInfo) {
 			err = nil
 		}
 	case *types.PreCommitVote:
-		err = c.handlePreCommitVote(msg)
-		if err != nil {
-			c.Logger.Error("failed to handle PreCommitVote message", "err", err)
-			err = nil
+		if mi.NodeID != "" { // 这表示自己是主节点，收到了其他副本节点发送来的投票
+			err = c.handlePreCommitVote(msg)
+			if err != nil {
+				c.Logger.Error("failed to handle PreCommitVote message", "err", err)
+				err = nil
+			}
+		} else {
+			select {
+			case c.preCommitVotesQueue <- msg:
+			default:
+				go func() { c.preCommitVotesQueue <- msg }()
+			}
 		}
 	case *types.Commit:
 		err = c.handleCommit(msg)
@@ -188,10 +200,18 @@ func (c *Core) handleMsg(mi MessageInfo) {
 			err = nil
 		}
 	case *types.CommitVote:
-		err = c.handleCommitVote(msg)
-		if err != nil {
-			c.Logger.Error("failed to handle CommitVote message", "err", err)
-			err = nil
+		if mi.NodeID != "" { // 这表示自己是主节点，收到了其他副本节点发送来的投票
+			err = c.handleCommitVote(msg)
+			if err != nil {
+				c.Logger.Error("failed to handle CommitVote message", "err", err)
+				err = nil
+			}
+		} else {
+			select {
+			case c.commitVotesQueue <- msg:
+			default:
+				go func() { c.commitVotesQueue <- msg }()
+			}
 		}
 	case *types.Decide:
 		err = c.handleDecide(msg)
