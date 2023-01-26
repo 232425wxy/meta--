@@ -72,6 +72,7 @@ func (r *Reactor) unsubscribeEvents() {
 
 func (r *Reactor) gossipRoutine(peer *p2p.Peer) {
 	logger := r.Logger.New("peer", peer.NodeID())
+	// 用PeerState来保证只会给节点发送一次主节点提出的共识消息
 	ps := peer.Data.Get(PeerStateKey).(*PeerState)
 	for {
 		if r.core.isLeader() {

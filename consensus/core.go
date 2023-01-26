@@ -528,7 +528,15 @@ func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 	}
 	logger.Debug("Prepare message is valid, decide to vote for it")
 	vote := types.NewPrepareVote(height, types.GeneratePrepareVoteValueHash(c.stepInfo.prepare.Block.Header.Hash), c.privateKey)
-	c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
+	if c.isLeader() {
+		c.stepInfo.voteSet.AddPrepareVote(c.stepInfo.round, vote)
+		ok := c.stepInfo.voteSet.CheckPrepareVoteIsComplete(c.stepInfo.round, c.state.Validators)
+		if ok {
+			c.enterPreCommitStep(c.stepInfo.height, c.stepInfo.round)
+		}
+	} else {
+		c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
+	}
 }
 
 func (c *Core) enterPreCommitStep(height int64, round int16) {
@@ -568,13 +576,22 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 	}
 	logger.Debug("PreCommit message is valid, decide to vote for it")
 	vote := types.NewPreCommitVote(height, types.GeneratePreCommitVoteValueHash(c.stepInfo.block.Header.Hash), c.privateKey)
-	c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
+	if c.isLeader() {
+		c.stepInfo.voteSet.AddPreCommitVote(c.stepInfo.round, vote)
+		ok := c.stepInfo.voteSet.CheckPreCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
+		if ok {
+			c.enterCommit(c.stepInfo.height, c.stepInfo.round)
+		}
+	} else {
+		c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
+	}
 }
 
 func (c *Core) enterCommit(height int64, round int16) {
 	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= CommitStep) {
 		logger.Warn("entering COMMIT step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		return
 	}
 	logger.Info("entering COMMIT step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
@@ -591,6 +608,7 @@ func (c *Core) enterCommitVote(height int64, round int16) {
 	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= CommitVoteStep) {
 		logger.Warn("entering COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		return
 	}
 	logger.Info("entering PRE_COMMIT_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
@@ -607,7 +625,15 @@ func (c *Core) enterCommitVote(height int64, round int16) {
 	}
 	logger.Debug("Commit message is valid, decide to vote for it")
 	vote := types.NewCommitVote(height, types.GenerateCommitVoteValueHash(c.stepInfo.block.Header.Hash), c.privateKey)
-	c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
+	if c.isLeader() {
+		c.stepInfo.voteSet.AddCommitVote(c.stepInfo.round, vote)
+		ok := c.stepInfo.voteSet.CheckCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
+		if ok {
+			c.enterDecide(c.stepInfo.height, c.stepInfo.round)
+		}
+	} else {
+		c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
+	}
 }
 
 func (c *Core) enterDecide(height int64, round int16) {
