@@ -17,7 +17,7 @@ type Switch struct {
 	peers        *PeerSet
 	dialing      *cmap.CMap
 	reconnecting *cmap.CMap
-	addrbook     *addrBook
+	addrbook     *AddrBook
 	transport    *Transport
 	metrics      *Metrics
 }
@@ -107,7 +107,7 @@ func (sw *Switch) StopPeerForError(p *Peer, err error) {
 	sw.stopAndRemovePeer(p, err)
 }
 
-func (sw *Switch) SetAddrBook(addrbook *addrBook) {
+func (sw *Switch) SetAddrBook(addrbook *AddrBook) {
 	sw.addrbook = addrbook
 	sw.addrbook.AddOurAddress(sw.NetAddress())
 }

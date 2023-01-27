@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type addrBook struct {
+type AddrBook struct {
 	mu             sync.RWMutex
 	ourAddresses   map[string]struct{} // id@ip:port -> struct{}{}
 	bucket         map[crypto.ID]*knownAddress
@@ -19,8 +19,8 @@ type addrBook struct {
 	quit           chan struct{}
 }
 
-func NewAddrBook(filePath string) *addrBook {
-	return &addrBook{
+func NewAddrBook(filePath string) *AddrBook {
+	return &AddrBook{
 		ourAddresses:   make(map[string]struct{}),
 		bucket:         make(map[crypto.ID]*knownAddress),
 		filePath:       filePath,
@@ -29,30 +29,30 @@ func NewAddrBook(filePath string) *addrBook {
 	}
 }
 
-func (a *addrBook) Start() {
+func (a *AddrBook) Start() {
 	a.loadFromFile()
 	go a.saveRoutine()
 }
 
-func (a *addrBook) Close() {
+func (a *AddrBook) Close() {
 	a.fileSaveTicker.Stop()
 	close(a.quit)
 }
 
-func (a *addrBook) AddOurAddress(addr *NetAddress) {
+func (a *AddrBook) AddOurAddress(addr *NetAddress) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.ourAddresses[addr.String()] = struct{}{}
 }
 
-func (a *addrBook) IsOurAddress(addr *NetAddress) bool {
+func (a *AddrBook) IsOurAddress(addr *NetAddress) bool {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	_, ok := a.ourAddresses[addr.String()]
 	return ok
 }
 
-func (a *addrBook) AddAddress(addr *NetAddress) bool {
+func (a *AddrBook) AddAddress(addr *NetAddress) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if _, ok := a.ourAddresses[addr.String()]; ok {
@@ -65,13 +65,13 @@ func (a *addrBook) AddAddress(addr *NetAddress) bool {
 	return true
 }
 
-func (a *addrBook) RemoveAddress(addr *NetAddress) {
+func (a *AddrBook) RemoveAddress(addr *NetAddress) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	delete(a.bucket, addr.ID)
 }
 
-func (a *addrBook) MarkAttempt(addr *NetAddress) {
+func (a *AddrBook) MarkAttempt(addr *NetAddress) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	ka, ok := a.bucket[addr.ID]
@@ -87,7 +87,7 @@ func (a *addrBook) MarkAttempt(addr *NetAddress) {
 //	---------------------------------------------------------
 //
 // saveRoutine 默认情况下，每隔两分钟将地址簿里的所有地址存储到硬盘中。
-func (a *addrBook) saveRoutine() {
+func (a *AddrBook) saveRoutine() {
 	for {
 		select {
 		case <-a.fileSaveTicker.C:
@@ -98,7 +98,7 @@ func (a *addrBook) saveRoutine() {
 	}
 }
 
-func (a *addrBook) saveToFile() {
+func (a *AddrBook) saveToFile() {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
@@ -113,7 +113,7 @@ func (a *addrBook) saveToFile() {
 	mos.MustWriteFile(a.filePath, bz, 0644)
 }
 
-func (a *addrBook) loadFromFile() bool {
+func (a *AddrBook) loadFromFile() bool {
 	_, err := os.Stat(a.filePath)
 	if os.IsNotExist(err) {
 		return false

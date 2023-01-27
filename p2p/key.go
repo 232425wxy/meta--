@@ -35,7 +35,7 @@ func (key *NodeKey) GetID() crypto.ID {
 //
 // SaveAs 给定存储节点密钥的地址，将节点密钥存储到那里面。
 func (key *NodeKey) SaveAs(filePath string) error {
-	bz, err := mjson.Encode(key)
+	bz, err := mjson.EncodeIndent(key, "", "	")
 	if err != nil {
 		return err
 	}

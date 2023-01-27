@@ -67,6 +67,15 @@ func NewEventBus() *EventBus {
 	}
 }
 
+func CreateAndStartEventBus(logger log.Logger) (*EventBus, error) {
+	bus := NewEventBus()
+	bus.SetLogger(logger)
+	if err := bus.Start(); err != nil {
+		return nil, err
+	}
+	return bus, nil
+}
+
 func (bus *EventBus) SetLogger(logger log.Logger) {
 	bus.BaseService.SetLogger(logger)
 	bus.server.SetLogger(logger.New("module", "pubsub"))
