@@ -10,6 +10,8 @@ const TemplateToml = `
 home = "{{ .BasicConfig.Home }}"
 key_file = "{{ .BasicConfig.KeyFile }}"
 genesis_file = "{{ .BasicConfig.GenesisFile }}"
+db_backend = "{{ .BasicConfig.DBBackend }}"
+db_dir = "{{ .BasicConfig.DBDir }}"
 
 [p2p]
 home = "{{ .P2PConfig.Home }}"

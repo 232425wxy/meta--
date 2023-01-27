@@ -36,6 +36,18 @@ func Encode(x interface{}) ([]byte, error) {
 	return buffer.Bytes(), err
 }
 
+func EncodeIndent(x interface{}, prefix, indent string) ([]byte, error) {
+	bz, err := Encode(x)
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	if err = json.Indent(buf, bz, prefix, indent); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
 // 不可导出的工具函数

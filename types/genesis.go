@@ -13,7 +13,7 @@ type Genesis struct {
 }
 
 func (gen *Genesis) SaveAs(file string) error {
-	bz, err := mjson.Encode(gen)
+	bz, err := mjson.EncodeIndent(gen, "", "	")
 	if err != nil {
 		return err
 	}

@@ -48,12 +48,16 @@ type BasicConfig struct {
 	Home        string `mapstructure:"home"`
 	KeyFile     string `mapstructure:"key_file"`
 	GenesisFile string `mapstructure:"genesis_file"`
+	DBBackend   string `mapstructure:"db_backend"`
+	DBDir       string `mapstructure:"db_dir"`
 }
 
 func DefaultBasicConfig() *BasicConfig {
 	return &BasicConfig{
 		KeyFile:     "node_key.json",
 		GenesisFile: "genesis.json",
+		DBBackend:   "goleveldb",
+		DBDir:       "data",
 	}
 }
 
@@ -63,6 +67,10 @@ func (bc *BasicConfig) KeyFilePath() string {
 
 func (bc *BasicConfig) GenesisFilePath() string {
 	return filepath.Join(bc.Home, bc.GenesisFile)
+}
+
+func (bc *BasicConfig) DBPath() string {
+	return filepath.Join(bc.Home, bc.DBDir)
 }
 
 // P2PConfig ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨

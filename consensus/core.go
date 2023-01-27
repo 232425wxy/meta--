@@ -363,7 +363,7 @@ func (c *Core) handlePreCommitVote(vote *types.PreCommitVote) error {
 	c.stepInfo.voteSet.AddPreCommitVote(c.stepInfo.round, vote)
 	ok = c.stepInfo.voteSet.CheckPreCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
 	if ok {
-		c.enterCommit(c.stepInfo.height, c.stepInfo.round)
+		c.enterCommitStep(c.stepInfo.height, c.stepInfo.round)
 	}
 	return nil
 }
@@ -394,7 +394,7 @@ func (c *Core) handleCommit(commit *types.Commit) error {
 	if !c.isLeader() {
 		c.Logger.Info("received PreCommit message, plan to vote for it", "Commit message from", commit.ID)
 	}
-	c.enterCommitVote(c.stepInfo.height, c.stepInfo.round)
+	c.enterCommitVoteStep(c.stepInfo.height, c.stepInfo.round)
 	return nil
 }
 
@@ -424,7 +424,7 @@ func (c *Core) handleCommitVote(vote *types.CommitVote) error {
 	c.stepInfo.voteSet.AddCommitVote(c.stepInfo.round, vote)
 	ok = c.stepInfo.voteSet.CheckCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
 	if ok {
-		c.enterDecide(c.stepInfo.height, c.stepInfo.round)
+		c.enterDecideStep(c.stepInfo.height, c.stepInfo.round)
 	}
 	return nil
 }
@@ -567,9 +567,6 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 		c.stepInfo.round = round
 		c.stepInfo.step = PreCommitVoteStep
 	}()
-	if c.isLeader() {
-		return
-	}
 	if !c.hasPreCommit() {
 		logger.Error("PRE_COMMIT_VOTE step: PreCommit message is nil")
 		return
@@ -580,14 +577,14 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 		c.stepInfo.voteSet.AddPreCommitVote(c.stepInfo.round, vote)
 		ok := c.stepInfo.voteSet.CheckPreCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
 		if ok {
-			c.enterCommit(c.stepInfo.height, c.stepInfo.round)
+			c.enterCommitStep(c.stepInfo.height, c.stepInfo.round)
 		}
 	} else {
 		c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
 	}
 }
 
-func (c *Core) enterCommit(height int64, round int16) {
+func (c *Core) enterCommitStep(height int64, round int16) {
 	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= CommitStep) {
 		logger.Warn("entering COMMIT step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
@@ -604,7 +601,7 @@ func (c *Core) enterCommit(height int64, round int16) {
 	c.sendInternalMessage(MessageInfo{Msg: commit, NodeID: ""})
 }
 
-func (c *Core) enterCommitVote(height int64, round int16) {
+func (c *Core) enterCommitVoteStep(height int64, round int16) {
 	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= CommitVoteStep) {
 		logger.Warn("entering COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
@@ -616,9 +613,6 @@ func (c *Core) enterCommitVote(height int64, round int16) {
 		c.stepInfo.round = round
 		c.stepInfo.step = CommitVoteStep
 	}()
-	if c.isLeader() {
-		return
-	}
 	if !c.hasCommit() {
 		logger.Error("COMMIT_VOTE step: Commit message is nil")
 		return
@@ -629,17 +623,18 @@ func (c *Core) enterCommitVote(height int64, round int16) {
 		c.stepInfo.voteSet.AddCommitVote(c.stepInfo.round, vote)
 		ok := c.stepInfo.voteSet.CheckCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
 		if ok {
-			c.enterDecide(c.stepInfo.height, c.stepInfo.round)
+			c.enterDecideStep(c.stepInfo.height, c.stepInfo.round)
 		}
 	} else {
 		c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
 	}
 }
 
-func (c *Core) enterDecide(height int64, round int16) {
+func (c *Core) enterDecideStep(height int64, round int16) {
 	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= DecideStep) {
 		logger.Warn("entering DECIDE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		return
 	}
 	logger.Info("entering DECIDE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
