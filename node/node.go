@@ -1,6 +1,9 @@
 package node
 
 import (
+	"fmt"
+	"github.com/232425wxy/meta--/abci"
+	"github.com/232425wxy/meta--/abci/apps"
 	"github.com/232425wxy/meta--/common/service"
 	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/consensus"
@@ -8,6 +11,7 @@ import (
 	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/p2p"
+	"github.com/232425wxy/meta--/proxy"
 	"github.com/232425wxy/meta--/state"
 	"github.com/232425wxy/meta--/txspool"
 	"github.com/232425wxy/meta--/types"
@@ -33,6 +37,29 @@ func DefaultGenesisProvider(cfg *config.Config) (*types.Genesis, error) {
 	return genesis, nil
 }
 
+type ApplicationProvider func(cfg *config.Config) abci.Application
+
+func DefaultApplicationProvider(cfg *config.Config) abci.Application {
+	var app abci.Application
+	switch cfg.BasicConfig.App {
+	case "kvstore":
+		app = apps.NewKVStoreApp("kvstore", cfg.BasicConfig.DBPath(), database.BackendType(cfg.BasicConfig.DBBackend))
+	default:
+		panic(fmt.Sprintf("unknown app type: %s", cfg.BasicConfig.App))
+	}
+	return app
+}
+
+type TxspoolProvider func(cfg *config.Config, proxyAppConn *proxy.AppConns, state *state.State, logger log.Logger) *txspool.TxsPool
+
+func DefaultTxsPoolProvider
+
+type Provider struct {
+	DBProvider          DBProvider
+	GenesisProvider     GenesisProvider
+	ApplicationProvider ApplicationProvider
+}
+
 type Node struct {
 	service.BaseService
 	cfg        *config.Config
@@ -51,33 +78,30 @@ type Node struct {
 	consensusReactor *consensus.Reactor
 }
 
-func NewNode(cfg *config.Config, logger log.Logger) *Node {
+func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, error) {
 	nodeKey, err := p2p.LoadNodeKey(cfg.BasicConfig.KeyFilePath())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-}
-
-func NewNode(cfg *config.Config, logger log.Logger, dbProvider DBProvider, genesisProvider GenesisProvider, nodeKey *p2p.NodeKey) (*Node, error) {
 	eventBus, err := events.CreateAndStartEventBus(logger)
 	if err != nil {
 		return nil, err
 	}
 
-	blockStoreDB, err := dbProvider("blocks", cfg)
+	blockStoreDB, err := provider.DBProvider("blocks", cfg)
 	if err != nil {
 		return nil, err
 	}
 	blockStore := state.NewStoreBlock(blockStoreDB)
 
-	stateDB, err := dbProvider("state", cfg)
+	stateDB, err := provider.DBProvider("state", cfg)
 	if err != nil {
 		return nil, err
 	}
 	stateStore := state.NewStoreState(stateDB)
 
-	genesis, err := genesisProvider(cfg)
+	genesis, err := provider.GenesisProvider(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -92,4 +116,16 @@ func NewNode(cfg *config.Config, logger log.Logger, dbProvider DBProvider, genes
 		TxIndex:    "on",
 	}
 
+	application := provider.ApplicationProvider(cfg)
+	proxyAppConns := proxy.NewAppConns(application, logger)
+	if err = proxyAppConns.Start(); err != nil {
+		return nil, err
+	}
+
+	return &Node{
+		nodeInfo:   nodeInfo,
+		eventBUs:   eventBus,
+		blockStore: blockStore,
+		stateStore: stateStore,
+	}, nil
 }

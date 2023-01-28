@@ -50,6 +50,7 @@ type BasicConfig struct {
 	GenesisFile string `mapstructure:"genesis_file"`
 	DBBackend   string `mapstructure:"db_backend"`
 	DBDir       string `mapstructure:"db_dir"`
+	App         string `mapstructure:"app"`
 }
 
 func DefaultBasicConfig() *BasicConfig {
@@ -58,6 +59,7 @@ func DefaultBasicConfig() *BasicConfig {
 		GenesisFile: "genesis.json",
 		DBBackend:   "goleveldb",
 		DBDir:       "data",
+		App:         "kvstore",
 	}
 }
 

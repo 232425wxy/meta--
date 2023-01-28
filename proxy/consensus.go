@@ -1,8 +1,21 @@
 package proxy
 
-import "github.com/232425wxy/meta--/proto/pbabci"
+import (
+	"github.com/232425wxy/meta--/abci"
+	"github.com/232425wxy/meta--/common/service"
+	"github.com/232425wxy/meta--/proto/pbabci"
+)
 
 type AppConnConsensus struct {
+	service.BaseService
+	application abci.Application
+}
+
+func NewAppConnConsensus(app abci.Application) *AppConnConsensus {
+	return &AppConnConsensus{
+		BaseService: *service.NewBaseService(nil, "AppConn_Consensus"),
+		application: app,
+	}
 }
 
 func (app *AppConnConsensus) InitChain(chain pbabci.RequestInitChain) pbabci.ResponseInitChain {

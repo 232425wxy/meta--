@@ -18,7 +18,7 @@ type KVStoreApp struct {
 	db         database.DB
 }
 
-func NewKVStoreApp(name, dir string, backend database.BackendType) *KVStoreApp {
+func NewKVStoreApp(name, dir string, backend database.BackendType) abci.Application {
 	db, err := database.NewDB(name, dir, backend)
 	if err != nil {
 		panic(err)

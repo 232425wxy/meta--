@@ -12,6 +12,7 @@ key_file = "{{ .BasicConfig.KeyFile }}"
 genesis_file = "{{ .BasicConfig.GenesisFile }}"
 db_backend = "{{ .BasicConfig.DBBackend }}"
 db_dir = "{{ .BasicConfig.DBDir }}"
+app = "{{ .BasicConfig.App }}"
 
 [p2p]
 home = "{{ .P2PConfig.Home }}"
