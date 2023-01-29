@@ -1,6 +1,7 @@
 package node
 
 import (
+	"crypto"
 	"fmt"
 	"github.com/232425wxy/meta--/abci"
 	"github.com/232425wxy/meta--/abci/apps"
@@ -50,14 +51,26 @@ func DefaultApplicationProvider(cfg *config.Config) abci.Application {
 	return app
 }
 
-type TxspoolProvider func(cfg *config.Config, proxyAppConn *proxy.AppConns, state *state.State, logger log.Logger) *txspool.TxsPool
+type TxspoolProvider func(cfg *config.Config, proxyAppConn *proxy.AppConns, state *state.State, logger log.Logger) (*txspool.TxsPool, *txspool.Reactor)
 
-func DefaultTxsPoolProvider
+func DefaultTxsPoolProvider(cfg *config.Config, proxyAppConn *proxy.AppConns, state *state.State, logger log.Logger) (*txspool.TxsPool, *txspool.Reactor) {
+	pool := txspool.NewTxsPool(cfg.TxsPoolConfig, proxyAppConn.TxsPool(), state.LastBlockHeight)
+	reactor := txspool.NewReactor(cfg.TxsPoolConfig, pool)
+	reactor.SetLogger(logger.New("module", "TxsPool"))
+	return pool, reactor
+}
+
+type ConsensusProvider func(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, privateKey *crypto.PrivateKey, eventBus *events.EventBus, logger log.Logger) (*consensus.Core, *consensus.Reactor)
+
+func DefaultConsensusProvider(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, privateKey *crypto.PrivateKey, eventBus *events.EventBus, logger log.Logger) (*consensus.Core, *consensus.Reactor) {
+	core := consensus.NewCore(cfg.ConsensusConfig, stat)
+}
 
 type Provider struct {
 	DBProvider          DBProvider
 	GenesisProvider     GenesisProvider
 	ApplicationProvider ApplicationProvider
+	TxspoolProvider     TxspoolProvider
 }
 
 type Node struct {
@@ -106,7 +119,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 		return nil, err
 	}
 
-	state := stateStore.LoadFromDBOrGenesis(genesis)
+	stat := stateStore.LoadFromDBOrGenesis(genesis)
 
 	nodeInfo := &p2p.NodeInfo{
 		NodeID:     nodeKey.GetID(),
@@ -121,6 +134,10 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	if err = proxyAppConns.Start(); err != nil {
 		return nil, err
 	}
+
+	txsPool, txsPoolReactor := provider.TxspoolProvider(cfg, proxyAppConns, stat, logger)
+
+	blockExec := state.NewBlockExecutor(stateStore, proxyAppConns.Consensus(), txsPool, logger.New("module", "state"))
 
 	return &Node{
 		nodeInfo:   nodeInfo,
