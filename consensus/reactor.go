@@ -15,6 +15,12 @@ type Reactor struct {
 	mu   sync.RWMutex
 }
 
+func NewReactor(core *Core) *Reactor {
+	r := &Reactor{core: core}
+	r.BaseReactor = *p2p.NewBaseReactor("Consensus")
+	return r
+}
+
 func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 	msg := MustDecode(bz)
 	r.Logger.Debug("receive message", "peer", src.NodeID(), "message", msg)

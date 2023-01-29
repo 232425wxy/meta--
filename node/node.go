@@ -1,13 +1,13 @@
 package node
 
 import (
-	"crypto"
 	"fmt"
 	"github.com/232425wxy/meta--/abci"
 	"github.com/232425wxy/meta--/abci/apps"
 	"github.com/232425wxy/meta--/common/service"
 	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/consensus"
+	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/database"
 	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/log"
@@ -60,10 +60,20 @@ func DefaultTxsPoolProvider(cfg *config.Config, proxyAppConn *proxy.AppConns, st
 	return pool, reactor
 }
 
-type ConsensusProvider func(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, privateKey *crypto.PrivateKey, eventBus *events.EventBus, logger log.Logger) (*consensus.Core, *consensus.Reactor)
+type ConsensusProvider func(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, privateKey *bls12.PrivateKey, bls *bls12.CryptoBLS12, logger log.Logger) (*consensus.Core, *consensus.Reactor)
 
-func DefaultConsensusProvider(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, privateKey *crypto.PrivateKey, eventBus *events.EventBus, logger log.Logger) (*consensus.Core, *consensus.Reactor) {
-	core := consensus.NewCore(cfg.ConsensusConfig, stat)
+func DefaultConsensusProvider(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, privateKey *bls12.PrivateKey, bls *bls12.CryptoBLS12, logger log.Logger) (*consensus.Core, *consensus.Reactor) {
+	core := consensus.NewCore(cfg.ConsensusConfig, privateKey, stat, exec, blockStore, txsPool, bls)
+	core.SetLogger(logger.New("module", "Consensus"))
+	reactor := consensus.NewReactor(core)
+	return core, reactor
+}
+
+type TransportProvider func(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey) *p2p.Transport
+
+func DefaultTransportProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey) *p2p.Transport {
+	transport := p2p.NewTransport(nodeInfo, nodeKey, cfg.P2PConfig)
+	return transport
 }
 
 type Provider struct {
@@ -71,6 +81,8 @@ type Provider struct {
 	GenesisProvider     GenesisProvider
 	ApplicationProvider ApplicationProvider
 	TxspoolProvider     TxspoolProvider
+	ConsensusProvider   ConsensusProvider
+	TransportProvider   TransportProvider
 }
 
 type Node struct {
@@ -122,12 +134,14 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	stat := stateStore.LoadFromDBOrGenesis(genesis)
 
 	nodeInfo := &p2p.NodeInfo{
-		NodeID:     nodeKey.GetID(),
-		ListenAddr: cfg.P2PConfig.ListenAddress,
-		Channels:   []byte{p2p.LeaderProposeChannel, p2p.ReplicaVoteChannel, p2p.ReplicaStateChannel, p2p.TxsChannel},
-		RPCAddress: "",
-		TxIndex:    "on",
+		NodeID:      nodeKey.GetID(),
+		ListenAddr:  cfg.P2PConfig.ListenAddress,
+		Channels:    []byte{p2p.LeaderProposeChannel, p2p.ReplicaVoteChannel, p2p.ReplicaStateChannel, p2p.TxsChannel},
+		RPCAddress:  "",
+		TxIndex:     "on",
+		CryptoBLS12: bls12.NewCryptoBLS12(),
 	}
+	nodeInfo.CryptoBLS12.Init(nodeKey.PrivateKey)
 
 	application := provider.ApplicationProvider(cfg)
 	proxyAppConns := proxy.NewAppConns(application, logger)
@@ -138,6 +152,11 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	txsPool, txsPoolReactor := provider.TxspoolProvider(cfg, proxyAppConns, stat, logger)
 
 	blockExec := state.NewBlockExecutor(stateStore, proxyAppConns.Consensus(), txsPool, logger.New("module", "state"))
+
+	consensusStat, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, blockStore, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger.New("module", "Consensus"))
+	consensusStat.SetEventBus(eventBus)
+
+	transport := provider.TransportProvider(cfg, nodeInfo, nodeKey)
 
 	return &Node{
 		nodeInfo:   nodeInfo,

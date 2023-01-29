@@ -44,10 +44,13 @@ type Core struct {
 	cryptoBLS12         *bls12.CryptoBLS12
 }
 
-func NewCore(cfg *config.ConsensusConfig, state *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, cryptoBLS12 *bls12.CryptoBLS12) *Core {
+func NewCore(cfg *config.ConsensusConfig, privateKey *bls12.PrivateKey, state *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, cryptoBLS12 *bls12.CryptoBLS12) *Core {
 	core := &Core{
 		BaseService:         *service.NewBaseService(nil, "Consensus_Core"),
 		cfg:                 cfg,
+		privateKey:          privateKey,
+		publicKey:           privateKey.PublicKey(),
+		id:                  privateKey.PublicKey().ToID(),
 		blockStore:          blockStore,
 		blockExec:           blockExec,
 		state:               state,

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/232425wxy/meta--/common/hexbytes"
 	"github.com/232425wxy/meta--/crypto"
+	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/proto/pbp2p"
 )
 
@@ -22,11 +23,12 @@ const (
 // 定义p2p网络中节点的基本信息
 
 type NodeInfo struct {
-	NodeID     crypto.ID         `json:"nodeID"`
-	ListenAddr string            `json:"listenAddr"` // 监听的网络地址，从该地址获取新连接
-	Channels   hexbytes.HexBytes // 节点管理的所有信道
-	RPCAddress string            // rpc通信地址
-	TxIndex    string
+	NodeID      crypto.ID         `json:"nodeID"`
+	ListenAddr  string            `json:"listenAddr"` // 监听的网络地址，从该地址获取新连接
+	Channels    hexbytes.HexBytes // 节点管理的所有信道
+	RPCAddress  string            // rpc通信地址
+	TxIndex     string
+	CryptoBLS12 *bls12.CryptoBLS12
 }
 
 // ID ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
