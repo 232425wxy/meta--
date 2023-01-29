@@ -69,11 +69,15 @@ func DefaultConsensusProvider(cfg *config.Config, stat *state.State, exec *state
 	return core, reactor
 }
 
-type TransportProvider func(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey) *p2p.Transport
+type P2PProvider func(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch)
 
-func DefaultTransportProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey) *p2p.Transport {
+func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch) {
 	transport := p2p.NewTransport(nodeInfo, nodeKey, cfg.P2PConfig)
-	return transport
+	sw := p2p.NewSwitch(transport, nil)
+	sw.SetLogger(logger.New("module", "Switch"))
+	sw.AddReactor("TXSPOOL", txsPoolReactor)
+	sw.AddReactor("CONSENSUS", consensusReactor)
+	return transport, sw
 }
 
 type Provider struct {
@@ -82,7 +86,7 @@ type Provider struct {
 	ApplicationProvider ApplicationProvider
 	TxspoolProvider     TxspoolProvider
 	ConsensusProvider   ConsensusProvider
-	TransportProvider   TransportProvider
+	P2PProvider         P2PProvider
 }
 
 type Node struct {
@@ -156,12 +160,33 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	consensusStat, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, blockStore, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger.New("module", "Consensus"))
 	consensusStat.SetEventBus(eventBus)
 
-	transport := provider.TransportProvider(cfg, nodeInfo, nodeKey)
+	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, logger)
 
-	return &Node{
-		nodeInfo:   nodeInfo,
-		eventBUs:   eventBus,
-		blockStore: blockStore,
-		stateStore: stateStore,
-	}, nil
+	addrBook := p2p.NewAddrBook(cfg.P2PConfig.AddrBookPath())
+	if cfg.P2PConfig.ListenAddress != "" {
+		addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.GetID(), cfg.P2PConfig.ListenAddress))
+		if err != nil {
+			return nil, err
+		}
+		addrBook.AddOurAddress(addr)
+	}
+	sw.SetAddrBook(addrBook)
+
+	n := &Node{
+		BaseService:      *service.NewBaseService(logger.New("node", nodeKey.GetID()), "Node"),
+		cfg:              cfg,
+		genesis:          genesis,
+		transport:        transport,
+		sw:               sw,
+		addrBook:         addrBook,
+		nodeInfo:         nodeInfo,
+		nodeKey:          nodeKey,
+		eventBUs:         eventBus,
+		stateStore:       stateStore,
+		blockStore:       blockStore,
+		txsPool:          txsPool,
+		txsPoolReactor:   txsPoolReactor,
+		consensusReactor: consensusReactor,
+	}
+	return n, nil
 }

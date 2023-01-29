@@ -119,6 +119,10 @@ func (p2p *P2PConfig) SetNeighbours(neighbours []string) {
 	p2p.Neighbours = neighbours
 }
 
+func (p2p *P2PConfig) AddrBookPath() string {
+	return filepath.Join(p2p.Home, p2p.AddrBook)
+}
+
 // TxsPoolConfig ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------
