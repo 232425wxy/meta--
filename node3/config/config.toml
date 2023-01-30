@@ -1,0 +1,32 @@
+
+[basic]
+home = "node3"
+key_file = "node_key.json"
+genesis_file = "genesis.json"
+db_backend = "goleveldb"
+db_dir = "data"
+app = "kvstore"
+
+[p2p]
+home = "node3"
+listen_address = "tcp://0.0.0.0:26656"
+addr_book = "config/addrbook.json"
+flush_duration = "100ms"
+max_packet_msg_payload_size = "1024"
+send_rate = "5120000"
+recv_rate = "5120000"
+pong_timeout = "45s"
+ping_interval = "1m30s"
+neighbours = "[a6682e32934b1d687371@192.168.11.2:26656 a99172deee06a98be5d5@192.168.11.3:26656 992bad6b67db61e39094@192.168.11.4:26656 a1a2b3154effbfe04ee9@192.168.11.5:26656]"
+
+[txs_pool]
+home = "node3"
+max_size = "2000"
+max_tx_bytes = "1024"
+
+[consensus]
+home = "node3"
+timeout_prepare = "3s"
+timeout_pre_commit = "1s"
+timeout_commit = "1s"
+timeout_decide = "1s"

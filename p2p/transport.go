@@ -42,8 +42,9 @@ type peerConfig struct {
 	metrics      *Metrics
 }
 
-func NewTransport(nodeInfo *NodeInfo, nodeKey *NodeKey, config *config.P2PConfig) *Transport {
+func NewTransport(addr *NetAddress, nodeInfo *NodeInfo, nodeKey *NodeKey, config *config.P2PConfig) *Transport {
 	return &Transport{
+		addr:             addr,
 		acceptc:          make(chan accept),
 		closed:           make(chan struct{}),
 		connSet:          NewConnSet(),
@@ -60,12 +61,11 @@ func NewTransport(nodeInfo *NodeInfo, nodeKey *NodeKey, config *config.P2PConfig
 //	---------------------------------------------------------
 //
 // Listen 监听网络中新的连接。
-func (t *Transport) Listen(addr *NetAddress) error {
-	ln, err := net.Listen("tcp", addr.DialString())
+func (t *Transport) Listen() error {
+	ln, err := net.Listen("tcp", t.addr.DialString())
 	if err != nil {
 		return err
 	}
-	t.addr = addr
 	t.listener = ln
 	go t.acceptPeers()
 	return nil

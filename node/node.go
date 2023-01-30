@@ -16,6 +16,7 @@ import (
 	"github.com/232425wxy/meta--/state"
 	"github.com/232425wxy/meta--/txspool"
 	"github.com/232425wxy/meta--/types"
+	"time"
 )
 
 type DBProvider func(name string, cfg *config.Config) (database.DB, error)
@@ -72,7 +73,11 @@ func DefaultConsensusProvider(cfg *config.Config, stat *state.State, exec *state
 type P2PProvider func(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch)
 
 func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch) {
-	transport := p2p.NewTransport(nodeInfo, nodeKey, cfg.P2PConfig)
+	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.GetID(), cfg.P2PConfig.ListenAddress))
+	if err != nil {
+		panic(err)
+	}
+	transport := p2p.NewTransport(addr, nodeInfo, nodeKey, cfg.P2PConfig)
 	sw := p2p.NewSwitch(transport, nil)
 	sw.SetLogger(logger.New("module", "Switch"))
 	sw.AddReactor("TXSPOOL", txsPoolReactor)
@@ -87,6 +92,17 @@ type Provider struct {
 	TxspoolProvider     TxspoolProvider
 	ConsensusProvider   ConsensusProvider
 	P2PProvider         P2PProvider
+}
+
+func DefaultProvider() Provider {
+	return Provider{
+		DBProvider:          DefaultDBProvider,
+		GenesisProvider:     DefaultGenesisProvider,
+		ApplicationProvider: DefaultApplicationProvider,
+		TxspoolProvider:     DefaultTxsPoolProvider,
+		ConsensusProvider:   DefaultConsensusProvider,
+		P2PProvider:         DefaultP2PProvider,
+	}
 }
 
 type Node struct {
@@ -149,9 +165,9 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 
 	application := provider.ApplicationProvider(cfg)
 	proxyAppConns := proxy.NewAppConns(application, logger)
-	if err = proxyAppConns.Start(); err != nil {
-		return nil, err
-	}
+	//if err = proxyAppConns.Start(); err != nil {
+	//	return nil, err
+	//}
 
 	txsPool, txsPoolReactor := provider.TxspoolProvider(cfg, proxyAppConns, stat, logger)
 
@@ -189,4 +205,24 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 		consensusReactor: consensusReactor,
 	}
 	return n, nil
+}
+
+func (n *Node) Start() error {
+	if n.genesis.GenesisTime.After(time.Now()) {
+		n.Logger.Info("genesis time is in the future, sleeping until then...", "sleep_duration", n.genesis.GenesisTime.Sub(time.Now()).Seconds())
+		time.Sleep(n.genesis.GenesisTime.Sub(time.Now()))
+	}
+
+	// 开始监听网络中其他peer的连接请求
+
+	if err := n.transport.Listen(); err != nil {
+		return err
+	}
+
+	if err := n.sw.Start(); err != nil {
+		return err
+	}
+
+	n.sw.DialPeerAsync(n.cfg.P2PConfig.Neighbours)
+	return n.BaseService.Start()
 }

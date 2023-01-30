@@ -3,7 +3,6 @@ package state
 import (
 	"errors"
 	"fmt"
-	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/database"
 	"github.com/232425wxy/meta--/proto/pbstate"
 	"github.com/232425wxy/meta--/proto/pbtypes"
@@ -11,10 +10,6 @@ import (
 	"github.com/cosmos/gogoproto/proto"
 	"sync"
 )
-
-func CreateStateDBAndBlockDB(cfg *config.Config, dbProvider func(cfg *config.Config) database.DB) (*StoreBlock, database.DB, error) {
-
-}
 
 type StoreState struct {
 	db database.DB
