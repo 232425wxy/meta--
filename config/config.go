@@ -4,6 +4,7 @@ import (
 	"bytes"
 	mos "github.com/232425wxy/meta--/common/os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -121,6 +122,16 @@ func (p2p *P2PConfig) SetNeighbours(neighbours []string) {
 
 func (p2p *P2PConfig) AddrBookPath() string {
 	return filepath.Join(p2p.Home, p2p.AddrBook)
+}
+
+func (p2p *P2PConfig) NeighboursSlice() []string {
+	n0 := p2p.Neighbours[0]
+	if len(n0) == 0 {
+		return nil
+	}
+	neighbours := n0[1 : len(n0)-1]
+	sl := strings.Split(neighbours, " ")
+	return sl
 }
 
 // TxsPoolConfig ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨

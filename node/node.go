@@ -78,7 +78,7 @@ func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p
 		panic(err)
 	}
 	transport := p2p.NewTransport(addr, nodeInfo, nodeKey, cfg.P2PConfig)
-	sw := p2p.NewSwitch(transport, nil)
+	sw := p2p.NewSwitch(transport, p2p.P2PMetrics())
 	sw.SetLogger(logger.New("module", "Switch"))
 	sw.AddReactor("TXSPOOL", txsPoolReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
@@ -223,6 +223,6 @@ func (n *Node) Start() error {
 		return err
 	}
 
-	n.sw.DialPeerAsync(n.cfg.P2PConfig.Neighbours)
+	n.sw.DialPeerAsync(n.cfg.P2PConfig.NeighboursSlice())
 	return n.BaseService.Start()
 }

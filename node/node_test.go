@@ -6,6 +6,7 @@ import (
 	"github.com/232425wxy/meta--/log"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -19,6 +20,7 @@ func ReadConfigFile(path string) *config.Config {
 	if err := viper.Unmarshal(cfg); err != nil {
 		panic(err)
 	}
+	viper.Reset()
 	return cfg
 }
 
@@ -34,6 +36,7 @@ func CreateNode(i int) *Node {
 	cfg := ReadConfigFile(dir)
 	AdjustHomePath(cfg)
 	logger := log.New()
+	logger.SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
 	node, err := NewNode(cfg, logger, DefaultProvider())
 	if err != nil {
 		panic(err)
@@ -41,8 +44,16 @@ func CreateNode(i int) *Node {
 	return node
 }
 
-func TestCreateNode(t *testing.T) {
-	node0 := CreateNode(0)
-	assert.Nil(t, node0.Start())
-	_ = node0
+func TestCreateAndStartNode(t *testing.T) {
+	nodes := make([]*Node, 4)
+	nodes[0] = CreateNode(0)
+	nodes[1] = CreateNode(1)
+	nodes[2] = CreateNode(2)
+	nodes[3] = CreateNode(3)
+
+	for i := 0; i < len(nodes); i++ {
+		go func(i int) { assert.Nil(t, nodes[i].Start()) }(i)
+	}
+
+	select {}
 }
