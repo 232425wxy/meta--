@@ -21,11 +21,12 @@ type BlockExecutor struct {
 	logger         log.Logger
 }
 
-func NewBlockExecutor(store *StoreState, consensus *proxy.AppConnConsensus, txsPool *txspool.TxsPool, logger log.Logger) *BlockExecutor {
+func NewBlockExecutor(cfg *config.Config, store *StoreState, consensus *proxy.AppConnConsensus, txsPool *txspool.TxsPool, logger log.Logger) *BlockExecutor {
 	return &BlockExecutor{
 		store:          store,
 		proxyConsensus: consensus,
 		txsPool:        txsPool,
+		cfg:            cfg.TxsPoolConfig,
 		logger:         logger,
 	}
 }

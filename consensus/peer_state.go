@@ -5,8 +5,6 @@ import (
 	"github.com/232425wxy/meta--/types"
 )
 
-const PeerStateKey = "Consensus.Peer.State"
-
 type PeerState struct {
 	Height    int64 `json:"height"`
 	Round     int16 `json:"round"`
@@ -17,8 +15,24 @@ type PeerState struct {
 	decide    []byte
 }
 
+func NewPeerState() *PeerState {
+	return &PeerState{
+		Height:    -1,
+		Round:     -1,
+		Step:      -1,
+		prepare:   nil,
+		preCommit: nil,
+		commit:    nil,
+		decide:    nil,
+	}
+}
+
 func (ps *PeerState) SetHeight(height int64) {
 	ps.Height = height
+}
+
+func (ps *PeerState) GetHeight() int64 {
+	return ps.Height
 }
 
 func (ps *PeerState) SetRound(round int16) {

@@ -1,9 +1,11 @@
 package types
 
 import (
+	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/proto/pbabci"
 	"github.com/stretchr/testify/assert"
+	"sort"
 	"testing"
 )
 
@@ -50,5 +52,20 @@ func TestDel(t *testing.T) {
 	del(&arr, 4)
 	for i := 0; i < len(arr); i++ {
 		t.Log(arr[i])
+	}
+}
+
+func TestSortVals(t *testing.T) {
+	vals := make([]*Validator, 4)
+	for i := 0; i < len(vals); i++ {
+		vals[i] = &Validator{}
+	}
+	vals[0].ID = crypto.ID("c")
+	vals[1].ID = crypto.ID("d")
+	vals[2].ID = crypto.ID("a")
+	vals[3].ID = crypto.ID("b")
+	sort.Sort(Validators(vals))
+	for i := 0; i < len(vals); i++ {
+		t.Log(i, ":", vals[i].ID)
 	}
 }

@@ -1,6 +1,7 @@
 package txspool
 
 import (
+	"fmt"
 	"github.com/232425wxy/meta--/common/clist"
 	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/log"
@@ -41,6 +42,7 @@ func (r *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 }
 
 func (r *Reactor) AddPeer(peer *p2p.Peer) {
+	r.Logger.Debug("add peer", "peer_id", peer.NodeID())
 	go r.broadcastTxRoutine(peer)
 }
 
@@ -52,11 +54,11 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, msg []byte) {
 		r.Switch.StopPeerForError(src, err)
 		return
 	}
-	r.Logger.Debug("receive tx", "src peer", src)
+	r.Logger.Debug("receive tx", "src_peer", src, "tx", fmt.Sprintf("%x", msg))
 	for _, tx := range message.Txs.Txs {
 		err = r.pool.CheckTx(tx, src.NodeID())
 		if err != nil {
-			r.Logger.Error("check tx failed", "src peer", src, "err", err)
+			r.Logger.Error("check tx failed", "src_peer", src, "err", err)
 		}
 	}
 }
@@ -83,6 +85,7 @@ func (r *Reactor) broadcastTxRoutine(peer *p2p.Peer) {
 
 		peerState, ok := peer.Get(types.PeerStateKey).(interface{ GetHeight() int64 })
 		if !ok {
+			fmt.Println("nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
 			// 共识模块还没有将peer节点的信息存储下来
 			time.Sleep(100 * time.Millisecond)
 			continue
@@ -104,6 +107,7 @@ func (r *Reactor) broadcastTxRoutine(peer *p2p.Peer) {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
+			r.Logger.Info("successfully send tx to peer", "peer", peer.NodeID(), "tx", fmt.Sprintf("%x", tx.tx))
 		}
 
 		select {

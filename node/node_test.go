@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func ReadConfigFile(path string) *config.Config {
@@ -35,8 +36,9 @@ func CreateNode(i int) *Node {
 	dir := fmt.Sprintf("../node%d", i)
 	cfg := ReadConfigFile(dir)
 	AdjustHomePath(cfg)
-	logger := log.New()
+	logger := log.New("node", i)
 	logger.SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
+	log.PrintOrigins(true)
 	node, err := NewNode(cfg, logger, DefaultProvider())
 	if err != nil {
 		panic(err)
@@ -54,6 +56,12 @@ func TestCreateAndStartNode(t *testing.T) {
 	for i := 0; i < len(nodes); i++ {
 		go func(i int) { assert.Nil(t, nodes[i].Start()) }(i)
 	}
+
+	time.Sleep(time.Second * 2)
+
+	tx := []byte("name=wxy")
+	err := nodes[0].txsPool.CheckTx(tx, nodes[0].nodeInfo.ID())
+	assert.Nil(t, err)
 
 	select {}
 }

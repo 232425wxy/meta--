@@ -98,7 +98,7 @@ func (bs *BaseService) Start() error {
 			atomic.StoreUint32(&bs.started, 0)
 			return ErrAlreadyStopped
 		}
-		bs.Logger.Info(fmt.Sprintf("BaseService{%s}: start", bs.name))
+		bs.Logger.Info(fmt.Sprintf("Service{%s}: start", bs.name))
 		return nil
 	}
 	bs.Logger.Warn(fmt.Sprintf("BaseService{%s}: repeat start", bs.name))

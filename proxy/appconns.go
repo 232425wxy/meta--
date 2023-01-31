@@ -30,6 +30,6 @@ func (conns *AppConns) TxsPool() *AppConnTxsPool {
 
 func (conns *AppConns) Start() error {
 	conns.consensus = NewAppConnConsensus(conns.application)
-	conns.txspool = NewAppConnTxsPool(conns.application)
-	return conns.Start()
+	conns.txspool = NewAppConnTxsPool(conns.application, conns.Logger.New("module", "ProxyAppTxsPool"))
+	return conns.BaseService.Start()
 }

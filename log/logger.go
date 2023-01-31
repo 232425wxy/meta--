@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"github.com/go-stack/stack"
 	"os"
 	"time"
@@ -245,6 +246,17 @@ const skipLevel = 2
 // 和suffix可以被认为是日志信息里的键值对信息，该方法就是将prefix和suffix里的键值对信息拼接到一
 // 起，或者说，就是将suffix追加到prefix的后面。
 func newContext(prefix []interface{}, suffix []interface{}) []interface{} {
+	for i := 0; i < len(suffix)-1; i += 2 {
+		for j := 0; j < len(prefix)-1; j += 2 {
+			if prefix[j] == suffix[i] {
+				prefix[j+1] = suffix[i+1]
+				suffix = append(suffix[:i], suffix[i+2:]...)
+				if len(suffix) == 0 {
+					break
+				}
+			}
+		}
+	}
 	normalizedSuffix := normalize(suffix)
 	newCtx := make([]interface{}, len(prefix)+len(normalizedSuffix))
 	n := copy(newCtx, prefix)
@@ -266,7 +278,7 @@ func normalize(ctx []interface{}) []interface{} {
 		}
 	}
 	if len(ctx)%2 != 0 {
-		ctx = append(ctx, nil, errorKey, "Normalized odd number of arguments by adding nil")
+		ctx = append(ctx, nil, errorKey, fmt.Sprintf("Normalized odd number of arguments by adding nil: %v", ctx))
 	}
 	return ctx
 }

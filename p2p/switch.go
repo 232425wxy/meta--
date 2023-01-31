@@ -131,7 +131,9 @@ func (sw *Switch) DialPeerAsync(peers []string) {
 				dur := rand.Intn(2000)
 				time.Sleep(time.Duration(dur) * time.Millisecond)
 				if err := sw.DialPeerWithAddress(addr); err != nil {
-					sw.Logger.Error("failed to dial peer", "err", err)
+					if _, ok := err.(*ErrorDialingOrAlreadyHas); !ok {
+						sw.Logger.Error("failed to dial peer", "err", err)
+					}
 				}
 			}
 		}(addr)
@@ -143,13 +145,12 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) error {
 		return nil
 	}
 	if sw.IsDialingOrExisting(addr) {
-		return fmt.Errorf("already has or dialing to the specified address: %q", addr.String())
+		return &ErrorDialingOrAlreadyHas{address: addr.DialString()}
 	}
 	sw.addrbook.AddAddress(addr)
 	sw.addrbook.MarkAttempt(addr)
 	sw.dialing.Set(string(addr.ID), addr)
 	defer sw.dialing.Delete(string(addr.ID))
-	sw.Logger.Info("dialing peer", "address", addr.String())
 	p, err := sw.transport.Dial(addr, peerConfig{
 		chDescs:      sw.chDescs,
 		onPeerError:  sw.StopPeerForError,
@@ -158,6 +159,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) error {
 	})
 	if err != nil {
 		go sw.reconnectToPeer(addr)
+		sw.Logger.Error(fmt.Sprintf("failed to dial peer: %s", addr.DialString()), "err", err)
 		return err
 	}
 	if err = sw.addPeer(p); err != nil {
@@ -166,6 +168,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) error {
 			_ = p.Stop()
 		}
 	}
+	sw.Logger.Info(fmt.Sprintf("successfully dialed the address: %s", addr.DialString()))
 	return nil
 }
 
@@ -224,7 +227,9 @@ func (sw *Switch) acceptRoutine() {
 			break
 		}
 		if err = sw.addPeer(p); err != nil {
-			sw.Logger.Warn("failed to add new peer", "new peer", p.NodeID(), "err", err)
+			if _, ok := err.(*ErrorAlreadyHasPeer); !ok {
+				sw.Logger.Warn("failed to add new peer", "new peer", p.NodeID(), "err", err)
+			}
 		}
 		sw.addrbook.AddAddress(p.NetAddress())
 	}
@@ -237,9 +242,9 @@ func (sw *Switch) acceptRoutine() {
 // addPeer 方法所做的不仅仅是将新的peer加入到switch里，还会在各个reactor那里初始化新peer，并将peer启动。
 func (sw *Switch) addPeer(p *Peer) error {
 	if !sw.filterPeer(p) {
-		return fmt.Errorf("switch already has this peer: %s", p.NodeID())
+		return &ErrorAlreadyHasPeer{id: p.NodeID()}
 	}
-	p.SetLogger(sw.Logger.New("peer", p.NodeID()))
+	p.SetLogger(sw.Logger.New("module", "Peer", "peer_id", p.NodeID()))
 	if !sw.IsRunning() {
 		sw.Logger.Error("cannot add new peer, switch is not running", "new peer", p.NodeID())
 		return nil
@@ -255,7 +260,7 @@ func (sw *Switch) addPeer(p *Peer) error {
 	for _, reactor := range sw.reactors {
 		reactor.AddPeer(p)
 	}
-	sw.Logger.Info("switch added peer", "new peer", p.NodeID())
+	sw.Logger.Debug("switch added peer", "new_peer", p.NodeID())
 	return nil
 }
 

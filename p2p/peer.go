@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/232425wxy/meta--/common/cmap"
 	"github.com/232425wxy/meta--/common/service"
-	config2 "github.com/232425wxy/meta--/config"
+	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/log"
 	"net"
@@ -63,7 +63,7 @@ func PeerOptionSetMetrics(m *Metrics) PeerOption {
 	}
 }
 
-func newPeer(pc peerConn, config *config2.P2PConfig, nodeInfo *NodeInfo, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(peer *Peer, err error), metrics *Metrics) *Peer {
+func newPeer(pc peerConn, cfg *config.P2PConfig, nodeInfo *NodeInfo, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor, onPeerError func(peer *Peer, err error), metrics *Metrics) *Peer {
 	p := &Peer{
 		BaseService:   *service.NewBaseService(nil, "Peer"),
 		peerConn:      pc,
@@ -85,7 +85,7 @@ func newPeer(pc peerConn, config *config2.P2PConfig, nodeInfo *NodeInfo, reactor
 	var onError errorCb = func(err error) {
 		onPeerError(p, err)
 	}
-	p.connection = NewConnectionWithConfig(pc.conn, chDescs, onReceive, onError, config)
+	p.connection = NewConnectionWithConfig(pc.conn, chDescs, onReceive, onError, cfg)
 	return p
 }
 

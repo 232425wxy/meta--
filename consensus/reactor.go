@@ -21,10 +21,23 @@ func NewReactor(core *Core) *Reactor {
 	return r
 }
 
+func (r *Reactor) Start() error {
+	if err := r.core.Start(); err != nil {
+		return err
+	}
+	return r.BaseService.Start()
+}
+
+func (r *Reactor) InitPeer(peer *p2p.Peer) *p2p.Peer {
+	stat := NewPeerState()
+	peer.Set(types.PeerStateKey, stat)
+	return peer
+}
+
 func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 	msg := MustDecode(bz)
 	r.Logger.Debug("receive message", "peer", src.NodeID(), "message", msg)
-	ps, ok := src.Get(PeerStateKey).(*PeerState)
+	ps, ok := src.Get(types.PeerStateKey).(*PeerState)
 	if !ok {
 		panic(fmt.Sprintf("peer %v has no state", src.NodeID()))
 	}
@@ -79,7 +92,7 @@ func (r *Reactor) unsubscribeEvents() {
 func (r *Reactor) gossipRoutine(peer *p2p.Peer) {
 	logger := r.Logger.New("peer", peer.NodeID())
 	// 用PeerState来保证只会给节点发送一次主节点提出的共识消息
-	ps := peer.Data.Get(PeerStateKey).(*PeerState)
+	ps := peer.Data.Get(types.PeerStateKey).(*PeerState)
 	for {
 		if r.core.isLeader() {
 			switch {
@@ -110,7 +123,7 @@ func (r *Reactor) gossipRoutine(peer *p2p.Peer) {
 			}
 		}
 
-		if peer.NodeID() == r.core.state.Validators.GetLeader().ID {
+		if peer.NodeID() == r.core.state.Validators.GetLeader(r.core.stepInfo.height).ID {
 			// 只给leader节点发送投票信息
 			select {
 			case vote := <-r.core.prepareVotesQueue:
@@ -136,5 +149,5 @@ func (r *Reactor) sendNextViewToLeader(view *types.NextView) {
 	if err != nil {
 		panic(err)
 	}
-	r.Switch.SendToPeer(p2p.ReplicaStateChannel, r.core.state.Validators.GetLeader().ID, bz)
+	r.Switch.SendToPeer(p2p.ReplicaStateChannel, r.core.state.Validators.GetLeader(r.core.stepInfo.height).ID, bz)
 }

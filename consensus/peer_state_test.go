@@ -3,6 +3,7 @@ package consensus
 import (
 	"github.com/232425wxy/meta--/common/cmap"
 	"github.com/232425wxy/meta--/p2p"
+	"github.com/232425wxy/meta--/types"
 	"testing"
 )
 
@@ -13,9 +14,9 @@ func TestPeerData(t *testing.T) {
 		Round:  2,
 		Step:   PreCommitStep,
 	}
-	peer.Data.Set(PeerStateKey, ps)
+	peer.Data.Set(types.PeerStateKey, ps)
 
-	_ps := peer.Data.Get(PeerStateKey).(*PeerState)
+	_ps := peer.Data.Get(types.PeerStateKey).(*PeerState)
 	t.Log("ps:", ps)
 	t.Log("_ps:", _ps)
 

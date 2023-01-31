@@ -260,7 +260,7 @@ func (c *Core) handlePrepare(prepare *types.Prepare) error {
 	}
 	hash := sha256.Hash{}
 	copy(hash[:], prepare.Block.Header.Hash)
-	ok := c.state.Validators.GetLeader().PublicKey.Verify(prepare.Signature, hash)
+	ok := c.state.Validators.GetLeader(c.stepInfo.height).PublicKey.Verify(prepare.Signature, hash)
 	if !ok {
 		if c.isLeader() {
 			panic("Why I created an invalid Prepare message?")
@@ -320,8 +320,8 @@ func (c *Core) handlePreCommit(preCommit *types.PreCommit) error {
 	if c.stepInfo.block == nil {
 		return nil
 	}
-	if preCommit.ID != c.state.Validators.GetLeader().ID {
-		return fmt.Errorf("PreCommit message is not from leader %s at height %d", c.state.Validators.GetLeader().ID, c.stepInfo.height)
+	if preCommit.ID != c.state.Validators.GetLeader(c.stepInfo.height).ID {
+		return fmt.Errorf("PreCommit message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.height).ID, c.stepInfo.height)
 	}
 	hash := types.GeneratePreCommitValueHash(c.stepInfo.block.Header.Hash)
 	equal := bytes.Equal(hash[:], preCommit.ValueHash[:])
@@ -381,8 +381,8 @@ func (c *Core) handleCommit(commit *types.Commit) error {
 	if c.stepInfo.block == nil {
 		return nil
 	}
-	if commit.ID != c.state.Validators.GetLeader().ID {
-		return fmt.Errorf("Commit message is not from leader %s at height %d", c.state.Validators.GetLeader().ID, c.stepInfo.height)
+	if commit.ID != c.state.Validators.GetLeader(c.stepInfo.height).ID {
+		return fmt.Errorf("Commit message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.height).ID, c.stepInfo.height)
 	}
 	hash := types.GenerateCommitValueHash(c.stepInfo.block.Header.Hash)
 	equal := bytes.Equal(hash[:], commit.ValueHash[:])
@@ -442,8 +442,8 @@ func (c *Core) handleDecide(decide *types.Decide) error {
 	if c.stepInfo.block == nil {
 		return nil
 	}
-	if decide.ID != c.state.Validators.GetLeader().ID {
-		return fmt.Errorf("Decide message is not from leader %s at height %d", c.state.Validators.GetLeader().ID, c.stepInfo.height)
+	if decide.ID != c.state.Validators.GetLeader(c.stepInfo.height).ID {
+		return fmt.Errorf("Decide message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.height).ID, c.stepInfo.height)
 	}
 	hash := types.GenerateDecideValueHash(c.stepInfo.block.Header.Hash)
 	equal := bytes.Equal(hash[:], decide.ValueHash[:])
@@ -739,5 +739,5 @@ func (c *Core) nextView() *types.NextView {
 }
 
 func (c *Core) isLeader() bool {
-	return c.state.Validators.GetLeader().ID == c.publicKey.ToID()
+	return c.state.Validators.GetLeader(c.stepInfo.height).ID == c.publicKey.ToID()
 }

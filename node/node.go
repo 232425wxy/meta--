@@ -165,13 +165,13 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 
 	application := provider.ApplicationProvider(cfg)
 	proxyAppConns := proxy.NewAppConns(application, logger)
-	//if err = proxyAppConns.Start(); err != nil {
-	//	return nil, err
-	//}
+	if err = proxyAppConns.Start(); err != nil {
+		return nil, err
+	}
 
 	txsPool, txsPoolReactor := provider.TxspoolProvider(cfg, proxyAppConns, stat, logger)
 
-	blockExec := state.NewBlockExecutor(stateStore, proxyAppConns.Consensus(), txsPool, logger.New("module", "state"))
+	blockExec := state.NewBlockExecutor(cfg, stateStore, proxyAppConns.Consensus(), txsPool, logger.New("module", "state"))
 
 	consensusStat, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, blockStore, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger.New("module", "Consensus"))
 	consensusStat.SetEventBus(eventBus)

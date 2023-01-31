@@ -5,6 +5,7 @@ import (
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/proto/pbabci"
 	"github.com/232425wxy/meta--/proto/pbtypes"
+	"sort"
 )
 
 type Validator struct {
@@ -47,6 +48,20 @@ func ValidatorFromProto(pb *pbtypes.Validator) *Validator {
 	}
 }
 
+type Validators []*Validator
+
+func (vals Validators) Len() int {
+	return len(vals)
+}
+
+func (vals Validators) Less(i, j int) bool {
+	return vals[i].ID < vals[j].ID
+}
+
+func (vals Validators) Swap(i, j int) {
+	vals[i], vals[j] = vals[j], vals[i]
+}
+
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 
 // validator.proto 集合
@@ -57,7 +72,9 @@ type ValidatorSet struct {
 	TotalVotingPower int64        `json:"total_voting_power"`
 }
 
-func (set *ValidatorSet) GetLeader() *Validator {
+func (set *ValidatorSet) GetLeader(height int64) *Validator {
+	index := int(height) % len(set.Validators)
+	set.Leader = set.Validators[index]
 	return set.Leader
 }
 
@@ -72,6 +89,7 @@ func (set *ValidatorSet) Copy() *ValidatorSet {
 }
 
 func NewValidatorSet(validators []*Validator) *ValidatorSet {
+	sort.Sort(Validators(validators))
 	set := &ValidatorSet{Validators: validators}
 	for _, validator := range validators {
 		set.TotalVotingPower += validator.VotingPower
