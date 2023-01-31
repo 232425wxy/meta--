@@ -5,8 +5,9 @@ package pbp2p;
 import "gogoproto-1.4.3/gogoproto/gogo.proto";
 
 message NodeInfo {
-  string  node_id     = 1 [(gogoproto.customname) = "NodeID"];
-  string  listen_addr = 2;
+  bytes   public_key  = 1;
+  string  node_id     = 2 [(gogoproto.customname) = "NodeID"];
+  string  listen_addr = 3;
   bytes   channels    = 4;
   string  rpc_address = 5 [(gogoproto.customname) = "RPCAddress"];
   string  tx_index    = 6;

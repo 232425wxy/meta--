@@ -34,6 +34,36 @@ func (r *Reactor) InitPeer(peer *p2p.Peer) *p2p.Peer {
 	return peer
 }
 
+func (r *Reactor) AddPeer(peer *p2p.Peer) {
+	go r.gossipRoutine(peer)
+}
+
+func (r *Reactor) GetChannels() []*p2p.ChannelDescriptor {
+	return []*p2p.ChannelDescriptor{
+		{
+			ID:                  p2p.LeaderProposeChannel,
+			Priority:            8,
+			SendQueueCapacity:   100,
+			RecvBufferCapacity:  1024 * 1024 * 10,
+			RecvMessageCapacity: 1024 * 1024,
+		},
+		{
+			ID:                  p2p.ReplicaStateChannel,
+			Priority:            10,
+			SendQueueCapacity:   100,
+			RecvBufferCapacity:  1024 * 1024 * 10,
+			RecvMessageCapacity: 1024 * 1024,
+		},
+		{
+			ID:                  p2p.ReplicaVoteChannel,
+			Priority:            5,
+			SendQueueCapacity:   100,
+			RecvBufferCapacity:  1024 * 1024 * 10,
+			RecvMessageCapacity: 1024 * 1024,
+		},
+	}
+}
+
 func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 	msg := MustDecode(bz)
 	r.Logger.Debug("receive message", "peer", src.NodeID(), "message", msg)

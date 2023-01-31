@@ -154,6 +154,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	stat := stateStore.LoadFromDBOrGenesis(genesis)
 
 	nodeInfo := &p2p.NodeInfo{
+		PublicKey:   nodeKey.PublicKey.ToBytes(),
 		NodeID:      nodeKey.GetID(),
 		ListenAddr:  cfg.P2PConfig.ListenAddress,
 		Channels:    []byte{p2p.LeaderProposeChannel, p2p.ReplicaVoteChannel, p2p.ReplicaStateChannel, p2p.TxsChannel},
@@ -173,8 +174,8 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 
 	blockExec := state.NewBlockExecutor(cfg, stateStore, proxyAppConns.Consensus(), txsPool, logger.New("module", "state"))
 
-	consensusStat, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, blockStore, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger.New("module", "Consensus"))
-	consensusStat.SetEventBus(eventBus)
+	consensusCore, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, blockStore, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger.New("module", "Consensus"))
+	consensusCore.SetEventBus(eventBus)
 
 	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, logger)
 

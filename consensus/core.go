@@ -395,7 +395,7 @@ func (c *Core) handleCommit(commit *types.Commit) error {
 	}
 	c.stepInfo.commit = commit
 	if !c.isLeader() {
-		c.Logger.Info("received PreCommit message, plan to vote for it", "Commit message from", commit.ID)
+		c.Logger.Debug("received PreCommit message, plan to vote for it", "Commit message from", commit.ID)
 	}
 	c.enterCommitVoteStep(c.stepInfo.height, c.stepInfo.round)
 	return nil
@@ -494,7 +494,7 @@ func (c *Core) enterPrepareStep(height int64, round int16) {
 	}()
 	// 作为一个普通节点，执行到此处该方法就结束了，接下来就是等待主节点发送来Prepare消息
 	if c.isLeader() {
-		logger.Debug("leader is me, it's my responsibility to propose Prepare message", "validator_id", c.publicKey.ToID())
+		logger.Warn("leader is me, it's my responsibility to propose Prepare message", "validator_id", c.publicKey.ToID())
 		// 开始打包Prepare消息
 		var block *types.Block
 		if c.stepInfo.block != nil {
@@ -560,11 +560,11 @@ func (c *Core) enterPreCommitStep(height int64, round int16) {
 
 func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 	logger := c.Logger.New("height", height, "round", round)
-	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= PrepareVoteStep) {
-		logger.Warn("entering PRE_COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= PreCommitVoteStep) {
+		logger.Warn("entering PRE_COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step), "should be", fmt.Sprintf("height:%d round:%d step:%s", height, round, PreCommitStep))
 		return
 	}
-	logger.Info("entering PRE_COMMIT_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	logger.Info("entering PRE_COMMIT_VOTE step", "my_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.height = height
 		c.stepInfo.round = round

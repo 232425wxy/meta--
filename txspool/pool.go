@@ -108,7 +108,7 @@ func (p *TxsPool) CheckTx(tx types.Tx, sender crypto.ID) error {
 		element := elem.(*clist.Element)
 		ptx := element.Value.(*poolTx)
 		ptx.senders.Set(string(sender), struct{}{})
-		return errors.New("tx already in pool")
+		return &ErrorTxAlreadyExists{Tx: tx}
 	}
 	if p.isFull() {
 		return errors.New("txs pool has been full")

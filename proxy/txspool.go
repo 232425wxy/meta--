@@ -26,6 +26,6 @@ func NewAppConnTxsPool(app abci.Application, logger log.Logger) *AppConnTxsPool 
 func (ac *AppConnTxsPool) CheckTx(req pbabci.RequestCheckTx) pbabci.ResponseCheckTx {
 	ac.mu.Lock()
 	defer ac.mu.Unlock()
-	ac.Logger.Info("check tx", "tx", fmt.Sprintf("%x", req.Tx))
+	ac.Logger.Debug("check tx", "tx", fmt.Sprintf("%x", req.Tx))
 	return ac.app.CheckTx(req)
 }

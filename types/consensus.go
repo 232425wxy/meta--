@@ -212,7 +212,7 @@ type PreCommitVote struct {
 
 func NewPreCommitVote(height int64, hash sha256.Hash, privateKey *bls12.PrivateKey) *PreCommitVote {
 	vote := &PreCommitVote{Vote: &Vote{
-		VoteType:  pbtypes.PrepareVoteType,
+		VoteType:  pbtypes.PreCommitVoteType,
 		Height:    height,
 		ValueHash: hash,
 		Timestamp: time.Now(),

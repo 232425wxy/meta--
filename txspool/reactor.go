@@ -58,7 +58,9 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, msg []byte) {
 	for _, tx := range message.Txs.Txs {
 		err = r.pool.CheckTx(tx, src.NodeID())
 		if err != nil {
-			r.Logger.Error("check tx failed", "src_peer", src, "err", err)
+			if _, ok := err.(*ErrorTxAlreadyExists); !ok {
+				r.Logger.Error("check tx failed", "src_peer", src, "err", err)
+			}
 		}
 	}
 }
@@ -85,7 +87,6 @@ func (r *Reactor) broadcastTxRoutine(peer *p2p.Peer) {
 
 		peerState, ok := peer.Get(types.PeerStateKey).(interface{ GetHeight() int64 })
 		if !ok {
-			fmt.Println("nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
 			// 共识模块还没有将peer节点的信息存储下来
 			time.Sleep(100 * time.Millisecond)
 			continue
@@ -107,7 +108,7 @@ func (r *Reactor) broadcastTxRoutine(peer *p2p.Peer) {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
-			r.Logger.Info("successfully send tx to peer", "peer", peer.NodeID(), "tx", fmt.Sprintf("%x", tx.tx))
+			r.Logger.Debug("successfully send tx to peer", "peer", peer.NodeID(), "tx", fmt.Sprintf("%x", tx.tx))
 		}
 
 		select {

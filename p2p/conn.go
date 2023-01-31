@@ -210,7 +210,6 @@ func (c *Connection) String() string {
 //
 // flush 将数据写入底层的网络连接net.Conn里。
 func (c *Connection) flush() {
-	c.Logger.Debug("flush message to the other side")
 	err := c.bufConnWriter.Flush()
 	if err != nil {
 		c.Logger.Error("failed to flush message to the other side", "err", err)
@@ -261,7 +260,6 @@ func (c *Connection) Send(chID byte, msg []byte) bool {
 	}
 	success := channel.sendBytes(msg)
 	if success {
-		c.Logger.Debug("send message to the specified channel", "channel id", chID, "msg", fmt.Sprintf("%X", msg))
 		select {
 		case c.sendChan <- struct{}{}:
 		// 告诉sendRoutine来活了，有数据需要发送
@@ -522,7 +520,6 @@ func (c *Connection) handlePacketMsg(msg *pbp2p.PacketMsg) (err error) {
 		return err
 	}
 	if msgBytes != nil {
-		c.Logger.Debug("receive packet message from channel", "channel id", channelID)
 		c.onReceive(channelID, msgBytes)
 	}
 	return nil

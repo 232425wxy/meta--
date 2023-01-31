@@ -23,6 +23,7 @@ const (
 // 定义p2p网络中节点的基本信息
 
 type NodeInfo struct {
+	PublicKey   []byte            `json:"public_key"`
 	NodeID      crypto.ID         `json:"nodeID"`
 	ListenAddr  string            `json:"listenAddr"` // 监听的网络地址，从该地址获取新连接
 	Channels    hexbytes.HexBytes // 节点管理的所有信道
@@ -105,6 +106,7 @@ func (node NodeInfo) HasChannel(ch byte) bool {
 // ToProto 将自定义的 NodeInfo 转换为protobuf形式。
 func (node NodeInfo) ToProto() *pbp2p.NodeInfo {
 	return &pbp2p.NodeInfo{
+		PublicKey:  node.PublicKey,
 		NodeID:     string(node.NodeID),
 		ListenAddr: node.ListenAddr,
 		Channels:   node.Channels,
@@ -120,6 +122,7 @@ func (node NodeInfo) ToProto() *pbp2p.NodeInfo {
 // NodeInfoFromProto 将protobuf形式的NodeInfo转换成自定义的 NodeInfo。
 func NodeInfoFromProto(pbInfo *pbp2p.NodeInfo) *NodeInfo {
 	return &NodeInfo{
+		PublicKey:  pbInfo.PublicKey,
 		NodeID:     crypto.ID(pbInfo.NodeID),
 		ListenAddr: pbInfo.ListenAddr,
 		Channels:   pbInfo.Channels,

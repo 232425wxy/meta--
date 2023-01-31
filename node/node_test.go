@@ -37,7 +37,7 @@ func CreateNode(i int) *Node {
 	cfg := ReadConfigFile(dir)
 	AdjustHomePath(cfg)
 	logger := log.New("node", i)
-	logger.SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
+	logger.SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
 	log.PrintOrigins(true)
 	node, err := NewNode(cfg, logger, DefaultProvider())
 	if err != nil {
@@ -57,7 +57,7 @@ func TestCreateAndStartNode(t *testing.T) {
 		go func(i int) { assert.Nil(t, nodes[i].Start()) }(i)
 	}
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 4)
 
 	tx := []byte("name=wxy")
 	err := nodes[0].txsPool.CheckTx(tx, nodes[0].nodeInfo.ID())

@@ -441,6 +441,10 @@ func (cb *CryptoBLS12) Init(private *PrivateKey) {
 	cb.private = private
 	cb.public = public
 	cb.id = public.ToID()
+	err := AddBLSPublicKey(public.ToBytes())
+	if err != nil {
+		panic(err)
+	}
 }
 
 // Sign ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨

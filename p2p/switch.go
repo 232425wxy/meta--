@@ -168,7 +168,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress) error {
 			_ = p.Stop()
 		}
 	}
-	sw.Logger.Info(fmt.Sprintf("successfully dialed the address: %s", addr.DialString()))
+	sw.Logger.Trace(fmt.Sprintf("successfully dialed the address: %s", addr.DialString()))
 	return nil
 }
 

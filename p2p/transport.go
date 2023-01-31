@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/232425wxy/meta--/common/protoio"
 	"github.com/232425wxy/meta--/config"
+	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/proto/pbp2p"
 	"net"
 	"time"
@@ -242,6 +243,9 @@ func handshake(c net.Conn, handshakeTimout time.Duration, nodeInfo *NodeInfo) (*
 		}
 	}
 	peerInfo := NodeInfoFromProto(pbInfo)
+	if err := bls12.AddBLSPublicKey(peerInfo.PublicKey); err != nil {
+		return nil, err
+	}
 	// 设置空的超时时间，意味着该连接不会超时。
 	return peerInfo, c.SetDeadline(time.Time{})
 }
