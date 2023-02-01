@@ -7,6 +7,7 @@ const (
 	ReplicaVoteChannel   byte = 0x02
 	ReplicaStateChannel  byte = 0x03 // 副本节点给主节点发送NextView消息时用到的通道
 	TxsChannel           byte = 0x04
+	SyncerChannel        byte = 0x05
 )
 
 type Reactor interface {

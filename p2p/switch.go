@@ -72,6 +72,10 @@ func (sw *Switch) NodeKey() *NodeKey {
 	return sw.transport.nodeKey
 }
 
+func (sw *Switch) Peers() *PeerSet {
+	return sw.peers
+}
+
 // AddReactor ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------

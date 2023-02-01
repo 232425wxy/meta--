@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"errors"
+	"fmt"
 	"github.com/232425wxy/meta--/common/service"
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/types"
@@ -58,6 +59,21 @@ type Blockchain struct {
 	pendingNum    int32 // 表示从其他节点处要请求的区块数量，每从其他节点处获得一个区块，该字段减1，每增加一个请求区块的请求，该字段加1
 	errorsCh      chan peerError
 	mu            sync.Mutex
+}
+
+func NewBlockchain(start int64, requestsCh chan BlockRequest, errorsCh chan peerError) *Blockchain {
+	return &Blockchain{
+		BaseService:   *service.NewBaseService(nil, "Syncer"),
+		startTime:     time.Time{},
+		height:        start,
+		maxPeerHeight: 0,
+		peers:         make(map[crypto.ID]*peer),
+		requestsCh:    requestsCh,
+		requesters:    make(map[int64]*requester),
+		pendingNum:    0,
+		errorsCh:      errorsCh,
+		mu:            sync.Mutex{},
+	}
 }
 
 func (bc *Blockchain) Start() error {
@@ -150,6 +166,18 @@ func (bc *Blockchain) RedoRequest(height int64) crypto.ID {
 		bc.removePeer(peerID)
 	}
 	return peerID
+}
+
+func (bc *Blockchain) IsCaughtUp() bool {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+
+	if len(bc.peers) == 0 {
+		return false
+	}
+	receivedBlockOrTimeout := bc.height > 0 || time.Since(bc.startTime) > 5*time.Second
+	ourChainIsLongestAmongPeers := bc.maxPeerHeight == 0 || bc.height >= (bc.maxPeerHeight-1)
+	return receivedBlockOrTimeout && ourChainIsLongestAmongPeers
 }
 
 func (bc *Blockchain) requestRoutine() {
@@ -293,6 +321,8 @@ func (bc *Blockchain) sendRequest(height int64, peerID crypto.ID) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// requester
+
 // requestRoutine 不断的从周围节点中寻找一个能够帮我完成requester请求的节点，找到的话，就继续等待
 // 这个节点完成requester请求，直到请求任务被完成才退出。
 func (r *requester) requestRoutine() {
@@ -347,6 +377,8 @@ LOOP:
 	}
 }
 
+// reset 重置请求任务信息，如果该请求已经有了回应（有节点给自己发来了区块），则给pendingNum减一，
+// 因为当初在收到block的时候，我们给pendingNum加一了。
 func (r *requester) reset() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -406,4 +438,12 @@ func (p *peer) resetTimeout() {
 	} else {
 		p.timeout.Reset(peerTimeout)
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// peerError
+
+func (e peerError) Error() string {
+	return fmt.Sprintf("something went wrong on peer %s for %s", e.peerID, e.err)
 }

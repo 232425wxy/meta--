@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/p2p"
+	"github.com/232425wxy/meta--/state"
 	"github.com/232425wxy/meta--/types"
 	"github.com/cosmos/gogoproto/proto"
 	"sync"
@@ -102,6 +103,16 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 		r.Logger.Error("unknown message channel", "channel", fmt.Sprintf("%x", chID))
 	}
 
+}
+
+func (r *Reactor) SwitchToConsensus(stat state.State) {
+	if stat.LastBlockHeight <= r.core.state.LastBlockHeight {
+		r.core.newStep()
+		return
+	}
+	if err := r.core.Start(); err != nil {
+		panic(err)
+	}
 }
 
 func (r *Reactor) subscribeEvents() {
