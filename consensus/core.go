@@ -303,7 +303,7 @@ func (c *Core) handlePrepareVote(vote *types.PrepareVote) error {
 	}
 	c.stepInfo.voteSet.AddPrepareVote(c.stepInfo.round, vote)
 	ok = c.stepInfo.voteSet.CheckPrepareVoteIsComplete(c.stepInfo.round, c.state.Validators)
-	if ok {
+	if ok { // TODO 这里需要搞一个超时机制，就是哪怕收到了足够数量的投票，也不要立即去组装门陷签名，防止接下来还会有投票过来
 		// 收集齐了副本节点对Prepare消息的投票，那么开始构造PreCommit消息
 		c.enterPreCommitStep(c.stepInfo.height, c.stepInfo.round)
 	}

@@ -416,5 +416,5 @@ func GenerateCommitVoteValueHash(blockHash []byte) sha256.Hash {
 }
 
 func GenerateDecideValueHash(blockHash []byte) sha256.Hash {
-	return GeneratePreCommitVoteValueHash(blockHash)
+	return GenerateCommitVoteValueHash(blockHash)
 }
