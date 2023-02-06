@@ -141,6 +141,10 @@ func (c *Core) handleScheduled(info timeoutInfo, stepInfo StepInfo) {
 		c.enterNewRound(info.Height, 0)
 	case NewRoundStep:
 		c.enterPrepareStep(info.Height, 0)
+	case PreCommitStep:
+		c.enterPreCommitStep(c.stepInfo.height, c.stepInfo.round)
+	case CommitStep:
+		c.enterCommitStep(c.stepInfo.height, c.stepInfo.round)
 	}
 }
 
@@ -305,7 +309,8 @@ func (c *Core) handlePrepareVote(vote *types.PrepareVote) error {
 	ok = c.stepInfo.voteSet.CheckPrepareVoteIsComplete(c.stepInfo.round, c.state.Validators)
 	if ok { // TODO 这里需要搞一个超时机制，就是哪怕收到了足够数量的投票，也不要立即去组装门陷签名，防止接下来还会有投票过来
 		// 收集齐了副本节点对Prepare消息的投票，那么开始构造PreCommit消息
-		c.enterPreCommitStep(c.stepInfo.height, c.stepInfo.round)
+		//c.enterPreCommitStep(c.stepInfo.height, c.stepInfo.round)
+		c.scheduleStep(time.Millisecond*100, c.stepInfo.height, c.stepInfo.round, PreCommitStep)
 	}
 	return nil
 }
@@ -366,7 +371,8 @@ func (c *Core) handlePreCommitVote(vote *types.PreCommitVote) error {
 	c.stepInfo.voteSet.AddPreCommitVote(c.stepInfo.round, vote)
 	ok = c.stepInfo.voteSet.CheckPreCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
 	if ok {
-		c.enterCommitStep(c.stepInfo.height, c.stepInfo.round)
+		//c.enterCommitStep(c.stepInfo.height, c.stepInfo.round)
+		c.scheduleStep(time.Millisecond*100, c.stepInfo.height, c.stepInfo.round, CommitStep)
 	}
 	return nil
 }
@@ -546,6 +552,7 @@ func (c *Core) enterPreCommitStep(height int64, round int16) {
 	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= PreCommitStep) {
 		logger.Warn("entering PRE_COMMIT step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		return
 	}
 	logger.Info("entering PRE_COMMIT step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {

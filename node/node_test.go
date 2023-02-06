@@ -57,7 +57,7 @@ func TestCreateAndStartNode(t *testing.T) {
 		go func(i int) { assert.Nil(t, nodes[i].Start()) }(i)
 	}
 
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 4)
 
 	tx := []byte("name=wxy")
 	err := nodes[0].txsPool.CheckTx(tx, nodes[0].nodeInfo.ID())

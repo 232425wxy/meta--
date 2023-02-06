@@ -1,7 +1,6 @@
 package txspool
 
 import (
-	"fmt"
 	"github.com/232425wxy/meta--/common/clist"
 	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/log"
@@ -54,7 +53,7 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, msg []byte) {
 		r.Switch.StopPeerForError(src, err)
 		return
 	}
-	r.Logger.Debug("receive tx", "src_peer", src, "tx", fmt.Sprintf("%x", msg))
+	//r.Logger.Debug("receive tx", "src_peer", src, "tx", fmt.Sprintf("%x", msg))
 	for _, tx := range message.Txs.Txs {
 		err = r.pool.CheckTx(tx, src.NodeID())
 		if err != nil {
@@ -108,7 +107,7 @@ func (r *Reactor) broadcastTxRoutine(peer *p2p.Peer) {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
-			r.Logger.Debug("successfully send tx to peer", "peer", peer.NodeID(), "tx", fmt.Sprintf("%x", tx.tx))
+			//r.Logger.Debug("successfully send tx to peer", "peer", peer.NodeID(), "tx", fmt.Sprintf("%x", tx.tx))
 		}
 
 		select {

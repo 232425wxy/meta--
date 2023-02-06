@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"fmt"
 	"github.com/232425wxy/meta--/abci"
 	"github.com/232425wxy/meta--/common/service"
 	"github.com/232425wxy/meta--/log"
@@ -26,6 +25,6 @@ func NewAppConnTxsPool(app abci.Application, logger log.Logger) *AppConnTxsPool 
 func (ac *AppConnTxsPool) CheckTx(req pbabci.RequestCheckTx) pbabci.ResponseCheckTx {
 	ac.mu.Lock()
 	defer ac.mu.Unlock()
-	ac.Logger.Debug("check tx", "tx", fmt.Sprintf("%x", req.Tx))
+	//ac.Logger.Debug("check tx", "tx", fmt.Sprintf("%x", req.Tx))
 	return ac.app.CheckTx(req)
 }
