@@ -87,9 +87,9 @@ func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p
 	return transport, sw
 }
 
-type SyncerProvider func(stat state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock) *syncer.Reactor
+type SyncerProvider func(stat *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock) *syncer.Reactor
 
-func DefaultSyncerProvider(stat state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock) *syncer.Reactor {
+func DefaultSyncerProvider(stat *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock) *syncer.Reactor {
 	reactor := syncer.NewReactor(stat, blockExec, blockStore)
 	return reactor
 }
@@ -112,6 +112,7 @@ func DefaultProvider() Provider {
 		TxspoolProvider:     DefaultTxsPoolProvider,
 		ConsensusProvider:   DefaultConsensusProvider,
 		P2PProvider:         DefaultP2PProvider,
+		SyncerProvider:      DefaultSyncerProvider,
 	}
 }
 
@@ -148,6 +149,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	if err != nil {
 		return nil, err
 	}
+
 	blockStore := state.NewStoreBlock(blockStoreDB)
 
 	stateDB, err := provider.DBProvider("state", cfg)
@@ -187,7 +189,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	consensusCore, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, blockStore, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger.New("module", "Consensus"))
 	consensusCore.SetEventBus(eventBus)
 
-	syncerReactor := provider.SyncerProvider(*stat, blockExec, blockStore)
+	syncerReactor := provider.SyncerProvider(stat, blockExec, blockStore)
 
 	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, syncerReactor, logger)
 

@@ -99,6 +99,7 @@ func NewStoreBlock(db database.DB) *StoreBlock {
 	}
 	if len(bz) == 0 {
 		sb.height = 0
+		sb.db = db
 		return sb
 	}
 	pb := new(pbstate.StoreBlock)
@@ -173,4 +174,8 @@ func calcBlockHeightKey(height int64) []byte {
 
 func calcBlockHashKey(hash []byte) []byte {
 	return append([]byte("block-hash:"), hash...)
+}
+
+func (sb *StoreBlock) DB() database.DB {
+	return sb.db
 }

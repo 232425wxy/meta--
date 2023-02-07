@@ -13,7 +13,7 @@ import (
 
 type Reactor struct {
 	p2p.BaseReactor
-	initialState  state.State
+	initialState  *state.State
 	blockExecutor *state.BlockExecutor
 	blockStore    *state.StoreBlock
 	chain         *Blockchain
@@ -21,7 +21,7 @@ type Reactor struct {
 	errorsCh      chan peerError
 }
 
-func NewReactor(stat state.State, blockExecutor *state.BlockExecutor, blockStore *state.StoreBlock) *Reactor {
+func NewReactor(stat *state.State, blockExecutor *state.BlockExecutor, blockStore *state.StoreBlock) *Reactor {
 	if stat.LastBlockHeight != blockStore.Height() {
 		panic(fmt.Sprintf("state height %d and store height %d mismatch", stat.LastBlockHeight, blockStore.Height()))
 	}
@@ -233,11 +233,28 @@ LOOP:
 					r.Switch.StopPeerForError(p, fmt.Errorf("provide invalid block"))
 				}
 				continue LOOP
-			} else
+			} else {
+				r.chain.PopRequest()
+				r.blockStore.SaveBlock(first)
+				var err error
+				stat, err = r.blockExecutor.ApplyBlock(stat, first)
+				if err != nil {
+					panic("failed to apply committed block")
+				}
+			}
+			continue LOOP
+		case <-r.WaitStop():
+			break LOOP
 		}
 	}
 }
 
 type consensusReactor interface {
-	SwitchToConsensus(stat state.State)
+	SwitchToConsensus(stat *state.State)
+}
+
+// for test
+
+func (r *Reactor) BlockStore() *state.StoreBlock {
+	return r.blockStore
 }
