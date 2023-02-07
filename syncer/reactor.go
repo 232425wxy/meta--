@@ -1,6 +1,7 @@
 package syncer
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/p2p"
@@ -222,7 +223,17 @@ LOOP:
 			} else {
 				didProcessCh <- struct{}{}
 			}
-
+			if !bytes.Equal(second.Header.PreviousBlockHash, first.Header.Hash) {
+				peerID1 := r.chain.RedoRequest(first.Header.Height)
+				if p := r.Switch.Peers().GetPeer(peerID1); p != nil {
+					r.Switch.StopPeerForError(p, fmt.Errorf("provide invalid blocks"))
+				}
+				peerID2 := r.chain.RedoRequest(second.Header.Height)
+				if p := r.Switch.Peers().GetPeer(peerID2); p != nil {
+					r.Switch.StopPeerForError(p, fmt.Errorf("provide invalid block"))
+				}
+				continue LOOP
+			} else
 		}
 	}
 }

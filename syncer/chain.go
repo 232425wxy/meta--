@@ -123,6 +123,19 @@ func (bc *Blockchain) PickTwoBlocks() (first *types.Block, second *types.Block) 
 	return first, second
 }
 
+func (bc *Blockchain) PopRequest() {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+
+	if r := bc.requesters[bc.height]; r != nil {
+		close(r.done)
+		delete(bc.requesters, bc.height)
+		bc.height++
+	} else {
+		panic(fmt.Sprintf("expected requester to pop, got nothing at height: %d", bc.height))
+	}
+}
+
 func (bc *Blockchain) MaxPeerHeight() int64 {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
@@ -260,6 +273,7 @@ func (bc *Blockchain) makeNextRequester() {
 		block:  nil,
 		gotCh:  make(chan struct{}, 1),
 		redoCh: make(chan crypto.ID, 1),
+		done:   make(chan struct{}),
 	}
 	bc.requesters[nextHeight] = r
 	atomic.AddInt32(&bc.pendingNum, 1)

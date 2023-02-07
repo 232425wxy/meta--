@@ -14,6 +14,7 @@ import (
 	"github.com/232425wxy/meta--/p2p"
 	"github.com/232425wxy/meta--/proxy"
 	"github.com/232425wxy/meta--/state"
+	"github.com/232425wxy/meta--/syncer"
 	"github.com/232425wxy/meta--/txspool"
 	"github.com/232425wxy/meta--/types"
 	"time"
@@ -70,9 +71,9 @@ func DefaultConsensusProvider(cfg *config.Config, stat *state.State, exec *state
 	return core, reactor
 }
 
-type P2PProvider func(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch)
+type P2PProvider func(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, syncerReactor *syncer.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch)
 
-func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch) {
+func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, syncerReactor *syncer.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch) {
 	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.GetID(), cfg.P2PConfig.ListenAddress))
 	if err != nil {
 		panic(err)
@@ -82,7 +83,15 @@ func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p
 	sw.SetLogger(logger.New("module", "Switch"))
 	sw.AddReactor("TXSPOOL", txsPoolReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
+	sw.AddReactor("SYNCER", syncerReactor)
 	return transport, sw
+}
+
+type SyncerProvider func(stat state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock) *syncer.Reactor
+
+func DefaultSyncerProvider(stat state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock) *syncer.Reactor {
+	reactor := syncer.NewReactor(stat, blockExec, blockStore)
+	return reactor
 }
 
 type Provider struct {
@@ -92,6 +101,7 @@ type Provider struct {
 	TxspoolProvider     TxspoolProvider
 	ConsensusProvider   ConsensusProvider
 	P2PProvider         P2PProvider
+	SyncerProvider      SyncerProvider
 }
 
 func DefaultProvider() Provider {
@@ -177,7 +187,9 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	consensusCore, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, blockStore, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger.New("module", "Consensus"))
 	consensusCore.SetEventBus(eventBus)
 
-	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, logger)
+	syncerReactor := provider.SyncerProvider(*stat, blockExec, blockStore)
+
+	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, syncerReactor, logger)
 
 	addrBook := p2p.NewAddrBook(cfg.P2PConfig.AddrBookPath())
 	if cfg.P2PConfig.ListenAddress != "" {
