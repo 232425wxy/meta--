@@ -87,10 +87,10 @@ func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p
 	return transport, sw
 }
 
-type SyncerProvider func(stat *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock) *syncer.Reactor
+type SyncerProvider func(stat *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock, logger log.Logger) *syncer.Reactor
 
-func DefaultSyncerProvider(stat *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock) *syncer.Reactor {
-	reactor := syncer.NewReactor(stat, blockExec, blockStore)
+func DefaultSyncerProvider(stat *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock, logger log.Logger) *syncer.Reactor {
+	reactor := syncer.NewReactor(stat, blockExec, blockStore, logger.New("module", "Syncer"))
 	return reactor
 }
 
@@ -189,7 +189,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	consensusCore, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, blockStore, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger.New("module", "Consensus"))
 	consensusCore.SetEventBus(eventBus)
 
-	syncerReactor := provider.SyncerProvider(stat, blockExec, blockStore)
+	syncerReactor := provider.SyncerProvider(stat, blockExec, blockStore, logger)
 
 	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, syncerReactor, logger)
 

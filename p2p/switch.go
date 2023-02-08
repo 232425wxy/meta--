@@ -37,7 +37,10 @@ func NewSwitch(transport *Transport, metrics *Metrics) *Switch {
 }
 
 func (sw *Switch) Start() error {
-	for _, reactor := range sw.reactors {
+	for name, reactor := range sw.reactors {
+		if name == "CONSENSUS" {
+			continue
+		}
 		if err := reactor.Start(); err != nil {
 			return err
 		}

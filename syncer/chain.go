@@ -64,7 +64,6 @@ type Blockchain struct {
 func NewBlockchain(start int64, requestsCh chan BlockRequest, errorsCh chan peerError) *Blockchain {
 	return &Blockchain{
 		BaseService:   *service.NewBaseService(nil, "Syncer"),
-		startTime:     time.Time{},
 		height:        start,
 		maxPeerHeight: 0,
 		peers:         make(map[crypto.ID]*peer),
@@ -203,7 +202,7 @@ func (bc *Blockchain) requestRoutine() {
 		case pendingNum >= maxPendingNum:
 			time.Sleep(2 * time.Millisecond)
 			bc.removeTimeoutPeers()
-		case requestersNum > maxTotalRequesters:
+		case requestersNum >= maxTotalRequesters:
 			time.Sleep(2 * time.Millisecond)
 			bc.removeTimeoutPeers()
 		default:

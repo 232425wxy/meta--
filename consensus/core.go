@@ -267,14 +267,14 @@ func (c *Core) handlePrepare(prepare *types.Prepare) error {
 	ok := c.state.Validators.GetLeader(c.stepInfo.height).PublicKey.Verify(prepare.Signature, hash)
 	if !ok {
 		if c.isLeader() {
-			panic("Why I created an invalid Prepare message?")
+			panic("why I created an invalid Prepare message?")
 		}
-		return fmt.Errorf("node %s sent an invalid prepare message to me", prepare.Signature.Signer())
+		return fmt.Errorf("leader %s sent an invalid prepare message to me", prepare.Signature.Signer())
 	}
 	c.stepInfo.prepare = prepare
 	c.stepInfo.block = prepare.Block
 	if !c.isLeader() {
-		c.Logger.Info("received Prepare message, plan to vote for it", "from", prepare.Signature.Signer())
+		c.Logger.Debug("received Prepare message from leader", "leader", prepare.Signature.Signer())
 		// 如果我自己不是主节点，那么在收到Prepare消息后，就应该进入PREPARE_VOTE阶段
 	}
 	c.enterPrepareVoteStep(c.stepInfo.height, c.stepInfo.round)

@@ -1,6 +1,6 @@
 {
 	"genesis_time": "2023-01-30T17:22:46+08:00",
-	"initial_height": 0,
+	"initial_height": 1,
 	"validators": [
 		{
 			"ID": "81da6eddc2a1e3010c90",

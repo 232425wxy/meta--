@@ -12,19 +12,22 @@ import (
 
 type Reactor struct {
 	p2p.BaseReactor
-	core *Core
-	mu   sync.RWMutex
+	core     *Core
+	waitSync bool
+	mu       sync.RWMutex
 }
 
 func NewReactor(core *Core) *Reactor {
-	r := &Reactor{core: core}
+	r := &Reactor{core: core, waitSync: true}
 	r.BaseReactor = *p2p.NewBaseReactor("Consensus")
 	return r
 }
 
 func (r *Reactor) Start() error {
-	if err := r.core.Start(); err != nil {
-		return err
+	if !r.waitSync {
+		if err := r.core.Start(); err != nil {
+			return err
+		}
 	}
 	return r.BaseService.Start()
 }
@@ -105,11 +108,15 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 
 }
 
-func (r *Reactor) SwitchToConsensus(stat state.State) {
+func (r *Reactor) SwitchToConsensus(stat *state.State) {
 	if stat.LastBlockHeight <= r.core.state.LastBlockHeight {
 		r.core.newStep()
-		return
 	}
+
+	r.mu.Lock()
+	r.waitSync = false
+	r.mu.Unlock()
+
 	if err := r.core.Start(); err != nil {
 		panic(err)
 	}

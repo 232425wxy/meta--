@@ -62,7 +62,7 @@ func dockernetFiles(cmd *cobra.Command, args []string) (err error) {
 			}
 		} else {
 			genesis.GenesisTime = time.Now()
-			genesis.InitialHeight = 0
+			genesis.InitialHeight = 1
 		}
 		if err = genesis.SaveAs(genesisFilePath); err != nil {
 			return err

@@ -21,7 +21,7 @@ type Reactor struct {
 	errorsCh      chan peerError
 }
 
-func NewReactor(stat *state.State, blockExecutor *state.BlockExecutor, blockStore *state.StoreBlock) *Reactor {
+func NewReactor(stat *state.State, blockExecutor *state.BlockExecutor, blockStore *state.StoreBlock, logger log.Logger) *Reactor {
 	if stat.LastBlockHeight != blockStore.Height() {
 		panic(fmt.Sprintf("state height %d and store height %d mismatch", stat.LastBlockHeight, blockStore.Height()))
 	}
@@ -33,7 +33,7 @@ func NewReactor(stat *state.State, blockExecutor *state.BlockExecutor, blockStor
 		startHeight = stat.InitialHeight
 	}
 	chain := NewBlockchain(startHeight, requestsCh, errorsCh)
-	return &Reactor{
+	r := &Reactor{
 		BaseReactor:   *p2p.NewBaseReactor("Syncer"),
 		initialState:  stat,
 		blockExecutor: blockExecutor,
@@ -42,10 +42,12 @@ func NewReactor(stat *state.State, blockExecutor *state.BlockExecutor, blockStor
 		requestsCh:    requestsCh,
 		errorsCh:      errorsCh,
 	}
+	r.SetLogger(logger)
+	return r
 }
 
 func (r *Reactor) SetLogger(logger log.Logger) {
-	r.SetLogger(logger)
+	r.BaseReactor.SetLogger(logger)
 	r.chain.SetLogger(logger)
 }
 
@@ -96,7 +98,6 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 		r.Switch.StopPeerForError(src, err)
 		return
 	}
-	r.Logger.Debug("Receive", "sender_id", src.NodeID(), "channel", chID)
 
 	switch msg := msg.(type) {
 	case *pbsyncer.BlockRequest:
@@ -209,6 +210,9 @@ LOOP:
 				if conReactor, ok := r.Switch.Reactor("CONSENSUS").(consensusReactor); ok {
 					conReactor.SwitchToConsensus(stat)
 				}
+				//if err := r.Switch.Reactor("CONSENSUS").Start(); err != nil {
+				//	panic(err)
+				//}
 				break LOOP
 			}
 		case <-syncTicker.C:

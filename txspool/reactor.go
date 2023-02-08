@@ -41,7 +41,7 @@ func (r *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 }
 
 func (r *Reactor) AddPeer(peer *p2p.Peer) {
-	r.Logger.Debug("add peer", "peer_id", peer.NodeID())
+	//r.Logger.Debug("add peer", "peer_id", peer.NodeID())
 	go r.broadcastTxRoutine(peer)
 }
 
