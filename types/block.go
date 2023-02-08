@@ -151,7 +151,7 @@ func (d *Data) ToProto() *pbtypes.Data {
 	}
 	_txs := make([][]byte, len(d.Txs))
 	for i, tx := range d.Txs {
-		copy(_txs[i], tx)
+		_txs[i] = tx
 	}
 	return &pbtypes.Data{
 		RootHash: d.RootHash,

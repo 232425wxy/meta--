@@ -2,7 +2,6 @@ package apps
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/232425wxy/meta--/abci"
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12"
@@ -93,7 +92,6 @@ func (k *KVStoreApp) DeliverTx(req pbabci.RequestDeliverTx) pbabci.ResponseDeliv
 	// 交易数据tx是一对键值对，形式为："key=value"
 	var key, value []byte
 	var res pbabci.ResponseDeliverTx
-	fmt.Println(string(req.Tx), ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
 	s := bytes.Split(req.Tx, []byte("="))
 	if len(s) == 2 {
 		key, value = s[0], s[1]

@@ -82,26 +82,26 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 		r.Logger.Info("receive next view message", "from", src.NodeID(), "height", ps.Height)
 	case p2p.LeaderProposeChannel:
 		r.core.sendExternalMessage(info)
-		switch m := msg.(type) {
-		case *types.Prepare:
-			r.Logger.Info("receive Prepare message", "leader", src.NodeID(), "height", m.Height)
-		case *types.PreCommit:
-			r.Logger.Info("receive PreCommit message", "leader", src.NodeID(), "height", m.Height)
-		case *types.Commit:
-			r.Logger.Info("receive Commit message", "leader", src.NodeID(), "height", m.Height)
-		case *types.Decide:
-			r.Logger.Info("receive Decide message", "leader", src.NodeID(), "height", m.Height)
-		}
+		//switch m := msg.(type) {
+		//case *types.Prepare:
+		//	r.Logger.Info("receive Prepare message", "leader", src.NodeID(), "height", m.Height)
+		//case *types.PreCommit:
+		//	r.Logger.Info("receive PreCommit message", "leader", src.NodeID(), "height", m.Height)
+		//case *types.Commit:
+		//	r.Logger.Info("receive Commit message", "leader", src.NodeID(), "height", m.Height)
+		//case *types.Decide:
+		//	r.Logger.Info("receive Decide message", "leader", src.NodeID(), "height", m.Height)
+		//}
 	case p2p.ReplicaVoteChannel:
 		r.core.sendExternalMessage(info)
-		switch m := msg.(type) {
-		case *types.PrepareVote:
-			r.Logger.Info("receive PrepareVote message", "replica", src.NodeID(), "height", m.Vote.Height)
-		case *types.PreCommitVote:
-			r.Logger.Info("receive PreCommitVote message", "replica", src.NodeID(), "height", m.Vote.Height)
-		case *types.CommitVote:
-			r.Logger.Info("receive CommitVote message", "replica", src.NodeID(), "height", m.Vote.Height)
-		}
+		//switch m := msg.(type) {
+		//case *types.PrepareVote:
+		//	r.Logger.Info("receive PrepareVote message", "replica", src.NodeID(), "height", m.Vote.Height)
+		//case *types.PreCommitVote:
+		//	r.Logger.Info("receive PreCommitVote message", "replica", src.NodeID(), "height", m.Vote.Height)
+		//case *types.CommitVote:
+		//	r.Logger.Info("receive CommitVote message", "replica", src.NodeID(), "height", m.Vote.Height)
+		//}
 	default:
 		r.Logger.Error("unknown message channel", "channel", fmt.Sprintf("%x", chID))
 	}

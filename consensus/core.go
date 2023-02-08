@@ -491,12 +491,11 @@ func (c *Core) enterNewRound(height int64, round int16) {
 }
 
 func (c *Core) enterPrepareStep(height int64, round int16) {
-	c.Logger.Info(">>> PREPARE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	if c.stepInfo.height != height || round < c.stepInfo.round || (c.stepInfo.round == round && PrepareStep <= c.stepInfo.step) {
 		c.Logger.Warn("entering PREPARE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-
+	c.Logger.Info(">>> PREPARE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = PrepareStep
@@ -665,7 +664,6 @@ func (c *Core) enterDecideStep(height int64, round int16) {
 }
 
 func (c *Core) applyBlock() {
-	period := time.Now().Sub(c.state.LastBlockTime)
 	newState, err := c.blockExec.ApplyBlock(c.state, c.stepInfo.block)
 	if err != nil {
 		c.Logger.Error("failed to apply block", "err", err)
@@ -673,7 +671,6 @@ func (c *Core) applyBlock() {
 	}
 	c.state = newState
 	c.stepInfo.previousBlock = c.stepInfo.block
-	c.Logger.Debug("距离提交上一个区块过去的时间", "时间(秒)", period.Seconds())
 	if c.isLeader() {
 		time.Sleep(time.Millisecond * 20)
 	}
