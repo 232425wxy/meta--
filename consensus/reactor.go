@@ -6,7 +6,6 @@ import (
 	"github.com/232425wxy/meta--/p2p"
 	"github.com/232425wxy/meta--/state"
 	"github.com/232425wxy/meta--/types"
-	"github.com/cosmos/gogoproto/proto"
 	"sync"
 )
 
@@ -24,6 +23,7 @@ func NewReactor(core *Core) *Reactor {
 }
 
 func (r *Reactor) Start() error {
+	r.subscribeEvents()
 	if !r.waitSync {
 		if err := r.core.Start(); err != nil {
 			return err
@@ -79,19 +79,20 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 	switch chID {
 	case p2p.ReplicaStateChannel:
 		r.core.sendExternalMessage(info)
-		r.Logger.Info("receive next view message", "from", src.NodeID(), "height", ps.Height)
+		//r.Logger.Info("receive next view message", "from", src.NodeID(), "height", ps.Height)
 	case p2p.LeaderProposeChannel:
 		r.core.sendExternalMessage(info)
-		//switch m := msg.(type) {
-		//case *types.Prepare:
-		//	r.Logger.Info("receive Prepare message", "leader", src.NodeID(), "height", m.Height)
-		//case *types.PreCommit:
-		//	r.Logger.Info("receive PreCommit message", "leader", src.NodeID(), "height", m.Height)
-		//case *types.Commit:
-		//	r.Logger.Info("receive Commit message", "leader", src.NodeID(), "height", m.Height)
-		//case *types.Decide:
-		//	r.Logger.Info("receive Decide message", "leader", src.NodeID(), "height", m.Height)
-		//}
+		switch m := msg.(type) {
+		case *types.Prepare:
+			//r.Logger.Info("receive Prepare message", "leader", src.NodeID(), "height", m.Height)
+		case *types.PreCommit:
+			//r.Logger.Info("receive PreCommit message", "leader", src.NodeID(), "height", m.Height)
+		case *types.Commit:
+			//r.Logger.Info("receive Commit message", "leader", src.NodeID(), "height", m.Height)
+		case *types.Decide:
+			//r.Logger.Info("receive Decide message", "leader", src.NodeID(), "height", m.Height)
+			ps.Height = m.Height
+		}
 	case p2p.ReplicaVoteChannel:
 		r.core.sendExternalMessage(info)
 		//switch m := msg.(type) {
@@ -208,10 +209,6 @@ func (r *Reactor) gossipRoutine(peer *p2p.Peer) {
 }
 
 func (r *Reactor) sendNextViewToLeader(view *types.NextView) {
-	pb := view.ToProto()
-	bz, err := proto.Marshal(pb)
-	if err != nil {
-		panic(err)
-	}
+	bz := MustEncode(view)
 	r.Switch.SendToPeer(p2p.ReplicaStateChannel, r.core.state.Validators.GetLeader(r.core.stepInfo.height).ID, bz)
 }

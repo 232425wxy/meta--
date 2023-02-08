@@ -250,7 +250,7 @@ func (c *Core) handleNextView(view *types.NextView) error {
 	if view.Height != c.stepInfo.height {
 		return fmt.Errorf("validator %s sent invalid NextView message to me, because \"height\" is wrong", view.ID)
 	}
-	c.Logger.Debug("receive a valid NextView message", "from", view.ID)
+	//c.Logger.Debug("receive a valid NextView message", "from", view.ID)
 	c.stepInfo.AddNextView(view)
 	if c.stepInfo.CheckCollectNextViewIsComplete(c.state.Validators) {
 		c.Logger.Info("receive enough NextView messages", "height", c.stepInfo.height)
@@ -503,7 +503,7 @@ func (c *Core) enterPrepareStep(height int64, round int16) {
 	}()
 	// 作为一个普通节点，执行到此处该方法就结束了，接下来就是等待主节点发送来Prepare消息
 	if c.isLeader() {
-		c.Logger.Warn("leader is me, it's my responsibility to propose Prepare message", "validator_id", c.publicKey.ToID())
+		c.Logger.Trace("leader is me, it's my responsibility to propose Prepare message", "validator_id", c.publicKey.ToID())
 		// 开始打包Prepare消息
 		var block *types.Block
 		if c.stepInfo.block != nil {
@@ -679,7 +679,7 @@ func (c *Core) applyBlock() {
 	if !c.isLeader() {
 		c.eventSwitch.FireEvent(events.EventNextView, c.nextView())
 	}
-	c.scheduleRound0(c.stepInfo)
+	//c.scheduleRound0(c.stepInfo)
 }
 
 func (c *Core) createBlock() *types.Block {
@@ -708,8 +708,8 @@ func (c *Core) hasCommit() bool {
 }
 
 func (c *Core) newStep() {
-	esi := c.stepInfo.EventStepInfo()
-	c.eventSwitch.FireEvent(events.EventNewRoundStep, &esi)
+	//esi := c.stepInfo.EventStepInfo()
+	//c.eventSwitch.FireEvent(events.EventNewRoundStep, &esi)
 }
 
 func (c *Core) isFirstBlock(height int64) bool {

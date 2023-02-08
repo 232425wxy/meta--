@@ -33,7 +33,7 @@ func (s *State) Copy() *State {
 
 func (s *State) MakeBlock(height int64, txs []types.Tx, proposer crypto.ID, lastBlockHash []byte) *types.Block {
 	block := &types.Block{
-		Header: &types.Header{Height: height, Timestamp: time.Now(), Proposer: proposer},
+		Header: &types.Header{PreviousBlockHash: lastBlockHash, Height: height, Timestamp: time.Now(), Proposer: proposer},
 		Body:   &types.Data{Txs: txs},
 	}
 	_txs := make([][]byte, len(txs))

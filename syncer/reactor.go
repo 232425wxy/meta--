@@ -210,9 +210,6 @@ LOOP:
 				if conReactor, ok := r.Switch.Reactor("CONSENSUS").(consensusReactor); ok {
 					conReactor.SwitchToConsensus(stat)
 				}
-				//if err := r.Switch.Reactor("CONSENSUS").Start(); err != nil {
-				//	panic(err)
-				//}
 				break LOOP
 			}
 		case <-syncTicker.C:

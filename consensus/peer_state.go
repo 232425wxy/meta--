@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/232425wxy/meta--/types"
 )
 
@@ -68,6 +69,12 @@ func (ps *PeerState) HasCommit(commit *types.Commit) bool {
 }
 
 func (ps *PeerState) SetDecide(decide *types.Decide) {
+	if decide == nil {
+		fmt.Println("decide是nil")
+	}
+	if len(decide.ValueHash[:]) == 0 {
+		fmt.Println("decide.ValueHash是空的")
+	}
 	ps.decide = decide.ValueHash[:]
 }
 

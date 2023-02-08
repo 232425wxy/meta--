@@ -468,7 +468,6 @@ LOOP:
 			default:
 			}
 			if c.IsRunning() {
-				c.Logger.Error("err", err)
 				if err == io.EOF {
 					c.Logger.Info("connection is closed @ recvRoutine by the other side")
 				} else {
