@@ -416,14 +416,14 @@ func (c *Connection) sendPacketMsg() bool {
 //
 // sendPing 向对方发送ping消息。
 func (c *Connection) sendPing(writer protoio.Writer) error {
-	c.Logger.Debug("send ping")
+	//c.Logger.Debug("send ping")
 	n, err := writer.WriteMsg(wrapPacket(&pbp2p.PacketPing{}))
 	if err != nil {
 		c.Logger.Error("failed to send ping", "err", err)
 		return err
 	}
 	c.sendMonitor.Update(n)
-	c.Logger.Debug("wait for pong message from the peer", "wait time", c.config.PongTimeout)
+	//c.Logger.Debug("wait for pong message from the peer", "wait time", c.config.PongTimeout)
 	c.pongTimer = time.AfterFunc(c.config.PongTimeout, func() {
 		select {
 		case c.pongTimeoutCh <- true:
@@ -441,7 +441,7 @@ func (c *Connection) sendPing(writer protoio.Writer) error {
 //
 // sendPong 向对方回复pong消息。
 func (c *Connection) sendPong(writer protoio.Writer) error {
-	c.Logger.Debug("send pong")
+	//c.Logger.Debug("send pong")
 	n, err := writer.WriteMsg(wrapPacket(&pbp2p.PacketPong{}))
 	if err != nil {
 		c.Logger.Error("failed to send pong message")
@@ -479,13 +479,13 @@ LOOP:
 		}
 		switch pkt := packet.Sum.(type) {
 		case *pbp2p.Packet_PacketPing:
-			c.Logger.Debug("receive ping")
+			//c.Logger.Debug("receive ping")
 			select {
 			case c.pong <- struct{}{}:
 			default:
 			}
 		case *pbp2p.Packet_PacketPong:
-			c.Logger.Debug("receive pong")
+			//c.Logger.Debug("receive pong")
 			select {
 			case c.pongTimeoutCh <- false:
 			default:

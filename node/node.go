@@ -68,6 +68,7 @@ func DefaultConsensusProvider(cfg *config.Config, stat *state.State, exec *state
 	core := consensus.NewCore(cfg.ConsensusConfig, privateKey, stat, exec, blockStore, txsPool, bls)
 	core.SetLogger(logger.New("module", "Consensus"))
 	reactor := consensus.NewReactor(core)
+	reactor.SetLogger(logger.New("module", "Consensus_Reactor"))
 	return core, reactor
 }
 
@@ -186,7 +187,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 
 	blockExec := state.NewBlockExecutor(cfg, stateStore, proxyAppConns.Consensus(), txsPool, logger.New("module", "state"))
 
-	consensusCore, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, blockStore, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger.New("module", "Consensus"))
+	consensusCore, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, blockStore, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger)
 	consensusCore.SetEventBus(eventBus)
 
 	syncerReactor := provider.SyncerProvider(stat, blockExec, blockStore, logger)

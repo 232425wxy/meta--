@@ -1,5 +1,6 @@
 package consensus
 
+import "C"
 import (
 	"bytes"
 	"fmt"
@@ -75,7 +76,7 @@ func (c *Core) Start() error {
 		return err
 	}
 	go c.receiveRoutine()
-	c.scheduleRound0(c.stepInfo)
+	//c.scheduleRound0(c.stepInfo)
 	return nil
 }
 
@@ -119,9 +120,9 @@ func (c *Core) handleAvailableTxs() {
 	}
 	switch c.stepInfo.step {
 	case NewHeightStep:
-		if c.isFirstBlock(c.stepInfo.height) {
-			return
-		}
+		//if c.isFirstBlock(c.stepInfo.height) {
+		//	return
+		//}
 		duration := c.stepInfo.startTime.Sub(time.Now()) + time.Millisecond
 		c.scheduleStep(duration, c.stepInfo.height, 0, NewRoundStep)
 	case NewRoundStep:
@@ -138,7 +139,8 @@ func (c *Core) handleScheduled(info timeoutInfo, stepInfo StepInfo) {
 
 	switch info.Step {
 	case NewHeightStep:
-		c.enterNewRound(info.Height, 0)
+		c.stepInfo.step = NewHeightStep
+		//c.enterNewRound(info.Height, 0)
 	case NewRoundStep:
 		c.enterPrepareStep(info.Height, 0)
 	case PreCommitStep:
@@ -273,10 +275,10 @@ func (c *Core) handlePrepare(prepare *types.Prepare) error {
 	}
 	c.stepInfo.prepare = prepare
 	c.stepInfo.block = prepare.Block
-	if !c.isLeader() {
-		c.Logger.Debug("received Prepare message from leader", "leader", prepare.Signature.Signer())
-		// 如果我自己不是主节点，那么在收到Prepare消息后，就应该进入PREPARE_VOTE阶段
-	}
+	//if !c.isLeader() {
+	//	c.Logger.Debug("received Prepare message from leader", "leader", prepare.Signature.Signer())
+	//	// 如果我自己不是主节点，那么在收到Prepare消息后，就应该进入PREPARE_VOTE阶段
+	//}
 	c.enterPrepareVoteStep(c.stepInfo.height, c.stepInfo.round)
 	return nil
 }
@@ -310,6 +312,7 @@ func (c *Core) handlePrepareVote(vote *types.PrepareVote) error {
 	if ok { // TODO 这里需要搞一个超时机制，就是哪怕收到了足够数量的投票，也不要立即去组装门陷签名，防止接下来还会有投票过来
 		// 收集齐了副本节点对Prepare消息的投票，那么开始构造PreCommit消息
 		//c.enterPreCommitStep(c.stepInfo.height, c.stepInfo.round)
+		c.Logger.Trace("收集齐了其他节点对于Prepare消息的投票")
 		c.scheduleStep(time.Millisecond*100, c.stepInfo.height, c.stepInfo.round, PreCommitStep)
 	}
 	return nil
@@ -338,9 +341,9 @@ func (c *Core) handlePreCommit(preCommit *types.PreCommit) error {
 		return fmt.Errorf("leader %s sent invalid PreCommit message to me, aggregated signature is wrong", preCommit.ID)
 	}
 	c.stepInfo.preCommit = preCommit
-	if !c.isLeader() {
-		c.Logger.Info("received PreCommit message, plan to vote for it", "PreCommit message from", preCommit.ID)
-	}
+	//if !c.isLeader() {
+	//	c.Logger.Info("received PreCommit message, plan to vote for it", "PreCommit message from", preCommit.ID)
+	//}
 	c.enterPreCommitVoteStep(c.stepInfo.height, c.stepInfo.round)
 	return nil
 }
@@ -400,9 +403,9 @@ func (c *Core) handleCommit(commit *types.Commit) error {
 		return fmt.Errorf("leader %s sent invalid Commit message to me, aggregated signature is wrong", commit.ID)
 	}
 	c.stepInfo.commit = commit
-	if !c.isLeader() {
-		c.Logger.Debug("received PreCommit message, plan to vote for it", "Commit message from", commit.ID)
-	}
+	//if !c.isLeader() {
+	//	c.Logger.Debug("received PreCommit message, plan to vote for it", "Commit message from", commit.ID)
+	//}
 	c.enterCommitVoteStep(c.stepInfo.height, c.stepInfo.round)
 	return nil
 }
@@ -486,10 +489,9 @@ func (c *Core) enterNewRound(height int64, round int16) {
 }
 
 func (c *Core) enterPrepareStep(height int64, round int16) {
-	logger := c.Logger.New("height", height, "round", round)
-	logger.Info("entering PREPARE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	c.Logger.Info(">>> PREPARE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	if c.stepInfo.height != height || round < c.stepInfo.round || (c.stepInfo.round == round && PrepareStep <= c.stepInfo.step) {
-		logger.Warn("entering PREPARE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		c.Logger.Warn("entering PREPARE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
 
@@ -500,7 +502,7 @@ func (c *Core) enterPrepareStep(height int64, round int16) {
 	}()
 	// 作为一个普通节点，执行到此处该方法就结束了，接下来就是等待主节点发送来Prepare消息
 	if c.isLeader() {
-		logger.Warn("leader is me, it's my responsibility to propose Prepare message", "validator_id", c.publicKey.ToID())
+		c.Logger.Warn("leader is me, it's my responsibility to propose Prepare message", "validator_id", c.publicKey.ToID())
 		// 开始打包Prepare消息
 		var block *types.Block
 		if c.stepInfo.block != nil {
@@ -521,7 +523,7 @@ func (c *Core) enterPrepareStep(height int64, round int16) {
 // 为Prepare消息进行投票，主节点也会为自己生成的Prepare消息进行投票。
 func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 	logger := c.Logger.New("height", height, "round", round)
-	logger.Info("entering PREPARE_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	logger.Info(">>> PREPARE_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	if c.stepInfo.height != height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= PrepareVoteStep) {
 		logger.Warn("entering PREPARE_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
@@ -535,7 +537,7 @@ func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 		logger.Error("PREPARE_VOTE step: Prepare message is nil")
 		return
 	}
-	logger.Debug("Prepare message is valid, decide to vote for it")
+	//logger.Debug("Prepare message is valid, decide to vote for it")
 	vote := types.NewPrepareVote(height, types.GeneratePrepareVoteValueHash(c.stepInfo.prepare.Block.Header.Hash), c.privateKey)
 	if c.isLeader() {
 		c.stepInfo.voteSet.AddPrepareVote(c.stepInfo.round, vote)
@@ -554,7 +556,7 @@ func (c *Core) enterPreCommitStep(height int64, round int16) {
 		logger.Warn("entering PRE_COMMIT step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-	logger.Info("entering PRE_COMMIT step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	logger.Info(">>> PRE_COMMIT step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = PreCommitStep
@@ -571,7 +573,7 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 		logger.Warn("entering PRE_COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step), "should be", fmt.Sprintf("height:%d round:%d step:%s", height, round, PreCommitStep))
 		return
 	}
-	logger.Info("entering PRE_COMMIT_VOTE step", "my_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	logger.Info(">>> PRE_COMMIT_VOTE step", "my_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.height = height
 		c.stepInfo.round = round
@@ -600,7 +602,7 @@ func (c *Core) enterCommitStep(height int64, round int16) {
 		logger.Warn("entering COMMIT step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-	logger.Info("entering COMMIT step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	logger.Info(">>> COMMIT step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = CommitStep
@@ -617,7 +619,7 @@ func (c *Core) enterCommitVoteStep(height int64, round int16) {
 		logger.Warn("entering COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-	logger.Info("entering PRE_COMMIT_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	logger.Info(">>> PRE_COMMIT_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.height = height
 		c.stepInfo.round = round

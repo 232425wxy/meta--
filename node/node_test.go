@@ -37,7 +37,7 @@ func CreateNode(i int) *Node {
 	cfg := ReadConfigFile(dir)
 	AdjustHomePath(cfg)
 	logger := log.New("node", i)
-	logger.SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
+	logger.SetHandler(log.LvlFilterHandler(log.LvlTrace, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
 	log.PrintOrigins(true)
 	node, err := NewNode(cfg, logger, DefaultProvider())
 	if err != nil {

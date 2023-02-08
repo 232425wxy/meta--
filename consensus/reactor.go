@@ -70,7 +70,7 @@ func (r *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 
 func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 	msg := MustDecode(bz)
-	r.Logger.Debug("receive message", "peer", src.NodeID(), "message", msg)
+	//r.Logger.Debug("receive message", "peer", src.NodeID(), "message", msg)
 	ps, ok := src.Get(types.PeerStateKey).(*PeerState)
 	if !ok {
 		panic(fmt.Sprintf("peer %v has no state", src.NodeID()))
@@ -138,36 +138,46 @@ func (r *Reactor) unsubscribeEvents() {
 }
 
 func (r *Reactor) gossipRoutine(peer *p2p.Peer) {
-	logger := r.Logger.New("peer", peer.NodeID())
+	logger := r.Logger.New()
 	// 用PeerState来保证只会给节点发送一次主节点提出的共识消息
 	ps := peer.Data.Get(types.PeerStateKey).(*PeerState)
 	for {
 		if r.core.isLeader() {
 			switch {
-			case r.core.stepInfo.prepare != nil && r.core.stepInfo.step == PrepareStep && !ps.HasPrepare(r.core.stepInfo.prepare):
+			case r.core.stepInfo.prepare != nil && (r.core.stepInfo.step == PrepareStep || r.core.stepInfo.step == PrepareVoteStep) && !ps.HasPrepare(r.core.stepInfo.prepare):
 				msg := MustEncode(r.core.stepInfo.prepare)
 				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
 					ps.SetPrepare(r.core.stepInfo.prepare)
 					logger.Info("leader is me, send Prepare message", "to", peer.NodeID())
+				} else {
+					logger.Error("failed to send Prepare message", "to", peer.NodeID())
 				}
-			case r.core.stepInfo.preCommit != nil && r.core.stepInfo.step == PreCommitStep && !ps.HasPreCommit(r.core.stepInfo.preCommit):
+			case r.core.stepInfo.preCommit != nil && (r.core.stepInfo.step == PreCommitStep || r.core.stepInfo.step == PreCommitVoteStep) && !ps.HasPreCommit(r.core.stepInfo.preCommit):
 				msg := MustEncode(r.core.stepInfo.preCommit)
 				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
 					ps.SetPreCommit(r.core.stepInfo.preCommit)
 					logger.Info("leader is me, send PreCommit message", "to", peer.NodeID())
+				} else {
+					logger.Error("failed to send PreCommit message", "to", peer.NodeID())
 				}
-			case r.core.stepInfo.commit != nil && r.core.stepInfo.step == CommitStep && !ps.HasCommit(r.core.stepInfo.commit):
+			case r.core.stepInfo.commit != nil && (r.core.stepInfo.step == CommitStep || r.core.stepInfo.step == CommitVoteStep) && !ps.HasCommit(r.core.stepInfo.commit):
 				msg := MustEncode(r.core.stepInfo.commit)
 				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
 					ps.SetCommit(r.core.stepInfo.commit)
 					logger.Info("leader is me, send Commit message", "to", peer.NodeID())
+				} else {
+					logger.Error("failed to send Commit message", "to", peer.NodeID())
 				}
 			case r.core.stepInfo.decide != nil && r.core.stepInfo.step == DecideStep && !ps.HasDecide(r.core.stepInfo.decide):
 				msg := MustEncode(r.core.stepInfo.decide)
 				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
 					ps.SetDecide(r.core.stepInfo.decide)
 					logger.Info("leader is me, send Decide message", "to", peer.NodeID())
+				} else {
+					logger.Error("failed to send Decide message", "to", peer.NodeID())
 				}
+			default:
+
 			}
 		}
 
@@ -177,15 +187,17 @@ func (r *Reactor) gossipRoutine(peer *p2p.Peer) {
 			case vote := <-r.core.prepareVotesQueue:
 				msg := MustEncode(vote)
 				peer.Send(p2p.ReplicaVoteChannel, msg)
-				logger.Info("replica is me, send PrepareVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
+				logger.Info("send PrepareVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
 			case vote := <-r.core.preCommitVotesQueue:
 				msg := MustEncode(vote)
 				peer.Send(p2p.ReplicaVoteChannel, msg)
-				logger.Info("replica is me, send PreCommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
+				logger.Info("send PreCommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
 			case vote := <-r.core.commitVotesQueue:
 				msg := MustEncode(vote)
 				peer.Send(p2p.ReplicaVoteChannel, msg)
-				logger.Info("replica is me, send CommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
+				logger.Info("send CommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
+			default:
+
 			}
 		}
 	}
