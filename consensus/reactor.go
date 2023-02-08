@@ -148,33 +148,37 @@ func (r *Reactor) gossipRoutine(peer *p2p.Peer) {
 				msg := MustEncode(r.core.stepInfo.prepare)
 				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
 					ps.SetPrepare(r.core.stepInfo.prepare)
-					logger.Info("leader is me, send Prepare message", "to", peer.NodeID())
+					//logger.Info("leader is me, send Prepare message", "to", peer.NodeID())
 				} else {
 					logger.Error("failed to send Prepare message", "to", peer.NodeID())
+					return
 				}
 			case r.core.stepInfo.preCommit != nil && (r.core.stepInfo.step == PreCommitStep || r.core.stepInfo.step == PreCommitVoteStep) && !ps.HasPreCommit(r.core.stepInfo.preCommit):
 				msg := MustEncode(r.core.stepInfo.preCommit)
 				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
 					ps.SetPreCommit(r.core.stepInfo.preCommit)
-					logger.Info("leader is me, send PreCommit message", "to", peer.NodeID())
+					//logger.Info("leader is me, send PreCommit message", "to", peer.NodeID())
 				} else {
 					logger.Error("failed to send PreCommit message", "to", peer.NodeID())
+					return
 				}
 			case r.core.stepInfo.commit != nil && (r.core.stepInfo.step == CommitStep || r.core.stepInfo.step == CommitVoteStep) && !ps.HasCommit(r.core.stepInfo.commit):
 				msg := MustEncode(r.core.stepInfo.commit)
 				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
 					ps.SetCommit(r.core.stepInfo.commit)
-					logger.Info("leader is me, send Commit message", "to", peer.NodeID())
+					//logger.Info("leader is me, send Commit message", "to", peer.NodeID())
 				} else {
 					logger.Error("failed to send Commit message", "to", peer.NodeID())
+					return
 				}
 			case r.core.stepInfo.decide != nil && r.core.stepInfo.step == DecideStep && !ps.HasDecide(r.core.stepInfo.decide):
 				msg := MustEncode(r.core.stepInfo.decide)
 				if ok := peer.Send(p2p.LeaderProposeChannel, msg); ok {
 					ps.SetDecide(r.core.stepInfo.decide)
-					logger.Info("leader is me, send Decide message", "to", peer.NodeID())
+					//logger.Info("leader is me, send Decide message", "to", peer.NodeID())
 				} else {
 					logger.Error("failed to send Decide message", "to", peer.NodeID())
+					return
 				}
 			default:
 
@@ -187,15 +191,15 @@ func (r *Reactor) gossipRoutine(peer *p2p.Peer) {
 			case vote := <-r.core.prepareVotesQueue:
 				msg := MustEncode(vote)
 				peer.Send(p2p.ReplicaVoteChannel, msg)
-				logger.Info("send PrepareVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
+				//logger.Info("send PrepareVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
 			case vote := <-r.core.preCommitVotesQueue:
 				msg := MustEncode(vote)
 				peer.Send(p2p.ReplicaVoteChannel, msg)
-				logger.Info("send PreCommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
+				//logger.Info("send PreCommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
 			case vote := <-r.core.commitVotesQueue:
 				msg := MustEncode(vote)
 				peer.Send(p2p.ReplicaVoteChannel, msg)
-				logger.Info("send CommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
+				//logger.Info("send CommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
 			default:
 
 			}

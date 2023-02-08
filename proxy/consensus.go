@@ -18,22 +18,22 @@ func NewAppConnConsensus(app abci.Application) *AppConnConsensus {
 	}
 }
 
-func (app *AppConnConsensus) InitChain(chain pbabci.RequestInitChain) pbabci.ResponseInitChain {
-	return pbabci.ResponseInitChain{}
+func (app *AppConnConsensus) InitChain(req pbabci.RequestInitChain) pbabci.ResponseInitChain {
+	return app.application.InitChain(req)
 }
 
-func (app *AppConnConsensus) BeginBlock(block pbabci.RequestBeginBlock) pbabci.ResponseBeginBlock {
-	return pbabci.ResponseBeginBlock{}
+func (app *AppConnConsensus) BeginBlock(req pbabci.RequestBeginBlock) pbabci.ResponseBeginBlock {
+	return app.application.BeginBlock(req)
 }
 
-func (app *AppConnConsensus) DeliverTx(tx pbabci.RequestDeliverTx) pbabci.ResponseDeliverTx {
-	return pbabci.ResponseDeliverTx{}
+func (app *AppConnConsensus) DeliverTx(req pbabci.RequestDeliverTx) pbabci.ResponseDeliverTx {
+	return app.application.DeliverTx(req)
 }
 
-func (app *AppConnConsensus) EndBlock(block pbabci.RequestEndBlock) pbabci.ResponseEndBlock {
-	return pbabci.ResponseEndBlock{}
+func (app *AppConnConsensus) EndBlock(req pbabci.RequestEndBlock) pbabci.ResponseEndBlock {
+	return app.application.EndBlock(req)
 }
 
-func (app *AppConnConsensus) Commit(commit pbabci.RequestCommit) pbabci.ResponseCommit {
-	return pbabci.ResponseCommit{}
+func (app *AppConnConsensus) Commit(req pbabci.RequestCommit) pbabci.ResponseCommit {
+	return app.application.Commit(req)
 }

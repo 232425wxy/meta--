@@ -112,6 +112,7 @@ func (sw *Switch) StopPeerForError(p *Peer, err error) {
 	}
 	sw.Logger.Error("stop peer for error", "err", err, "peer", p.NodeID())
 	sw.stopAndRemovePeer(p, err)
+	panic(err)
 }
 
 func (sw *Switch) SetAddrBook(addrbook *AddrBook) {

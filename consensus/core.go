@@ -147,6 +147,8 @@ func (c *Core) handleScheduled(info timeoutInfo, stepInfo StepInfo) {
 		c.enterPreCommitStep(c.stepInfo.height, c.stepInfo.round)
 	case CommitStep:
 		c.enterCommitStep(c.stepInfo.height, c.stepInfo.round)
+	case DecideStep:
+		c.enterDecideStep(c.stepInfo.height, c.stepInfo.round)
 	}
 }
 
@@ -312,7 +314,6 @@ func (c *Core) handlePrepareVote(vote *types.PrepareVote) error {
 	if ok { // TODO 这里需要搞一个超时机制，就是哪怕收到了足够数量的投票，也不要立即去组装门陷签名，防止接下来还会有投票过来
 		// 收集齐了副本节点对Prepare消息的投票，那么开始构造PreCommit消息
 		//c.enterPreCommitStep(c.stepInfo.height, c.stepInfo.round)
-		c.Logger.Trace("收集齐了其他节点对于Prepare消息的投票")
 		c.scheduleStep(time.Millisecond*100, c.stepInfo.height, c.stepInfo.round, PreCommitStep)
 	}
 	return nil
@@ -436,7 +437,8 @@ func (c *Core) handleCommitVote(vote *types.CommitVote) error {
 	c.stepInfo.voteSet.AddCommitVote(c.stepInfo.round, vote)
 	ok = c.stepInfo.voteSet.CheckCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
 	if ok {
-		c.enterDecideStep(c.stepInfo.height, c.stepInfo.round)
+		//c.enterDecideStep(c.stepInfo.height, c.stepInfo.round)
+		c.scheduleStep(time.Millisecond*100, c.stepInfo.height, c.stepInfo.round, DecideStep)
 	}
 	return nil
 }
@@ -464,8 +466,8 @@ func (c *Core) handleDecide(decide *types.Decide) error {
 		return fmt.Errorf("leader %s sent invalid Decide message to me, aggregated signature is wrong", decide.ID)
 	}
 	c.stepInfo.decide = decide
-	c.applyBlock()
 	c.stepInfo.startTime = decide.Timestamp
+	c.applyBlock()
 	return nil
 }
 
@@ -547,6 +549,7 @@ func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 		}
 	} else {
 		c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
+		c.stepInfo.prepare = nil
 	}
 }
 
@@ -583,7 +586,7 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 		logger.Error("PRE_COMMIT_VOTE step: PreCommit message is nil")
 		return
 	}
-	logger.Debug("PreCommit message is valid, decide to vote for it")
+	//logger.Debug("PreCommit message is valid, decide to vote for it")
 	vote := types.NewPreCommitVote(height, types.GeneratePreCommitVoteValueHash(c.stepInfo.block.Header.Hash), c.privateKey)
 	if c.isLeader() {
 		c.stepInfo.voteSet.AddPreCommitVote(c.stepInfo.round, vote)
@@ -593,6 +596,7 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 		}
 	} else {
 		c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
+		c.stepInfo.preCommit = nil
 	}
 }
 
@@ -629,7 +633,7 @@ func (c *Core) enterCommitVoteStep(height int64, round int16) {
 		logger.Error("COMMIT_VOTE step: Commit message is nil")
 		return
 	}
-	logger.Debug("Commit message is valid, decide to vote for it")
+	//logger.Debug("Commit message is valid, decide to vote for it")
 	vote := types.NewCommitVote(height, types.GenerateCommitVoteValueHash(c.stepInfo.block.Header.Hash), c.privateKey)
 	if c.isLeader() {
 		c.stepInfo.voteSet.AddCommitVote(c.stepInfo.round, vote)
@@ -639,6 +643,7 @@ func (c *Core) enterCommitVoteStep(height int64, round int16) {
 		}
 	} else {
 		c.sendInternalMessage(MessageInfo{Msg: vote, NodeID: ""})
+		c.stepInfo.commit = nil
 	}
 }
 
@@ -648,7 +653,7 @@ func (c *Core) enterDecideStep(height int64, round int16) {
 		logger.Warn("entering DECIDE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-	logger.Info("entering DECIDE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	logger.Info(">>> DECIDE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = DecideStep
@@ -669,6 +674,9 @@ func (c *Core) applyBlock() {
 	c.state = newState
 	c.stepInfo.previousBlock = c.stepInfo.block
 	c.Logger.Debug("距离提交上一个区块过去的时间", "时间(秒)", period.Seconds())
+	if c.isLeader() {
+		time.Sleep(time.Millisecond * 20)
+	}
 	c.stepInfo.Reset()
 	c.stepInfo.height += 1
 	if !c.isLeader() {
@@ -719,7 +727,7 @@ func (c *Core) scheduleStep(duration time.Duration, height int64, round int16, s
 }
 
 func (c *Core) scheduleRound0(stepInfo *StepInfo) {
-	duration := stepInfo.startTime.Sub(time.Now())
+	duration := time.Now().Sub(c.stepInfo.startTime)
 	c.scheduledTicker.ScheduleTimeout(timeoutInfo{Duration: duration, Height: stepInfo.height, Round: 0, Step: NewHeightStep})
 }
 

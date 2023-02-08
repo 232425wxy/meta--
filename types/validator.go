@@ -116,6 +116,14 @@ func (set *ValidatorSet) PowerMajor23() int64 {
 	return major23
 }
 
+func (set *ValidatorSet) PowerMajorFull() int64 {
+	set.TotalVotingPower = 0
+	for _, val := range set.Validators {
+		set.TotalVotingPower += val.VotingPower
+	}
+	return set.TotalVotingPower
+}
+
 func (set *ValidatorSet) Update(validatorUpdates []*pbabci.ValidatorUpdate) {
 	for _, update := range validatorUpdates {
 		var exists bool = false

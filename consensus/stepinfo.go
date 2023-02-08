@@ -100,7 +100,7 @@ func (si *StepInfo) CheckCollectNextViewIsComplete(validators *types.ValidatorSe
 		validator := validators.GetValidatorByID(id)
 		hasPower += validator.VotingPower
 	}
-	if hasPower >= validators.PowerMajor23() {
+	if hasPower >= validators.PowerMajorFull() {
 		return true
 	}
 	return false
@@ -181,7 +181,7 @@ func (vs *VoteSet) CheckPrepareVoteIsComplete(round int16, validators *types.Val
 		validator := validators.GetValidatorByID(id)
 		hasVotePower += validator.VotingPower
 	}
-	if hasVotePower >= validators.PowerMajor23() {
+	if hasVotePower >= validators.PowerMajorFull() {
 		return true
 	}
 	return false
@@ -194,7 +194,7 @@ func (vs *VoteSet) CheckPreCommitVoteIsComplete(round int16, validators *types.V
 		validator := validators.GetValidatorByID(id)
 		hasVotePower += validator.VotingPower
 	}
-	if hasVotePower >= validators.PowerMajor23() {
+	if hasVotePower >= validators.PowerMajorFull() {
 		return true
 	}
 	return false
@@ -207,7 +207,7 @@ func (vs *VoteSet) CheckCommitVoteIsComplete(round int16, validators *types.Vali
 		validator := validators.GetValidatorByID(id)
 		hasVotePower += validator.VotingPower
 	}
-	if hasVotePower >= validators.PowerMajor23() {
+	if hasVotePower >= validators.PowerMajorFull() {
 		return true
 	}
 	return false
