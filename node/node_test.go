@@ -6,6 +6,7 @@ import (
 	"github.com/232425wxy/meta--/log"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,7 +38,7 @@ func CreateNode(i int) *Node {
 	cfg := ReadConfigFile(dir)
 	AdjustHomePath(cfg)
 	logger := log.New("node", i)
-	logger.SetHandler(log.LvlFilterHandler(log.LvlTrace, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
+	logger.SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
 	log.PrintOrigins(true)
 	node, err := NewNode(cfg, logger, DefaultProvider())
 	if err != nil {
@@ -59,12 +60,58 @@ func TestCreateAndStartNode(t *testing.T) {
 
 	time.Sleep(time.Second * 2)
 
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 1000; i++ {
 		tx := []byte(fmt.Sprintf("number=%d", i))
 		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
 		assert.Nil(t, err)
-		time.Sleep(time.Second * 4)
+		time.Sleep(time.Millisecond * 2)
+	}
+
+	time.Sleep(time.Second * 5)
+	fmt.Println("第二阶段...")
+	for i := 0; i < 1000; i++ {
+		tx := []byte(fmt.Sprintf("number=%d", i+1000))
+		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
+		assert.Nil(t, err)
+		time.Sleep(time.Millisecond * 2)
+	}
+
+	fmt.Println("第三阶段...")
+	for i := 0; i < 10; i++ {
+		tx := []byte(fmt.Sprintf("number=%d", i+1000))
+		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
+		assert.Nil(t, err)
+		time.Sleep(time.Second * 10)
+	}
+	time.Sleep(time.Minute * 5)
+	fmt.Println("第四阶段...")
+	for i := 0; i < 20; i++ {
+		tx := []byte(fmt.Sprintf("number=%d", i+1000))
+		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
+		assert.Nil(t, err)
+		time.Sleep(time.Second * 10)
 	}
 
 	select {}
+}
+
+func TestSelect(t *testing.T) {
+	channel := make(chan int)
+	c := make(chan struct{})
+	go func() {
+		for i := 0; i < 4; i++ {
+			channel <- i + 100
+			time.Sleep(time.Second * time.Duration(rand.Intn(4)))
+		}
+	}()
+
+	for {
+		fmt.Println("ee")
+		select {
+		case num := <-channel:
+			t.Log(num)
+		case <-c:
+
+		}
+	}
 }

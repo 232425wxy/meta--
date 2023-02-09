@@ -184,6 +184,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	}
 
 	txsPool, txsPoolReactor := provider.TxspoolProvider(cfg, proxyAppConns, stat, logger)
+	txsPool.SetLogger(logger)
 
 	blockExec := state.NewBlockExecutor(cfg, stateStore, proxyAppConns.Consensus(), txsPool, logger.New("module", "state"))
 

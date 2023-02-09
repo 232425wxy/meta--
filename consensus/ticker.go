@@ -71,7 +71,6 @@ func (tt *TimeoutTicker) workRoutine() {
 			} else if newInfo.Height == info.Height {
 				// 当前区块的消息
 				if newInfo.Round < info.Round {
-					// 还是以前的消息
 					continue
 				} else if newInfo.Round == info.Round {
 					if info.Step > 0 && newInfo.Step <= info.Step {

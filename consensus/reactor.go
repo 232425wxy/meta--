@@ -195,7 +195,7 @@ func (r *Reactor) gossipRoutine() {
 						msg := MustEncode(decide)
 						if ok := p.Send(p2p.LeaderProposeChannel, msg); ok {
 							ps.SetDecide(decide)
-							logger.Trace("leader is me, send Decide message", "to", p.NodeID())
+							//logger.Trace("leader is me, send Decide message", "to", p.NodeID())
 						} else {
 							logger.Error("failed to send Decide message", "to", p.NodeID())
 							return

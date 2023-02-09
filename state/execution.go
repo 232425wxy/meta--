@@ -47,7 +47,7 @@ func (be *BlockExecutor) ApplyBlock(state *State, block *types.Block) (*State, e
 	}
 	be.txsPool.Lock()
 	defer be.txsPool.Unlock()
-	// TODO 这里图方便直接将区块里的交易数据从交易池里删除了
+	// TODO 这里直接将区块里的交易数据从交易池里删除了
 	be.txsPool.Update(block.Header.Height, block.Body.Txs)
 	if err = be.store.SaveState(state); err != nil {
 		return state, err

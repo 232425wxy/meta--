@@ -82,6 +82,7 @@ func (si *StepInfo) Reset() {
 	si.commit = make(chan *types.Commit, 1)
 	si.decide = make(chan *types.Decide, 1)
 	si.voteSet.Reset()
+	si.collectNextView = make(map[crypto.ID]*types.NextView)
 }
 
 func (si *StepInfo) EventStepInfo() events.EventDataNewStep {

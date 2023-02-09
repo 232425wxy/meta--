@@ -15,7 +15,6 @@ import (
 	"github.com/232425wxy/meta--/state"
 	"github.com/232425wxy/meta--/txspool"
 	"github.com/232425wxy/meta--/types"
-	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -32,6 +31,7 @@ type Core struct {
 	blockExec           *state.BlockExecutor // 创建区块和执行区块里的交易指令
 	state               *state.State
 	txsPool             *txspool.TxsPool
+	hasTxs              bool
 	eventBus            *events.EventBus
 	eventSwitch         *events.EventSwitch
 	stepInfo            *StepInfo
@@ -56,6 +56,7 @@ func NewCore(cfg *config.ConsensusConfig, privateKey *bls12.PrivateKey, state *s
 		blockExec:           blockExec,
 		state:               state,
 		txsPool:             txsPool,
+		hasTxs:              false,
 		eventSwitch:         events.NewEventSwitch(),
 		stepInfo:            NewStepInfo(),
 		scheduledTicker:     NewTimeoutTicker(),
@@ -71,12 +72,23 @@ func NewCore(cfg *config.ConsensusConfig, privateKey *bls12.PrivateKey, state *s
 	return core
 }
 
+// for test
+func (c *Core) testStatus() {
+	for {
+		time.Sleep(time.Second * 10)
+		c.Logger.Info("观测共识状态", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		if c.isLeader() {
+		}
+	}
+}
+
 func (c *Core) Start() error {
 	if err := c.scheduledTicker.Start(); err != nil {
 		return err
 	}
 	go c.receiveRoutine()
-	//c.scheduleRound0(c.stepInfo)
+	//go c.testStatus()
+
 	return nil
 }
 
@@ -91,15 +103,12 @@ func (c *Core) SetEventBus(bus *events.EventBus) {
 }
 
 func (c *Core) receiveRoutine() {
-	defer func() {
-		if r := recover(); r != nil {
-			c.Logger.Error("CONSENSUS FAILURE!!!", "err", r, "stack", string(debug.Stack()))
-		}
-	}()
 	for {
 		select {
 		case <-c.txsPool.TxsAvailable():
-			c.handleAvailableTxs()
+			//c.Logger.Error("有数据！", "is_leader", c.isLeader())
+			c.hasTxs = true
+			go c.handleAvailableTxs()
 		case tock := <-c.scheduledTicker.TockChan():
 			c.handleScheduled(tock, *c.stepInfo)
 		case mi := <-c.internalMsgQueue:
@@ -115,13 +124,15 @@ func (c *Core) receiveRoutine() {
 func (c *Core) handleAvailableTxs() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.stepInfo.round != 0 {
-		// 早在之前的round 0阶段已经打包好交易数据了
-		return
-	}
 
-	if c.isLeader() && (c.stepInfo.step == NewHeightStep || c.stepInfo.step == NewRoundStep) {
-		c.scheduleStep(time.Second, c.stepInfo.height, c.stepInfo.round, PrepareStep)
+	if c.isLeader() {
+		switch c.stepInfo.step {
+		case NewHeightStep, NewRoundStep:
+			c.proposePrepareMsg(c.stepInfo.height, c.stepInfo.round)
+		case PrepareStep, DecideStep:
+			c.stepInfo.step = NewHeightStep
+			c.scheduleStep(time.Second, c.stepInfo.height, c.stepInfo.round, PrepareStep)
+		}
 	}
 }
 
@@ -132,7 +143,13 @@ func (c *Core) handleScheduled(info timeoutInfo, stepInfo StepInfo) {
 	switch info.Step {
 	case NewHeightStep:
 		c.stepInfo.Reset()
+		if c.hasTxs && c.isLeader() {
+			c.mu.Unlock()
+			c.handleAvailableTxs()
+			c.mu.Lock()
+		}
 	case PrepareStep:
+		c.stepInfo.Reset()
 		c.proposePrepareMsg(c.stepInfo.height, c.stepInfo.round)
 	case PreCommitStep:
 		c.proposePreCommitMsg(c.stepInfo.height, c.stepInfo.round)
@@ -241,10 +258,10 @@ func (c *Core) handleNextView(view *types.NextView) error {
 	if view.Height != c.stepInfo.height+1 {
 		return fmt.Errorf("validator %s sent invalid NextView message to me, because \"height\" is wrong", view.ID)
 	}
-	//c.Logger.Debug("receive a valid NextView message", "from", view.ID)
+	c.Logger.Trace("receive a valid NextView message", "from", view.ID)
 	c.stepInfo.AddNextView(view)
 	if c.stepInfo.CheckCollectNextViewIsComplete(c.state.Validators) {
-		c.Logger.Info("receive enough NextView messages", "height", c.stepInfo.height)
+		c.Logger.Debug("receive enough NextView messages", "height", c.stepInfo.height)
 		c.stepInfo.height += 1
 		c.scheduleRound0(c.stepInfo)
 	}
@@ -472,11 +489,12 @@ func (c *Core) enterNewRound(height int64, round int16) {
 }
 
 func (c *Core) proposePrepareMsg(height int64, round int16) {
+	c.hasTxs = false
 	if c.stepInfo.height != height || round < c.stepInfo.round || (c.stepInfo.round == round && PrepareStep <= c.stepInfo.step) {
 		c.Logger.Warn("entering PREPARE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-	c.Logger.Info("=> PREPARE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = PrepareStep
@@ -493,12 +511,17 @@ func (c *Core) proposePrepareMsg(height int64, round int16) {
 			block = c.createBlock()
 			if block == nil {
 				return
+			} else {
+				if len(block.Body.Txs) == 0 {
+					return
+				}
 			}
 		}
 		prepare := types.NewPrepare(height, block, c.publicKey.ToID(), c.privateKey)
 		// 将Prepare消息发送到内部的消息通道里，这样在recvRoutine进程中可以捕获该消息，然后就会去处理该消息
 		c.sendInternalMessage(MessageInfo{Msg: prepare, NodeID: ""})
 	}
+	c.Logger.Info("=> PREPARE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 }
 
 // enterPrepareVoteStep 主节点生成Prepare消息，并将其广播给其他节点，自己也保留这个Prepare消息，然后拥有Prepare消息的节点
@@ -556,7 +579,7 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 		logger.Warn("entering PRE_COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step), "should be", fmt.Sprintf("height:%d round:%d step:%s", height, round, PreCommitStep))
 		return
 	}
-	logger.Info(">> PRE_COMMIT_VOTE step", "my_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	logger.Info(">> PRE_COMMIT_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = PreCommitVoteStep
@@ -654,6 +677,7 @@ func (c *Core) applyBlock() {
 		c.eventSwitch.FireEvent(events.EventNextView, c.nextView())
 		c.scheduleRound0(c.stepInfo)
 	}
+	//c.Logger.Info("execute txs in block", "block_hash", fmt.Sprintf("%x", c.stepInfo.block.Header.Hash))
 }
 
 func (c *Core) createBlock() *types.Block {

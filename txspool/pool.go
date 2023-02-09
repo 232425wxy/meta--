@@ -9,6 +9,7 @@ import (
 	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/sha256"
+	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbabci"
 	"github.com/232425wxy/meta--/proxy"
 	"github.com/232425wxy/meta--/types"
@@ -27,6 +28,7 @@ type TxsPool struct {
 	txsMap            *cmap.CMap // 用于快速定位到存储在链表里的交易元素 hash(tx) -> *clist.Element
 	proxyApp          *proxy.AppConnTxsPool
 	metrics           *Metrics
+	logger            log.Logger
 }
 
 func NewTxsPool(cfg *config.TxsPoolConfig, proxyApp *proxy.AppConnTxsPool, height int64) *TxsPool {
@@ -34,7 +36,7 @@ func NewTxsPool(cfg *config.TxsPoolConfig, proxyApp *proxy.AppConnTxsPool, heigh
 		cfg:               cfg,
 		height:            height,
 		txsBytes:          0,
-		notifiedAvailable: false,
+		notifiedAvailable: true,
 		txsAvailable:      make(chan struct{}, 1),
 		mu:                sync.RWMutex{},
 		txs:               clist.NewList(),
@@ -51,6 +53,10 @@ func (p *TxsPool) Lock() {
 
 func (p *TxsPool) Unlock() {
 	p.mu.Unlock()
+}
+
+func (p *TxsPool) SetLogger(logger log.Logger) {
+	p.logger = logger
 }
 
 // Size ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
@@ -141,7 +147,7 @@ func (p *TxsPool) CheckTx(tx types.Tx, sender crypto.ID) error {
 // 那么共识模块就可以提取交易池里的交易数据打包成区块了，这里倒不是说交易池里只要有一条数据就打包一个区块，
 // 因为共识模块有超时设置，所以这段超时时间会给交易池收集更多的交易数据，超时时间一到，再来打包区块，那么就
 // 可以获得比较多的交易数据了。
-func (p *TxsPool) TxsAvailable() <-chan struct{} {
+func (p *TxsPool) TxsAvailable() chan struct{} {
 	return p.txsAvailable
 }
 
@@ -174,7 +180,7 @@ func (p *TxsPool) ReapMaxBytes(maxBytes int) types.Txs {
 // 这个区块都被commit了，那么就应该将交易池里已经被commit的交易txs删除掉。
 func (p *TxsPool) Update(height int64, txs types.Txs) {
 	p.height = height
-	p.notifiedAvailable = false
+	p.notifiedAvailable = true
 	for _, tx := range txs {
 		// 从交易池里删除掉已经被提交的交易数据
 		if elem := p.txsMap.Get(txKey(tx)); elem != nil {
@@ -210,10 +216,10 @@ func (p *TxsPool) notifyTxsAvailable() {
 	if p.Size() == 0 {
 		panic("notified txs available but txs pool is empty")
 	}
-	if !p.notifiedAvailable {
-		p.notifiedAvailable = true
+	for p.notifiedAvailable {
 		select {
 		case p.txsAvailable <- struct{}{}:
+			p.notifiedAvailable = false
 		default:
 		}
 	}
