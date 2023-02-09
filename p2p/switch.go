@@ -193,13 +193,13 @@ func (sw *Switch) Broadcast(chID byte, msg []byte) {
 	}
 }
 
-func (sw *Switch) SendToPeer(chID byte, peerID crypto.ID, msg []byte) {
+func (sw *Switch) SendToPeer(chID byte, peerID crypto.ID, msg []byte) bool {
 	for _, peer := range sw.peers.peers {
 		if peer.nodeInfo.NodeID == peerID {
-			go func(p *Peer) { peer.Send(chID, msg) }(peer)
-			return
+			return peer.Send(chID, msg)
 		}
 	}
+	return false
 }
 
 func (sw *Switch) reconnectToPeer(addr *NetAddress) {

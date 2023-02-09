@@ -57,7 +57,7 @@ func TestCreateAndStartNode(t *testing.T) {
 		go func(i int) { assert.Nil(t, nodes[i].Start()) }(i)
 	}
 
-	time.Sleep(time.Second * 4)
+	time.Sleep(time.Second * 2)
 
 	for i := 0; i < 8; i++ {
 		tx := []byte(fmt.Sprintf("number=%d", i))

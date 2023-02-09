@@ -170,7 +170,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 		PublicKey:   nodeKey.PublicKey.ToBytes(),
 		NodeID:      nodeKey.GetID(),
 		ListenAddr:  cfg.P2PConfig.ListenAddress,
-		Channels:    []byte{p2p.LeaderProposeChannel, p2p.ReplicaVoteChannel, p2p.ReplicaStateChannel, p2p.TxsChannel},
+		Channels:    []byte{p2p.LeaderProposeChannel, p2p.ReplicaVoteChannel, p2p.ReplicaNextViewChannel, p2p.TxsChannel},
 		RPCAddress:  "",
 		TxIndex:     "on",
 		CryptoBLS12: bls12.NewCryptoBLS12(),

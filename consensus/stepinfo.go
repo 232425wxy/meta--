@@ -54,34 +54,41 @@ type StepInfo struct {
 	startTime       time.Time
 	block           *types.Block
 	previousBlock   *types.Block
-	prepare         *types.Prepare
-	preCommit       *types.PreCommit
-	commit          *types.Commit
-	decide          *types.Decide
+	prepare         chan *types.Prepare
+	preCommit       chan *types.PreCommit
+	commit          chan *types.Commit
+	decide          chan *types.Decide
 	voteSet         *VoteSet
 	collectNextView map[crypto.ID]*types.NextView
 }
 
 func NewStepInfo() *StepInfo {
-	return &StepInfo{voteSet: NewVoteSet(), collectNextView: make(map[crypto.ID]*types.NextView)}
+	return &StepInfo{
+		voteSet:         NewVoteSet(),
+		collectNextView: make(map[crypto.ID]*types.NextView),
+		prepare:         make(chan *types.Prepare, 1),
+		preCommit:       make(chan *types.PreCommit, 1),
+		commit:          make(chan *types.Commit, 1),
+		decide:          make(chan *types.Decide, 1),
+	}
 }
 
 func (si *StepInfo) Reset() {
 	si.round = 0
 	si.step = NewHeightStep
 	si.block = nil
-	si.prepare = nil
-	si.preCommit = nil
-	si.commit = nil
-	si.decide = nil
+	si.prepare = make(chan *types.Prepare, 1)
+	si.preCommit = make(chan *types.PreCommit, 1)
+	si.commit = make(chan *types.Commit, 1)
+	si.decide = make(chan *types.Decide, 1)
 	si.voteSet.Reset()
 }
 
-func (si *StepInfo) EventStepInfo() events.EventDataStep {
-	return events.EventDataStep{
+func (si *StepInfo) EventStepInfo() events.EventDataNewStep {
+	return events.EventDataNewStep{
 		Height: si.height,
 		Round:  si.round,
-		Step:   si.step.String(),
+		Step:   int8(si.step),
 	}
 }
 

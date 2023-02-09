@@ -5,17 +5,15 @@ import (
 	"github.com/232425wxy/meta--/common/pubsub"
 	"github.com/232425wxy/meta--/common/pubsub/query"
 	"github.com/232425wxy/meta--/common/service"
-	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbabci"
+	"github.com/232425wxy/meta--/proto/pbevents"
 	"github.com/232425wxy/meta--/types"
 )
 
 const (
-	EventCompleteProposal = "EVENT_COMPLETE_PROPOSAL"
-	EventNewBlock         = "EVENT_NEW_BLOCK"
-	EventTx               = "EVENT_TX"
-	EventValidatorUpdates = "EVENT_VALIDATOR_UPDATES"
+	EventNewBlock = "EVENT_NEW_BLOCK"
+	EventTx       = "EVENT_TX"
 )
 
 const (
@@ -38,21 +36,36 @@ type EventDataTx struct {
 	ResponseDeliverTx *pbabci.ResponseDeliverTx
 }
 
-type EventDataValidatorUpdates struct {
-	ValidatorUpdates []*pbabci.ValidatorUpdate
+type EventDataNewStep struct {
+	Height int64 `json:"height"`
+	Round  int16 `json:"round"`
+	Step   int8  `json:"step"`
 }
 
-type EventDataStep struct {
-	Height int64  `json:"height"`
-	Round  int16  `json:"round"`
-	Step   string `json:"step"`
+func (e *EventDataNewStep) ValidateBasic() error {
+	return nil
 }
 
-type EventDataNewRound struct {
-	Height   int64     `json:"height"`
-	Round    int16     `json:"round"`
-	Step     string    `json:"step"`
-	LeaderID crypto.ID `json:"leader_id"`
+func (e *EventDataNewStep) ToProto() *pbevents.EventDataNewStep {
+	if e == nil {
+		return nil
+	}
+	return &pbevents.EventDataNewStep{
+		Height: e.Height,
+		Round:  int32(e.Round),
+		Step:   int32(e.Step),
+	}
+}
+
+func EventDataNewStepFromProto(pb *pbevents.EventDataNewStep) *EventDataNewStep {
+	if pb == nil {
+		return nil
+	}
+	return &EventDataNewStep{
+		Height: pb.Height,
+		Round:  int16(pb.Round),
+		Step:   int8(pb.Step),
+	}
 }
 
 type EventBus struct {

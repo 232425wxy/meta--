@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package pbevents;
+
+message EventDataNewStep {
+  int64 height = 1;
+  int32 round = 2;
+  int32 step = 3;
+}
+
+message Event {
+  oneof data {
+    EventDataNewStep event_data_new_step = 1;
+  }
+}
