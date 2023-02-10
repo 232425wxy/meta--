@@ -97,10 +97,10 @@ func DefaultSyncerProvider(stat *state.State, blockExec *state.BlockExecutor, bl
 	return reactor
 }
 
-type STCHProvider func(logger log.Logger) *stch.Reactor
+type STCHProvider func(participantsNum int, logger log.Logger) *stch.Reactor
 
-func DefaultSTCHProvider(logger log.Logger) *stch.Reactor {
-	ch := stch.NewChameleon()
+func DefaultSTCHProvider(participantsNum int, logger log.Logger) *stch.Reactor {
+	ch := stch.NewChameleon(participantsNum)
 	r := stch.NewReactor(ch)
 	r.SetLogger(logger.New("module", "STCH"))
 	return r
@@ -206,7 +206,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 
 	syncerReactor := provider.SyncerProvider(stat, blockExec, blockStore, logger)
 
-	stchReactor := provider.STCHProvider(logger)
+	stchReactor := provider.STCHProvider(len(cfg.P2PConfig.NeighboursSlice()), logger)
 
 	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, syncerReactor, stchReactor, logger)
 
