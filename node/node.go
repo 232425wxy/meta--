@@ -14,6 +14,7 @@ import (
 	"github.com/232425wxy/meta--/p2p"
 	"github.com/232425wxy/meta--/proxy"
 	"github.com/232425wxy/meta--/state"
+	"github.com/232425wxy/meta--/stch"
 	"github.com/232425wxy/meta--/syncer"
 	"github.com/232425wxy/meta--/txspool"
 	"github.com/232425wxy/meta--/types"
@@ -72,9 +73,9 @@ func DefaultConsensusProvider(cfg *config.Config, stat *state.State, exec *state
 	return core, reactor
 }
 
-type P2PProvider func(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, syncerReactor *syncer.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch)
+type P2PProvider func(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, syncerReactor *syncer.Reactor, stchReactor *stch.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch)
 
-func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, syncerReactor *syncer.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch) {
+func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p.NodeKey, txsPoolReactor *txspool.Reactor, consensusReactor *consensus.Reactor, syncerReactor *syncer.Reactor, stchReactor *stch.Reactor, logger log.Logger) (*p2p.Transport, *p2p.Switch) {
 	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(nodeKey.GetID(), cfg.P2PConfig.ListenAddress))
 	if err != nil {
 		panic(err)
@@ -85,6 +86,7 @@ func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p
 	sw.AddReactor("TXSPOOL", txsPoolReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("SYNCER", syncerReactor)
+	sw.AddReactor("STCH", stchReactor)
 	return transport, sw
 }
 
@@ -95,6 +97,15 @@ func DefaultSyncerProvider(stat *state.State, blockExec *state.BlockExecutor, bl
 	return reactor
 }
 
+type STCHProvider func(logger log.Logger) *stch.Reactor
+
+func DefaultSTCHProvider(logger log.Logger) *stch.Reactor {
+	ch := stch.NewChameleon()
+	r := stch.NewReactor(ch)
+	r.SetLogger(logger.New("module", "STCH"))
+	return r
+}
+
 type Provider struct {
 	DBProvider          DBProvider
 	GenesisProvider     GenesisProvider
@@ -103,6 +114,7 @@ type Provider struct {
 	ConsensusProvider   ConsensusProvider
 	P2PProvider         P2PProvider
 	SyncerProvider      SyncerProvider
+	STCHProvider        STCHProvider
 }
 
 func DefaultProvider() Provider {
@@ -114,6 +126,7 @@ func DefaultProvider() Provider {
 		ConsensusProvider:   DefaultConsensusProvider,
 		P2PProvider:         DefaultP2PProvider,
 		SyncerProvider:      DefaultSyncerProvider,
+		STCHProvider:        DefaultSTCHProvider,
 	}
 }
 
@@ -193,7 +206,9 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 
 	syncerReactor := provider.SyncerProvider(stat, blockExec, blockStore, logger)
 
-	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, syncerReactor, logger)
+	stchReactor := provider.STCHProvider(logger)
+
+	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, syncerReactor, stchReactor, logger)
 
 	addrBook := p2p.NewAddrBook(cfg.P2PConfig.AddrBookPath())
 	if cfg.P2PConfig.ListenAddress != "" {

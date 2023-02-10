@@ -9,6 +9,7 @@ const (
 	ReplicaStateChannel    byte = 0x04
 	TxsChannel             byte = 0x05
 	SyncerChannel          byte = 0x06
+	STCHChannel            byte = 0x07
 )
 
 type Reactor interface {

@@ -161,6 +161,7 @@ type ConsensusConfig struct {
 	TimeoutPreCommit time.Duration `mapstructure:"timeout_pre_commit"`
 	TimeoutCommit    time.Duration `mapstructure:"timeout_commit"`
 	TimeoutDecide    time.Duration `mapstructure:"timeout_decide"`
+	TimeoutConsensus time.Duration `mapstructure:"timeout_consensus"`
 }
 
 func DefaultConsensusConfig() *ConsensusConfig {
@@ -169,6 +170,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		TimeoutPreCommit: 1000 * time.Millisecond,
 		TimeoutCommit:    1000 * time.Millisecond,
 		TimeoutDecide:    1000 * time.Millisecond,
+		TimeoutConsensus: 10 * time.Second,
 	}
 }
 

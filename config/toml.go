@@ -37,6 +37,7 @@ timeout_prepare = "{{ .ConsensusConfig.TimeoutPrepare }}"
 timeout_pre_commit = "{{ .ConsensusConfig.TimeoutPreCommit }}"
 timeout_commit = "{{ .ConsensusConfig.TimeoutCommit }}"
 timeout_decide = "{{ .ConsensusConfig.TimeoutDecide }}"
+timeout_consensus = "{{ .ConsensusConfig.TimeoutConsensus }}"
 `
 
 var configTemplate *template.Template

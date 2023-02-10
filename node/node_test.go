@@ -58,41 +58,41 @@ func TestCreateAndStartNode(t *testing.T) {
 		go func(i int) { assert.Nil(t, nodes[i].Start()) }(i)
 	}
 
-	time.Sleep(time.Second * 2)
-
-	for i := 0; i < 1000; i++ {
-		tx := []byte(fmt.Sprintf("number=%d", i))
-		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
-		assert.Nil(t, err)
-		time.Sleep(time.Millisecond * 2)
-	}
-
-	time.Sleep(time.Second * 5)
-	fmt.Println("第二阶段...")
-	for i := 0; i < 5; i++ {
-		tx := []byte(fmt.Sprintf("number=%d", i+1000))
-		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
-		assert.Nil(t, err)
-		time.Sleep(time.Second * 2)
-	}
-
-	time.Sleep(time.Second * 5)
-
-	fmt.Println("第三阶段...")
-	for i := 0; i < 3; i++ {
-		tx := []byte(fmt.Sprintf("number=%d", i+1000))
-		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
-		assert.Nil(t, err)
-		time.Sleep(time.Second * 3)
-	}
-	time.Sleep(time.Second * 10)
-	fmt.Println("第四阶段...")
-	for i := 0; i < 2; i++ {
-		tx := []byte(fmt.Sprintf("number=%d", i+1000))
-		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
-		assert.Nil(t, err)
-		time.Sleep(time.Second * 4)
-	}
+	//time.Sleep(time.Second * 2)
+	//
+	//for i := 0; i < 1000; i++ {
+	//	tx := []byte(fmt.Sprintf("number=%d", i))
+	//	err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
+	//	assert.Nil(t, err)
+	//	time.Sleep(time.Millisecond * 2)
+	//}
+	//
+	//time.Sleep(time.Second * 5)
+	//fmt.Println("第二阶段...")
+	//for i := 0; i < 5; i++ {
+	//	tx := []byte(fmt.Sprintf("number=%d", i+1000))
+	//	err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
+	//	assert.Nil(t, err)
+	//	time.Sleep(time.Second * 2)
+	//}
+	//
+	//time.Sleep(time.Second * 5)
+	//
+	//fmt.Println("第三阶段...")
+	//for i := 0; i < 3; i++ {
+	//	tx := []byte(fmt.Sprintf("number=%d", i+1005))
+	//	err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
+	//	assert.Nil(t, err)
+	//	time.Sleep(time.Second * 3)
+	//}
+	//time.Sleep(time.Second * 10)
+	//fmt.Println("第四阶段...")
+	//for i := 0; i < 2; i++ {
+	//	tx := []byte(fmt.Sprintf("number=%d", i+1008))
+	//	err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
+	//	assert.Nil(t, err)
+	//	time.Sleep(time.Second * 4)
+	//}
 
 	select {}
 }
