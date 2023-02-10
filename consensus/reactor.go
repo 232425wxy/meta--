@@ -216,15 +216,15 @@ func (r *Reactor) gossipRoutine() {
 		select {
 		case vote := <-r.core.prepareVotesQueue:
 			msg := MustEncode(vote)
-			_ = r.Switch.SendToPeer(p2p.ReplicaVoteChannel, r.core.state.Validators.GetLeader(r.core.stepInfo.height).ID, msg)
+			_ = r.Switch.SendToPeer(p2p.ReplicaVoteChannel, r.core.state.Validators.GetLeader(r.core.stepInfo.round).ID, msg)
 			//logger.Info("send PrepareVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
 		case vote := <-r.core.preCommitVotesQueue:
 			msg := MustEncode(vote)
-			_ = r.Switch.SendToPeer(p2p.ReplicaVoteChannel, r.core.state.Validators.GetLeader(r.core.stepInfo.height).ID, msg)
+			_ = r.Switch.SendToPeer(p2p.ReplicaVoteChannel, r.core.state.Validators.GetLeader(r.core.stepInfo.round).ID, msg)
 			//logger.Info("send PreCommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
 		case vote := <-r.core.commitVotesQueue:
 			msg := MustEncode(vote)
-			_ = r.Switch.SendToPeer(p2p.ReplicaVoteChannel, r.core.state.Validators.GetLeader(r.core.stepInfo.height).ID, msg)
+			_ = r.Switch.SendToPeer(p2p.ReplicaVoteChannel, r.core.state.Validators.GetLeader(r.core.stepInfo.round).ID, msg)
 			//logger.Info("send CommitVote to leader", "me", r.core.publicKey.ToID(), "leader", peer.NodeID())
 		default:
 
@@ -234,7 +234,7 @@ func (r *Reactor) gossipRoutine() {
 
 func (r *Reactor) sendNextViewToLeader(view *types.NextView) {
 	bz := MustEncode(view)
-	_ = r.Switch.SendToPeer(p2p.ReplicaNextViewChannel, r.core.state.Validators.GetLeader(r.core.stepInfo.height).ID, bz)
+	_ = r.Switch.SendToPeer(p2p.ReplicaNextViewChannel, r.core.state.Validators.GetLeader(r.core.stepInfo.round).ID, bz)
 }
 
 func (r *Reactor) broadcastNewStep(step *events.EventDataNewStep) {

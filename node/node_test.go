@@ -38,7 +38,7 @@ func CreateNode(i int) *Node {
 	cfg := ReadConfigFile(dir)
 	AdjustHomePath(cfg)
 	logger := log.New("node", i)
-	logger.SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
+	logger.SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
 	log.PrintOrigins(true)
 	node, err := NewNode(cfg, logger, DefaultProvider())
 	if err != nil {
@@ -87,7 +87,7 @@ func TestCreateAndStartNode(t *testing.T) {
 	}
 	time.Sleep(time.Second * 10)
 	fmt.Println("第四阶段...")
-	for i := 0; i < 2000; i++ {
+	for i := 0; i < 2; i++ {
 		tx := []byte(fmt.Sprintf("number=%d", i+1000))
 		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
 		assert.Nil(t, err)

@@ -20,6 +20,7 @@ const (
 	CommitStep
 	CommitVoteStep
 	DecideStep
+	ConsensusTimeout
 )
 
 func (s Step) String() string {
@@ -64,6 +65,7 @@ type StepInfo struct {
 
 func NewStepInfo() *StepInfo {
 	return &StepInfo{
+		round:           1,
 		voteSet:         NewVoteSet(),
 		collectNextView: make(map[crypto.ID]*types.NextView),
 		prepare:         make(chan *types.Prepare, 1),
@@ -74,7 +76,7 @@ func NewStepInfo() *StepInfo {
 }
 
 func (si *StepInfo) Reset() {
-	si.round = 0
+	si.round = 1
 	si.step = NewHeightStep
 	si.block = nil
 	si.prepare = make(chan *types.Prepare, 1)

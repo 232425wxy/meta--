@@ -72,8 +72,8 @@ type ValidatorSet struct {
 	TotalVotingPower int64        `json:"total_voting_power"`
 }
 
-func (set *ValidatorSet) GetLeader(height int64) *Validator {
-	index := int(height) % len(set.Validators)
+func (set *ValidatorSet) GetLeader(round int16) *Validator {
+	index := int(round) % len(set.Validators)
 	set.Leader = set.Validators[index]
 	return set.Leader
 }

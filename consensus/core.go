@@ -107,13 +107,8 @@ func (c *Core) receiveRoutine() {
 		select {
 		case <-c.txsPool.TxsAvailable():
 			if !c.hasTxs {
-				// 在这里启动一个超时设置，如果副本节点未能在超时时间内确认区块，则触发超时机制，换leader节点
 				go c.handleAvailableTxs()
 				c.hasTxs = true
-				// 在区块链上尚未有区块之前，副本节点在交易池里有交易数据的情况下，主动进入到新round里
-				if c.stepInfo.height == c.state.InitialHeight && !c.isLeader() {
-					c.enterNewRound(c.stepInfo.height, c.stepInfo.round)
-				}
 			}
 		case tock := <-c.scheduledTicker.TockChan():
 			c.handleScheduled(tock, *c.stepInfo)
@@ -134,7 +129,7 @@ func (c *Core) handleAvailableTxs() {
 	if c.isLeader() {
 		switch c.stepInfo.step {
 		case NewHeightStep, NewRoundStep:
-			c.enterNewRound(c.stepInfo.height, c.stepInfo.round)
+			c.proposePrepareMsg(c.stepInfo.height, c.stepInfo.round)
 		case DecideStep:
 			// 当前高度的主节点收集齐其他节点发来的NextView消息后，本身的区块高度状态会自增1，
 			// 凭借isLeader方法可以判定自己就是主节点，此外，收集齐其他节点发来的NextView消
@@ -157,13 +152,11 @@ func (c *Core) handleScheduled(info timeoutInfo, stepInfo StepInfo) {
 			c.handleAvailableTxs()
 			c.mu.Lock()
 		}
-		if !c.isLeader() {
-			// 这里是为了让副本节点进入到新round里，让副本节点的round和主节点的保持一致
-			c.enterNewRound(c.stepInfo.height, c.stepInfo.round)
-		}
 	case PrepareStep:
+		// 在从DecideStep状态转为NewHeightStep状态的过程中收到了交易池里有交易数据的信号，那么会
+		// 重新设置一个超时时间，从DecideStep状态直接进入到PrepareStep，提出新的区块数据。
 		c.stepInfo.Reset()
-		c.enterNewRound(c.stepInfo.height, c.stepInfo.round)
+		c.proposePrepareMsg(c.stepInfo.height, c.stepInfo.round)
 	case PreCommitStep:
 		c.proposePreCommitMsg(c.stepInfo.height, c.stepInfo.round)
 	case CommitStep:
@@ -258,7 +251,7 @@ func (c *Core) handleMsg(mi MessageInfo) {
 }
 
 func (c *Core) handleNextView(view *types.NextView) error {
-	if !c.isNextLeader() {
+	if !c.isLeader() {
 		// 只有主节点才会处理其他节点发送过来的NextView消息
 		return nil
 	}
@@ -287,12 +280,12 @@ func (c *Core) handlePrepare(prepare *types.Prepare) error {
 	}
 	hash := sha256.Hash{}
 	copy(hash[:], prepare.Block.Header.Hash)
-	ok := c.state.Validators.GetLeader(c.stepInfo.height).PublicKey.Verify(prepare.Signature, hash)
+	ok := c.state.Validators.GetLeader(c.stepInfo.round).PublicKey.Verify(prepare.Signature, hash)
 	if !ok {
 		if c.isLeader() {
-			panic("why I created an invalid Prepare message?")
+			panic(fmt.Sprintf("%s: \"why I created an invalid Prepare message?\" %d", c.state.Validators.GetLeader(c.stepInfo.round).PublicKey.ToID(), c.stepInfo.round))
 		}
-		return fmt.Errorf("leader %s sent an invalid prepare message to me", prepare.Signature.Signer())
+		return fmt.Errorf("leader %s sent an invalid prepare message to me", c.state.Validators.GetLeader(c.stepInfo.round).ID)
 	}
 	if c.isLeader() {
 		c.stepInfo.prepare <- prepare // reactor循环检测c.stepInfo.prepare是否有东西，有的话就发送给其他节点
@@ -343,8 +336,8 @@ func (c *Core) handlePreCommit(preCommit *types.PreCommit) error {
 	if c.stepInfo.block == nil {
 		return nil
 	}
-	if preCommit.ID != c.state.Validators.GetLeader(c.stepInfo.height).ID {
-		return fmt.Errorf("PreCommit message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.height).ID, c.stepInfo.height)
+	if preCommit.ID != c.state.Validators.GetLeader(c.stepInfo.round).ID {
+		return fmt.Errorf("PreCommit message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.round).ID, c.stepInfo.height)
 	}
 	hash := types.GeneratePreCommitValueHash(c.stepInfo.block.Header.Hash)
 	equal := bytes.Equal(hash[:], preCommit.ValueHash[:])
@@ -401,8 +394,8 @@ func (c *Core) handleCommit(commit *types.Commit) error {
 	if c.stepInfo.block == nil {
 		return nil
 	}
-	if commit.ID != c.state.Validators.GetLeader(c.stepInfo.height).ID {
-		return fmt.Errorf("Commit message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.height).ID, c.stepInfo.height)
+	if commit.ID != c.state.Validators.GetLeader(c.stepInfo.round).ID {
+		return fmt.Errorf("Commit message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.round).ID, c.stepInfo.height)
 	}
 	hash := types.GenerateCommitValueHash(c.stepInfo.block.Header.Hash)
 	equal := bytes.Equal(hash[:], commit.ValueHash[:])
@@ -458,8 +451,8 @@ func (c *Core) handleDecide(decide *types.Decide) error {
 	if c.stepInfo.block == nil {
 		return nil
 	}
-	if decide.ID != c.state.Validators.GetLeader(c.stepInfo.height).ID {
-		return fmt.Errorf("Decide message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.height).ID, c.stepInfo.height)
+	if decide.ID != c.state.Validators.GetLeader(c.stepInfo.round).ID {
+		return fmt.Errorf("Decide message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.round).ID, c.stepInfo.height)
 	}
 	hash := types.GenerateDecideValueHash(c.stepInfo.block.Header.Hash)
 	equal := bytes.Equal(hash[:], decide.ValueHash[:])
@@ -489,16 +482,16 @@ func (c *Core) enterNewRound(height int64, round int16) {
 	}
 	c.stepInfo.round = round + 1
 	c.stepInfo.step = NewRoundStep
-	c.Logger.Info(">>> NEW ROUND step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
-	if round != 0 {
+	//c.Logger.Info(">>> NEW ROUND step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	if round != 1 {
 		c.stepInfo.block = nil
 		c.stepInfo.prepare = nil
 		c.stepInfo.preCommit = nil
 		c.stepInfo.commit = nil
 		c.stepInfo.decide = nil
 	}
-	round += 1
-	c.proposePrepareMsg(height, round)
+	//round += 1
+	//c.proposePrepareMsg(height, round)
 }
 
 func (c *Core) proposePrepareMsg(height int64, round int16) {
@@ -539,19 +532,18 @@ func (c *Core) proposePrepareMsg(height int64, round int16) {
 // enterPrepareVoteStep 主节点生成Prepare消息，并将其广播给其他节点，自己也保留这个Prepare消息，然后拥有Prepare消息的节点
 // 为Prepare消息进行投票，主节点也会为自己生成的Prepare消息进行投票。
 func (c *Core) enterPrepareVoteStep(height int64, round int16) {
-	logger := c.Logger.New("height", height, "round", round)
 	if c.stepInfo.height != height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= PrepareVoteStep) {
-		logger.Warn("entering PREPARE_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		c.Logger.Warn("entering PREPARE_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-	logger.Info(">> PREPARE_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	c.Logger.Info(">> PREPARE_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = PrepareVoteStep
 		c.newStep()
 	}()
 	if !c.hasPrepare() {
-		logger.Error("PREPARE_VOTE step: Prepare message is nil")
+		c.Logger.Error("PREPARE_VOTE step: Prepare message is nil")
 		return
 	}
 	//logger.Debug("Prepare message is valid, decide to vote for it")
@@ -569,12 +561,11 @@ func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 }
 
 func (c *Core) proposePreCommitMsg(height int64, round int16) {
-	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= PreCommitStep) {
-		logger.Warn("entering PRE_COMMIT step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		c.Logger.Warn("entering PRE_COMMIT step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-	logger.Info("=> PRE_COMMIT step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	c.Logger.Info("=> PRE_COMMIT step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = PreCommitStep
@@ -586,19 +577,18 @@ func (c *Core) proposePreCommitMsg(height int64, round int16) {
 }
 
 func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
-	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= PreCommitVoteStep) {
-		logger.Warn("entering PRE_COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step), "should be", fmt.Sprintf("height:%d round:%d step:%s", height, round, PreCommitStep))
+		c.Logger.Warn("entering PRE_COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step), "should be", fmt.Sprintf("height:%d round:%d step:%s", height, round, PreCommitStep))
 		return
 	}
-	logger.Info(">> PRE_COMMIT_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	c.Logger.Info(">> PRE_COMMIT_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = PreCommitVoteStep
 		c.newStep()
 	}()
 	if !c.hasPreCommit() {
-		logger.Error("PRE_COMMIT_VOTE step: PreCommit message is nil")
+		c.Logger.Error("PRE_COMMIT_VOTE step: PreCommit message is nil")
 		return
 	}
 	vote := types.NewPreCommitVote(height, types.GeneratePreCommitVoteValueHash(c.stepInfo.block.Header.Hash), c.privateKey)
@@ -615,12 +605,11 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 }
 
 func (c *Core) proposeCommitMsg(height int64, round int16) {
-	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= CommitStep) {
-		logger.Warn("entering COMMIT step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		c.Logger.Warn("entering COMMIT step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-	logger.Info("=> COMMIT step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	c.Logger.Info("=> COMMIT step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = CommitStep
@@ -632,19 +621,18 @@ func (c *Core) proposeCommitMsg(height int64, round int16) {
 }
 
 func (c *Core) enterCommitVoteStep(height int64, round int16) {
-	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= CommitVoteStep) {
-		logger.Warn("entering COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		c.Logger.Warn("entering COMMIT_VOTE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-	logger.Info(">> COMMIT_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	c.Logger.Info(">> COMMIT_VOTE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = CommitVoteStep
 		c.newStep()
 	}()
 	if !c.hasCommit() {
-		logger.Error("COMMIT_VOTE step: Commit message is nil")
+		c.Logger.Error("COMMIT_VOTE step: Commit message is nil")
 		return
 	}
 	vote := types.NewCommitVote(height, types.GenerateCommitVoteValueHash(c.stepInfo.block.Header.Hash), c.privateKey)
@@ -661,12 +649,11 @@ func (c *Core) enterCommitVoteStep(height int64, round int16) {
 }
 
 func (c *Core) proposeDecideMsg(height int64, round int16) {
-	logger := c.Logger.New("height", height, "round", round)
 	if height != c.stepInfo.height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step >= DecideStep) {
-		logger.Warn("entering DECIDE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		c.Logger.Warn("entering DECIDE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-	logger.Info("=> DECIDE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+	c.Logger.Info("=> DECIDE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	defer func() {
 		c.stepInfo.round = round
 		c.stepInfo.step = DecideStep
@@ -686,10 +673,11 @@ func (c *Core) applyBlock() {
 	}
 	c.state = newState
 	c.stepInfo.previousBlock = c.stepInfo.block
-	if !c.isNextLeader() {
+	if !c.isLeader() {
 		c.stepInfo.height += 1
 		c.eventSwitch.FireEvent(events.EventNextView, c.nextView())
 		c.scheduleNewHeight(c.stepInfo)
+		//c.stepInfo.step = NewHeightStep
 	}
 }
 
@@ -732,7 +720,7 @@ func (c *Core) scheduleStep(duration time.Duration, height int64, round int16, s
 // 轮共识中依然是副本节点，那就只将自己的step更新为NewHeightStep。
 func (c *Core) scheduleNewHeight(stepInfo *StepInfo) {
 	//duration := time.Now().Sub(c.stepInfo.startTime)
-	c.scheduledTicker.ScheduleTimeout(timeoutInfo{Duration: time.Second, Height: stepInfo.height, Round: 0, Step: NewHeightStep})
+	c.scheduledTicker.ScheduleTimeout(timeoutInfo{Duration: time.Second, Height: stepInfo.height, Round: 1, Step: NewHeightStep})
 }
 
 func (c *Core) sendInternalMessage(info MessageInfo) {
@@ -760,9 +748,9 @@ func (c *Core) nextView() *types.NextView {
 }
 
 func (c *Core) isLeader() bool {
-	return c.state.Validators.GetLeader(c.stepInfo.height).ID == c.publicKey.ToID()
+	return c.state.Validators.GetLeader(c.stepInfo.round).ID == c.publicKey.ToID()
 }
 
 func (c *Core) isNextLeader() bool {
-	return c.state.Validators.GetLeader(c.stepInfo.height+1).ID == c.publicKey.ToID()
+	return c.state.Validators.GetLeader(c.stepInfo.round+1).ID == c.publicKey.ToID()
 }
