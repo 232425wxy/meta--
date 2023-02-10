@@ -139,12 +139,13 @@ func (r *Reactor) unsubscribeEvents() {
 
 func (r *Reactor) gossipRoutine() {
 	logger := r.Logger.New()
-	// 用PeerState来保证只会给节点发送一次主节点提出的共识消息
+
 	for {
 		if r.core.isLeader() {
 			select {
 			case prepare := <-r.core.stepInfo.prepare:
 				for _, p := range r.Switch.Peers().Peers() {
+					// 用PeerState来保证只会给节点发送一次主节点提出的共识消息
 					ps := p.Data.Get(types.PeerStateKey).(*PeerState)
 					if (r.core.stepInfo.step == PrepareStep || r.core.stepInfo.step == PrepareVoteStep) && !ps.HasPrepare(prepare) {
 						msg := MustEncode(prepare)
@@ -160,6 +161,7 @@ func (r *Reactor) gossipRoutine() {
 
 			case preCommit := <-r.core.stepInfo.preCommit:
 				for _, p := range r.Switch.Peers().Peers() {
+					// 用PeerState来保证只会给节点发送一次主节点提出的共识消息
 					ps := p.Data.Get(types.PeerStateKey).(*PeerState)
 					if (r.core.stepInfo.step == PreCommitStep || r.core.stepInfo.step == PreCommitVoteStep) && !ps.HasPreCommit(preCommit) {
 						msg := MustEncode(preCommit)
@@ -175,6 +177,7 @@ func (r *Reactor) gossipRoutine() {
 
 			case commit := <-r.core.stepInfo.commit:
 				for _, p := range r.Switch.Peers().Peers() {
+					// 用PeerState来保证只会给节点发送一次主节点提出的共识消息
 					ps := p.Data.Get(types.PeerStateKey).(*PeerState)
 					if (r.core.stepInfo.step == CommitStep || r.core.stepInfo.step == CommitVoteStep) && !ps.HasCommit(commit) {
 						msg := MustEncode(commit)
@@ -190,6 +193,7 @@ func (r *Reactor) gossipRoutine() {
 
 			case decide := <-r.core.stepInfo.decide:
 				for _, p := range r.Switch.Peers().Peers() {
+					// 用PeerState来保证只会给节点发送一次主节点提出的共识消息
 					ps := p.Data.Get(types.PeerStateKey).(*PeerState)
 					if r.core.stepInfo.step == DecideStep && !ps.HasDecide(decide) {
 						msg := MustEncode(decide)

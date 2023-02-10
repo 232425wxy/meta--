@@ -69,27 +69,29 @@ func TestCreateAndStartNode(t *testing.T) {
 
 	time.Sleep(time.Second * 5)
 	fmt.Println("第二阶段...")
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 5; i++ {
 		tx := []byte(fmt.Sprintf("number=%d", i+1000))
 		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
 		assert.Nil(t, err)
-		time.Sleep(time.Millisecond * 2)
+		time.Sleep(time.Second * 2)
 	}
 
+	time.Sleep(time.Second * 5)
+
 	fmt.Println("第三阶段...")
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 3; i++ {
 		tx := []byte(fmt.Sprintf("number=%d", i+1000))
 		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
 		assert.Nil(t, err)
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 3)
 	}
-	time.Sleep(time.Minute * 5)
+	time.Sleep(time.Second * 10)
 	fmt.Println("第四阶段...")
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 2000; i++ {
 		tx := []byte(fmt.Sprintf("number=%d", i+1000))
 		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
 		assert.Nil(t, err)
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 4)
 	}
 
 	select {}

@@ -31,7 +31,7 @@ type Core struct {
 	blockExec           *state.BlockExecutor // 创建区块和执行区块里的交易指令
 	state               *state.State
 	txsPool             *txspool.TxsPool
-	hasTxs              bool
+	hasTxs              bool // hasTxs与交易池里的notifiedAvailable相互配合，保证主节点不会错失有交易数据到来的信号
 	eventBus            *events.EventBus
 	eventSwitch         *events.EventSwitch
 	stepInfo            *StepInfo
@@ -106,9 +106,15 @@ func (c *Core) receiveRoutine() {
 	for {
 		select {
 		case <-c.txsPool.TxsAvailable():
-			//c.Logger.Error("有数据！", "is_leader", c.isLeader())
-			c.hasTxs = true
-			go c.handleAvailableTxs()
+			if !c.hasTxs {
+				// 在这里启动一个超时设置，如果副本节点未能在超时时间内确认区块，则触发超时机制，换leader节点
+				go c.handleAvailableTxs()
+				c.hasTxs = true
+				// 在区块链上尚未有区块之前，副本节点在交易池里有交易数据的情况下，主动进入到新round里
+				if c.stepInfo.height == c.state.InitialHeight && !c.isLeader() {
+					c.enterNewRound(c.stepInfo.height, c.stepInfo.round)
+				}
+			}
 		case tock := <-c.scheduledTicker.TockChan():
 			c.handleScheduled(tock, *c.stepInfo)
 		case mi := <-c.internalMsgQueue:
@@ -128,9 +134,12 @@ func (c *Core) handleAvailableTxs() {
 	if c.isLeader() {
 		switch c.stepInfo.step {
 		case NewHeightStep, NewRoundStep:
-			c.proposePrepareMsg(c.stepInfo.height, c.stepInfo.round)
-		case PrepareStep, DecideStep:
-			c.stepInfo.step = NewHeightStep
+			c.enterNewRound(c.stepInfo.height, c.stepInfo.round)
+		case DecideStep:
+			// 当前高度的主节点收集齐其他节点发来的NextView消息后，本身的区块高度状态会自增1，
+			// 凭借isLeader方法可以判定自己就是主节点，此外，收集齐其他节点发来的NextView消
+			// 息后，主节点会进入1秒的超时等待状态，等待将状态从DecideStep切换为NewHeightStep，
+			// 如果在这个阶段获得了需要打包交易数据的提醒，则超前进入打包区块的超时等待阶段。
 			c.scheduleStep(time.Second, c.stepInfo.height, c.stepInfo.round, PrepareStep)
 		}
 	}
@@ -148,9 +157,13 @@ func (c *Core) handleScheduled(info timeoutInfo, stepInfo StepInfo) {
 			c.handleAvailableTxs()
 			c.mu.Lock()
 		}
+		if !c.isLeader() {
+			// 这里是为了让副本节点进入到新round里，让副本节点的round和主节点的保持一致
+			c.enterNewRound(c.stepInfo.height, c.stepInfo.round)
+		}
 	case PrepareStep:
 		c.stepInfo.Reset()
-		c.proposePrepareMsg(c.stepInfo.height, c.stepInfo.round)
+		c.enterNewRound(c.stepInfo.height, c.stepInfo.round)
 	case PreCommitStep:
 		c.proposePreCommitMsg(c.stepInfo.height, c.stepInfo.round)
 	case CommitStep:
@@ -263,7 +276,7 @@ func (c *Core) handleNextView(view *types.NextView) error {
 	if c.stepInfo.CheckCollectNextViewIsComplete(c.state.Validators) {
 		c.Logger.Debug("receive enough NextView messages", "height", c.stepInfo.height)
 		c.stepInfo.height += 1
-		c.scheduleRound0(c.stepInfo)
+		c.scheduleNewHeight(c.stepInfo)
 	}
 	return nil
 }
@@ -470,14 +483,13 @@ func (c *Core) handleDecide(decide *types.Decide) error {
 }
 
 func (c *Core) enterNewRound(height int64, round int16) {
-	logger := c.Logger.New("height", height, "round", round)
-	logger.Info("entering NEW ROUND step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	if c.stepInfo.height != height || c.stepInfo.round > round || (c.stepInfo.round == round && c.stepInfo.step != NewHeightStep) {
-		logger.Warn("entering NEW ROUND step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
+		//logger.Warn("entering NEW ROUND step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
 	}
-	c.stepInfo.round = round
+	c.stepInfo.round = round + 1
 	c.stepInfo.step = NewRoundStep
+	c.Logger.Info(">>> NEW ROUND step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	if round != 0 {
 		c.stepInfo.block = nil
 		c.stepInfo.prepare = nil
@@ -485,11 +497,11 @@ func (c *Core) enterNewRound(height int64, round int16) {
 		c.stepInfo.commit = nil
 		c.stepInfo.decide = nil
 	}
+	round += 1
 	c.proposePrepareMsg(height, round)
 }
 
 func (c *Core) proposePrepareMsg(height int64, round int16) {
-	c.hasTxs = false
 	if c.stepInfo.height != height || round < c.stepInfo.round || (c.stepInfo.round == round && PrepareStep <= c.stepInfo.step) {
 		c.Logger.Warn("entering PREPARE step with invalid args", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 		return
@@ -520,8 +532,8 @@ func (c *Core) proposePrepareMsg(height int64, round int16) {
 		prepare := types.NewPrepare(height, block, c.publicKey.ToID(), c.privateKey)
 		// 将Prepare消息发送到内部的消息通道里，这样在recvRoutine进程中可以捕获该消息，然后就会去处理该消息
 		c.sendInternalMessage(MessageInfo{Msg: prepare, NodeID: ""})
+		c.Logger.Info("=> PREPARE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 	}
-	c.Logger.Info("=> PREPARE step", "consensus_step", fmt.Sprintf("height:%d round:%d step:%s", c.stepInfo.height, c.stepInfo.round, c.stepInfo.step))
 }
 
 // enterPrepareVoteStep 主节点生成Prepare消息，并将其广播给其他节点，自己也保留这个Prepare消息，然后拥有Prepare消息的节点
@@ -667,6 +679,7 @@ func (c *Core) proposeDecideMsg(height int64, round int16) {
 
 func (c *Core) applyBlock() {
 	newState, err := c.blockExec.ApplyBlock(c.state, c.stepInfo.block)
+	c.hasTxs = false
 	if err != nil {
 		c.Logger.Error("failed to apply block", "err", err)
 		return
@@ -674,10 +687,10 @@ func (c *Core) applyBlock() {
 	c.state = newState
 	c.stepInfo.previousBlock = c.stepInfo.block
 	if !c.isNextLeader() {
+		c.stepInfo.height += 1
 		c.eventSwitch.FireEvent(events.EventNextView, c.nextView())
-		c.scheduleRound0(c.stepInfo)
+		c.scheduleNewHeight(c.stepInfo)
 	}
-	//c.Logger.Info("execute txs in block", "block_hash", fmt.Sprintf("%x", c.stepInfo.block.Header.Hash))
 }
 
 func (c *Core) createBlock() *types.Block {
@@ -710,18 +723,14 @@ func (c *Core) newStep() {
 	c.eventSwitch.FireEvent(events.EventNewStep, &esi)
 }
 
-func (c *Core) isFirstBlock(height int64) bool {
-	if height == c.state.InitialHeight {
-		return true
-	}
-	return false
-}
-
 func (c *Core) scheduleStep(duration time.Duration, height int64, round int16, step Step) {
 	c.scheduledTicker.ScheduleTimeout(timeoutInfo{Duration: duration, Height: height, Round: round, Step: step})
 }
 
-func (c *Core) scheduleRound0(stepInfo *StepInfo) {
+// scheduleNewHeight 副本节点在确认过一个区块后，本地的区块高度会自增1，然后等待1秒中后进入下一个区块高度，如果自己是主导下一个
+// 区块的主节点，那么在交易池里有交易数据的情况下，打包交易数据，提出新的区块，促使其他节点和自己进入到下一轮共识中；如果自己在下一
+// 轮共识中依然是副本节点，那就只将自己的step更新为NewHeightStep。
+func (c *Core) scheduleNewHeight(stepInfo *StepInfo) {
 	//duration := time.Now().Sub(c.stepInfo.startTime)
 	c.scheduledTicker.ScheduleTimeout(timeoutInfo{Duration: time.Second, Height: stepInfo.height, Round: 0, Step: NewHeightStep})
 }
@@ -743,7 +752,6 @@ func (c *Core) sendExternalMessage(info MessageInfo) {
 }
 
 func (c *Core) nextView() *types.NextView {
-	c.stepInfo.height += 1
 	return &types.NextView{
 		Type:   pbtypes.NextViewType,
 		ID:     c.publicKey.ToID(),
