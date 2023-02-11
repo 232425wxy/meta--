@@ -12,11 +12,20 @@ message IdentityX {
 message FnX {
   string from = 1;
   bytes data = 2;
+  bytes x = 3;
+}
+
+message PublicKeySeg {
+  string from = 1;
+  bytes public_key = 2;
+  bytes sk = 3;
+  bytes a0 = 4;
 }
 
 message Message {
   oneof data {
     IdentityX identity_x = 1;
     FnX Fnx = 2;
+    PublicKeySeg PublicKeySeg = 3;
   }
 }

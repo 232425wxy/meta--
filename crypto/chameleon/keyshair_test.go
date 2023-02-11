@@ -63,28 +63,25 @@ func CreateParticipants(n, t int) []*Participant2 {
 		}
 	}
 
-	F := func() *Polynomial {
-		poly := &Polynomial{items: make(map[int]*big.Int)}
-		for _, participant := range participants {
-			for order, item := range participant.poly.items {
-				if poly.items[order] == nil {
-					poly.items[order] = new(big.Int).SetInt64(0)
-				}
-				poly.items[order].Add(poly.items[order], item)
-			}
-		}
-		//for order, _ := range poly.items {
-		//	poly.items[order].Mod(poly.items[order], q)
-		//}
-		return poly
-	}
-
-	for _, participant := range participants {
-		f := F().calc(participant.x)
-		if f.Cmp(participant.f) != 0 {
-			panic("not equal")
-		}
-	}
+	//F := func() *Polynomial {
+	//	poly := &Polynomial{items: make(map[int]*big.Int)}
+	//	for _, participant := range participants {
+	//		for order, item := range participant.poly.items {
+	//			if poly.items[order] == nil {
+	//				poly.items[order] = new(big.Int).SetInt64(0)
+	//			}
+	//			poly.items[order].Add(poly.items[order], item)
+	//		}
+	//	}
+	//	return poly
+	//}
+	//
+	//for _, participant := range participants {
+	//	f := F().calc(participant.x)
+	//	if f.Cmp(participant.f) != 0 {
+	//		panic("not equal")
+	//	}
+	//}
 
 	authorized := []*Participant2{participants[0], participants[1], participants[2], participants[3]}
 	for _, participantx := range authorized {
@@ -103,6 +100,7 @@ func CreateParticipants(n, t int) []*Participant2 {
 	_secretKey := new(big.Int).SetInt64(0)
 	for _, participant := range authorized {
 		m := new(big.Int).Mul(participant.f, participant.auxiliary)
+		m = m.Mod(m, Q)
 		_secretKey.Add(_secretKey, m)
 	}
 	_secretKey.Mod(_secretKey, Q)

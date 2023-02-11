@@ -44,6 +44,7 @@ func (ix *IdentityX) ChameleonFn() {
 type FnX struct {
 	From crypto.ID
 	Data *big.Int
+	X    *big.Int // 对方的身份标识
 }
 
 func (fx *FnX) ToProto() *pbstch.FnX {
@@ -53,6 +54,7 @@ func (fx *FnX) ToProto() *pbstch.FnX {
 	return &pbstch.FnX{
 		From: string(fx.From),
 		Data: fx.Data.Bytes(),
+		X:    fx.X.Bytes(),
 	}
 }
 
@@ -63,10 +65,46 @@ func FnXFromProto(pb *pbstch.FnX) *FnX {
 	return &FnX{
 		From: crypto.ID(pb.From),
 		Data: new(big.Int).SetBytes(pb.Data),
+		X:    new(big.Int).SetBytes(pb.X),
 	}
 }
 
 func (fx *FnX) ChameleonFn() {
+
+}
+
+type PublicKeySeg struct {
+	From      crypto.ID
+	PublicKey *big.Int
+	SK        *big.Int
+	A0        *big.Int
+}
+
+func (pks *PublicKeySeg) ToProto() *pbstch.PublicKeySeg {
+	if pks == nil {
+		return nil
+	}
+	return &pbstch.PublicKeySeg{
+		From:      string(pks.From),
+		PublicKey: pks.PublicKey.Bytes(),
+		Sk:        pks.SK.Bytes(),
+		A0:        pks.A0.Bytes(),
+	}
+}
+
+func PublicKeySegFromProto(pb *pbstch.PublicKeySeg) *PublicKeySeg {
+	if pb == nil {
+		return nil
+	}
+	return &PublicKeySeg{
+		From:      crypto.ID(pb.From),
+		PublicKey: new(big.Int).SetBytes(pb.PublicKey),
+		SK:        new(big.Int).SetBytes(pb.Sk),
+		A0:        new(big.Int).SetBytes(pb.A0),
+	}
+}
+
+func (pks *PublicKeySeg) ChameleonFn() {
 
 }
 
@@ -82,6 +120,8 @@ func MustEncode(message Message) []byte {
 		pb.Data = &pbstch.Message_IdentityX{IdentityX: msg.ToProto()}
 	case *FnX:
 		pb.Data = &pbstch.Message_Fnx{Fnx: msg.ToProto()}
+	case *PublicKeySeg:
+		pb.Data = &pbstch.Message_PublicKeySeg{PublicKeySeg: msg.ToProto()}
 	default:
 		panic(fmt.Sprintf("unknown message type: %T", msg))
 	}
@@ -106,6 +146,8 @@ func MustDecode(bz []byte) (msg Message) {
 		msg = IdentityXFromProto(data.IdentityX)
 	case *pbstch.Message_Fnx:
 		msg = FnXFromProto(data.Fnx)
+	case *pbstch.Message_PublicKeySeg:
+		msg = PublicKeySegFromProto(data.PublicKeySeg)
 	default:
 		panic(fmt.Sprintf("unknown message type: %T", data))
 	}
