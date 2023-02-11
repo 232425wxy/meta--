@@ -41,6 +41,35 @@ func (ix *IdentityX) ChameleonFn() {
 
 }
 
+type FnX struct {
+	From crypto.ID
+	Data *big.Int
+}
+
+func (fx *FnX) ToProto() *pbstch.FnX {
+	if fx == nil {
+		return nil
+	}
+	return &pbstch.FnX{
+		From: string(fx.From),
+		Data: fx.Data.Bytes(),
+	}
+}
+
+func FnXFromProto(pb *pbstch.FnX) *FnX {
+	if pb == nil {
+		return nil
+	}
+	return &FnX{
+		From: crypto.ID(pb.From),
+		Data: new(big.Int).SetBytes(pb.Data),
+	}
+}
+
+func (fx *FnX) ChameleonFn() {
+
+}
+
 ///////////////////////////////////////////////
 
 func MustEncode(message Message) []byte {
@@ -51,6 +80,8 @@ func MustEncode(message Message) []byte {
 	switch msg := message.(type) {
 	case *IdentityX:
 		pb.Data = &pbstch.Message_IdentityX{IdentityX: msg.ToProto()}
+	case *FnX:
+		pb.Data = &pbstch.Message_Fnx{Fnx: msg.ToProto()}
 	default:
 		panic(fmt.Sprintf("unknown message type: %T", msg))
 	}
@@ -73,6 +104,8 @@ func MustDecode(bz []byte) (msg Message) {
 	switch data := pb.Data.(type) {
 	case *pbstch.Message_IdentityX:
 		msg = IdentityXFromProto(data.IdentityX)
+	case *pbstch.Message_Fnx:
+		msg = FnXFromProto(data.Fnx)
 	default:
 		panic(fmt.Sprintf("unknown message type: %T", data))
 	}

@@ -9,8 +9,14 @@ message IdentityX {
   string id = 2 [(gogoproto.customname) = "ID"];
 }
 
+message FnX {
+  string from = 1;
+  bytes data = 2;
+}
+
 message Message {
   oneof data {
     IdentityX identity_x = 1;
+    FnX Fnx = 2;
   }
 }
