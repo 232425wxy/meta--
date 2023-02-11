@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	hk *big.Int = new(big.Int)
+	hk *big.Int = new(big.Int).SetInt64(1)
 	tk *big.Int = new(big.Int)
 )
 

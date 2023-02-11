@@ -76,8 +76,6 @@ func (fx *FnX) ChameleonFn() {
 type PublicKeySeg struct {
 	From      crypto.ID
 	PublicKey *big.Int
-	SK        *big.Int
-	A0        *big.Int
 }
 
 func (pks *PublicKeySeg) ToProto() *pbstch.PublicKeySeg {
@@ -87,8 +85,6 @@ func (pks *PublicKeySeg) ToProto() *pbstch.PublicKeySeg {
 	return &pbstch.PublicKeySeg{
 		From:      string(pks.From),
 		PublicKey: pks.PublicKey.Bytes(),
-		Sk:        pks.SK.Bytes(),
-		A0:        pks.A0.Bytes(),
 	}
 }
 
@@ -99,8 +95,6 @@ func PublicKeySegFromProto(pb *pbstch.PublicKeySeg) *PublicKeySeg {
 	return &PublicKeySeg{
 		From:      crypto.ID(pb.From),
 		PublicKey: new(big.Int).SetBytes(pb.PublicKey),
-		SK:        new(big.Int).SetBytes(pb.Sk),
-		A0:        new(big.Int).SetBytes(pb.A0),
 	}
 }
 

@@ -2,6 +2,7 @@ package chameleon
 
 import (
 	"fmt"
+	"github.com/232425wxy/meta--/crypto/sha256"
 	"math/big"
 	"testing"
 )
@@ -29,6 +30,7 @@ type Participant2 struct {
 	x         *big.Int
 	ski       *big.Int
 	pki       *big.Int
+	ai        *big.Int
 	f         *big.Int
 	auxiliary *big.Int
 }
@@ -63,26 +65,6 @@ func CreateParticipants(n, t int) []*Participant2 {
 		}
 	}
 
-	//F := func() *Polynomial {
-	//	poly := &Polynomial{items: make(map[int]*big.Int)}
-	//	for _, participant := range participants {
-	//		for order, item := range participant.poly.items {
-	//			if poly.items[order] == nil {
-	//				poly.items[order] = new(big.Int).SetInt64(0)
-	//			}
-	//			poly.items[order].Add(poly.items[order], item)
-	//		}
-	//	}
-	//	return poly
-	//}
-	//
-	//for _, participant := range participants {
-	//	f := F().calc(participant.x)
-	//	if f.Cmp(participant.f) != 0 {
-	//		panic("not equal")
-	//	}
-	//}
-
 	authorized := []*Participant2{participants[0], participants[1], participants[2], participants[3]}
 	for _, participantx := range authorized {
 		for _, participanty := range authorized {
@@ -97,21 +79,176 @@ func CreateParticipants(n, t int) []*Participant2 {
 		}
 	}
 
+	CID := new(big.Int).SetInt64(0)
 	_secretKey := new(big.Int).SetInt64(0)
 	for _, participant := range authorized {
 		m := new(big.Int).Mul(participant.f, participant.auxiliary)
 		m = m.Mod(m, Q)
+		participant.ski = m
+		participant.pki = new(big.Int).Exp(G, m, Q)
 		_secretKey.Add(_secretKey, m)
+		hk.Mul(hk, participant.pki)
+		hk.Mod(hk, Q)
+		CID.Add(CID, participant.x)
+		CID.Mod(CID, Q)
 	}
 	_secretKey.Mod(_secretKey, Q)
 
 	fmt.Printf("计算私钥：%s\n", _secretKey)
+
+	fmt.Println("变色龙哈希函数的公钥：", hk.String())
+
+	// 计算变色龙哈希值
+
+	msg := []byte("name=wxy")
+
+	sigma := randGen(Q)
+
+	type R struct {
+		val1 *big.Int
+		val2 *big.Int
+	}
+
+	r := &R{
+		val1: new(big.Int).Exp(G, sigma, Q),
+		val2: new(big.Int).Exp(hk, sigma, Q),
+	}
+
+	_ = r
+
+	alpha := HashBigInt(CID, hk)
+
+	for _, participant := range authorized {
+		participant.ai = new(big.Int).Exp(alpha, participant.k, Q)
+	}
+
+	h := new(big.Int).Exp(G, sigma, Q)
+	e := new(big.Int).Exp(alpha, HashBytes(msg), Q)
+	h.Mul(h, e)
+	h.Mod(h, Q)
+
+	fmt.Printf("哈希值：%s\n", h.String())
+
+	// 计算哈希碰撞
+
+	_msg := []byte("name=fsj")
+
+	ee := new(big.Int).Sub(HashBytes(msg), HashBytes(_msg))
+	fmt.Println("msg-_msg", ee.String())
+
+	s1 := new(big.Int).Mul(authorized[0].ski, ee)
+	s1.Add(s1, authorized[0].k)
+	d1 := new(big.Int).Exp(alpha, s1, Q)
+	_ = d1
+
+	s2 := new(big.Int).Mul(authorized[1].ski, ee)
+	s2.Add(s2, authorized[1].k)
+	d2 := new(big.Int).Exp(alpha, s2, Q)
+	_ = d2
+
+	s3 := new(big.Int).Mul(authorized[2].ski, ee)
+	s3.Add(s3, authorized[2].k)
+	d3 := new(big.Int).Exp(alpha, s3, Q)
+	_ = d3
+
+	s4 := new(big.Int).Mul(authorized[3].ski, ee)
+	s4.Add(s4, authorized[3].k)
+	d4 := new(big.Int).Exp(alpha, s4, Q)
+	_ = d4
+
+	one1 := new(big.Int).Exp(G, s1, Q)
+	_pk1 := calcInverseElem(authorized[0].pki, Q)
+	three1 := new(big.Int).Exp(_pk1, ee, Q)
+	four1 := new(big.Int).Mul(one1, three1)
+	four1.Mod(four1, Q)
+	fmt.Println("差值：", authorized[0].x.Sub(authorized[0].x, four1))
+
+	one2 := new(big.Int).Exp(G, s2, Q)
+	_pk2 := calcInverseElem(authorized[1].pki, Q)
+	three2 := new(big.Int).Exp(_pk2, ee, Q)
+	four2 := new(big.Int).Mul(one2, three2)
+	four2.Mod(four2, Q)
+	fmt.Println("差值：", authorized[1].x.Sub(authorized[1].x, four2))
+
+	one3 := new(big.Int).Exp(G, s3, Q)
+	_pk3 := calcInverseElem(authorized[2].pki, Q)
+	three3 := new(big.Int).Exp(_pk3, ee, Q)
+	four3 := new(big.Int).Mul(one3, three3)
+	four3.Mod(four3, Q)
+	fmt.Println("差值：", authorized[2].x.Sub(authorized[2].x, four3))
+
+	one4 := new(big.Int).Exp(G, s4, Q)
+	_pk4 := calcInverseElem(authorized[3].pki, Q)
+	three4 := new(big.Int).Exp(_pk4, ee, Q)
+	four4 := new(big.Int).Mul(one4, three4)
+	four4.Mod(four4, Q)
+	fmt.Println("差值：", authorized[3].x.Sub(authorized[3].x, four4))
+
+	A := new(big.Int).SetInt64(1)
+	for _, participant := range authorized {
+		A.Mul(A, participant.ai)
+		A.Mod(A, Q)
+	}
+	_A := calcInverseElem(A, Q)
+
+	c := new(big.Int).Mul(d1, d2)
+	c.Mul(c, d3)
+	c.Mul(c, d4)
+	c.Mul(c, _A)
+
+	_r := &R{}
+	tmp := new(big.Int).Exp(alpha, ee, Q)
+	_r.val1 = new(big.Int).Mul(r.val1, tmp)
+	_r.val1.Mod(_r.val1, Q)
+
+	_r.val2 = new(big.Int).Mul(r.val2, c)
+	_r.val2.Mod(_r.val2, Q)
+
+	one := new(big.Int).Exp(alpha, HashBytes(_msg), Q)
+	res := new(big.Int).Mul(_r.val1, one)
+	res.Mod(res, Q)
+
+	fmt.Println("碰撞哈希值：", res.String())
 
 	return participants
 }
 
 func TestExample(t *testing.T) {
 	CreateParticipants(7, 4)
+
+	fmt.Println("---------------------------------")
+
+	seven := new(big.Int).SetInt64(9)
+	two := new(big.Int).SetInt64(5)
+	_two := calcInverseElem(two, seven)
+	//fmt.Println(_two)
+	//_ex := new(big.Int).SetInt64(-3)
+	ex := new(big.Int).SetInt64(6)
+
+	res1 := new(big.Int).Exp(_two, ex, seven)
+	res2 := new(big.Int).Exp(two, ex, seven)
+	res3 := new(big.Int).Mul(res1, res2)
+	res3.Mod(res3, seven)
+	fmt.Println(res3)
+}
+
+func HashBigInt(vals ...*big.Int) *big.Int {
+	fn := sha256.New()
+	for _, val := range vals {
+		fn.Write(val.Bytes())
+	}
+	h := fn.Sum(nil)
+	res := new(big.Int).SetBytes(h)
+	//res.Mod(res, Q)
+	return res
+}
+
+func HashBytes(m []byte) *big.Int {
+	fn := sha256.New()
+	fn.Write(m)
+	h := fn.Sum(nil)
+	res := new(big.Int).SetBytes(h)
+	return res
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/

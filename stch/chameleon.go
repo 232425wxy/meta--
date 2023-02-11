@@ -28,16 +28,12 @@ type Chameleon struct {
 	x            *big.Int
 	fn           *polynomial
 	fnX          *big.Int
-	sk           *big.Int
-	pk           *big.Int
-	n            int // 分布式成员数量
+	sk           *big.Int // 节点自己的私钥
+	pk           *big.Int // 节点自己的公钥
+	n            int      // 分布式成员数量
 	participants *ParticipantSet
+	hk           *big.Int // 变色龙哈希函数的公钥
 	mu           sync.Mutex
-
-	// for test
-	_secret  *big.Int
-	secret   *big.Int
-	received int
 }
 
 func NewChameleon(n int) *Chameleon {
@@ -48,8 +44,6 @@ func NewChameleon(n int) *Chameleon {
 	ch.participants = NewParticipantSet()
 	ch.GenerateFn(n)
 	ch.fnX = ch.fn.calculate(ch.x, q)
-	ch._secret = new(big.Int).SetInt64(0)
-	ch.secret = new(big.Int).SetInt64(0)
 	return ch
 }
 
@@ -118,6 +112,8 @@ func (ch *Chameleon) handleFnX(peer *p2p.Peer, fnX *FnX) bool {
 }
 
 func (ch *Chameleon) calculateSK(g, q *big.Int) {
+	ch.mu.Lock()
+	defer ch.mu.Unlock()
 	fn := new(big.Int).Set(ch.fnX)
 	x := new(big.Int).SetInt64(1)
 	for _, participant := range ch.participants.ps {
@@ -133,4 +129,20 @@ func (ch *Chameleon) calculateSK(g, q *big.Int) {
 	ch.sk.Mod(ch.sk, q)
 	ch.pk = new(big.Int).Exp(g, ch.sk, q)
 	fmt.Println(ch.sk.String(), ch.fn.items[0].String())
+}
+
+func (ch *Chameleon) handlePublicKeySeg(peer *p2p.Peer, key *PublicKeySeg) bool {
+	if peer.NodeID() != key.From {
+		panic(fmt.Sprintf("identity mismatch, peer is %s, but key is from %s", peer.NodeID(), key.From))
+	}
+	ch.mu.Lock()
+	defer ch.mu.Unlock()
+	ch.participants.ps[key.From].pk = key.PublicKey
+	receivedFull := true
+	for _, participant := range ch.participants.ps {
+		if participant.pk == nil {
+			receivedFull = false
+		}
+	}
+	return receivedFull
 }

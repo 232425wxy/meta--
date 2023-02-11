@@ -2,7 +2,6 @@ package stch
 
 import (
 	"github.com/232425wxy/meta--/p2p"
-	"time"
 )
 
 type Reactor struct {
@@ -64,22 +63,11 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 				r.broadcastPKToPeer()
 			}
 		case *PublicKeySeg:
-			r.Logger.Error("收到了公钥", "received", r.ch.received, "from", msg.From)
-			r.ch.received++
-			r.ch._secret.Add(r.ch._secret, msg.A0)
-			r.ch._secret.Mod(r.ch._secret, q)
-			r.ch.secret.Add(r.ch.secret, msg.SK)
-			r.ch.secret.Mod(r.ch.secret, q)
-			if r.ch.received == 3 {
-				go func() {
-					time.Sleep(time.Second)
-					r.ch._secret.Add(r.ch._secret, r.ch.fn.items[0])
-					r.ch._secret.Mod(r.ch._secret, q)
-					r.ch.secret.Add(r.ch.secret, r.ch.sk)
-					r.ch.secret.Mod(r.ch.secret, q)
-					r.Logger.Trace("恢复密钥", "完整私钥", r.ch._secret.String(), "计算私钥", r.ch.secret.String())
-				}()
+			if ok := r.ch.handlePublicKeySeg(src, msg); ok {
+				// 收集齐了其他节点的公钥，可以计算变色龙哈希函数的公钥了
+
 			}
+
 		}
 	}
 }
@@ -102,8 +90,6 @@ func (r *Reactor) broadcastPKToPeer() {
 	pks := &PublicKeySeg{
 		From:      r.Switch.NodeInfo().ID(),
 		PublicKey: r.ch.pk,
-		SK:        r.ch.sk,
-		A0:        r.ch.fn.items[0],
 	}
 	bz := MustEncode(pks)
 	r.Switch.Broadcast(p2p.STCHChannel, bz)
