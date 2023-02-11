@@ -18,8 +18,6 @@ message FnX {
 message PublicKeySeg {
   string from = 1;
   bytes public_key = 2;
-  bytes sk = 3;
-  bytes a0 = 4;
 }
 
 message Message {
