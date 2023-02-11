@@ -20,6 +20,7 @@ func (poly *Polynomial) calc(x *big.Int) *big.Int {
 		res.Add(res, exp)
 	}
 	return res.Mod(res, Q)
+	//return res
 }
 
 type Participant2 struct {

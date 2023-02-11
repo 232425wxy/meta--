@@ -1,1 +1,16 @@
 syntax = "proto3";
+
+package pbstch;
+
+import "gogoproto-1.4.3/gogoproto/gogo.proto";
+
+message IdentityX {
+  bytes x = 1;
+  string id = 2 [(gogoproto.customname) = "ID"];
+}
+
+message Message {
+  oneof data {
+    IdentityX identity_x = 1;
+  }
+}

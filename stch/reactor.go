@@ -17,7 +17,6 @@ func NewReactor(ch *Chameleon) *Reactor {
 }
 
 func (r *Reactor) Start() error {
-	go r.triggerSendFXRoutine()
 	return r.BaseService.Start()
 }
 
@@ -42,29 +41,26 @@ func (r *Reactor) InitPeer(peer *p2p.Peer) *p2p.Peer {
 	return peer
 }
 
-func (r *Reactor) Receive(chID byte, src *p2p.Peer, msg []byte) {
+func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 	switch chID {
 	case p2p.STCHChannel:
-		r.receivedX++
-		if r.receivedX == r.ch.n-1 {
-			go func() { r.ch.signalToSendFX <- struct{}{} }()
-		}
-	}
-}
-
-func (r *Reactor) triggerSendFXRoutine() {
-	for {
-		select {
-		case <-r.ch.CanSendFX():
-			r.Logger.Error("发送FX给对方啦")
-			return
-		default:
-
+		msg := MustDecode(bz)
+		switch msg := msg.(type) {
+		case *IdentityX:
+			if err := r.ch.handleIdentityX(src, msg); err != nil {
+				r.Logger.Error("failed to handle IdentityX message", "err", err)
+				return
+			}
+			r.Logger.Trace("收到了身份标识", "from", src.NodeID())
 		}
 	}
 }
 
 func (r *Reactor) sendXToPeer(peer *p2p.Peer) {
-	x := r.ch.GetX().Bytes()
-	peer.Send(p2p.STCHChannel, x)
+	identityX := &IdentityX{
+		X:  r.ch.GetX(),
+		ID: r.Switch.NodeInfo().ID(),
+	}
+	bz := MustEncode(identityX)
+	peer.Send(p2p.STCHChannel, bz)
 }
