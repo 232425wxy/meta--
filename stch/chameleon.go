@@ -184,6 +184,7 @@ func (ch *Chameleon) Hash(block *types.Block) {
 	}
 	sigma := new(big.Int).SetBytes(blockDataHash)
 	block.ChameleonHash.GSigma = new(big.Int).Exp(g, sigma, q)
+	fmt.Println(block.ChameleonHash.HKSigma)
 	block.ChameleonHash.HKSigma = new(big.Int).Exp(ch.hk, sigma, q)
 	block.ChameleonHash.Alpha = ch.alpha
 	block.ChameleonHash.Hash = new(big.Int).Mul(block.ChameleonHash.GSigma, new(big.Int).Exp(block.ChameleonHash.Alpha, sigma, q)).Bytes()

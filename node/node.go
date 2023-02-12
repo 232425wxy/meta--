@@ -207,7 +207,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	syncerReactor := provider.SyncerProvider(stat, blockExec, blockStore, logger)
 
 	stchReactor := provider.STCHProvider(len(cfg.P2PConfig.NeighboursSlice()), logger)
-
+	stat.SetChameleon(stchReactor.Chameleon())
 	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, syncerReactor, stchReactor, logger)
 
 	addrBook := p2p.NewAddrBook(cfg.P2PConfig.AddrBookPath())

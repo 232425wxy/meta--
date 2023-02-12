@@ -108,3 +108,7 @@ func (r *Reactor) broadcastPKToPeer() {
 	bz := MustEncode(pks)
 	r.Switch.Broadcast(p2p.STCHChannel, bz)
 }
+
+func (r *Reactor) Chameleon() *Chameleon {
+	return r.ch
+}
