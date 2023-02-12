@@ -99,3 +99,7 @@ func (s *State) ToBytes() []byte {
 func (s *State) IsEmpty() bool {
 	return s.Validators == nil || len(s.Validators.Validators) == 0
 }
+
+func (s *State) RedactBlock(height int64, txIndex int, key, value []byte) {
+
+}

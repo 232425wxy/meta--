@@ -10,6 +10,10 @@ import (
 	"sync"
 )
 
+type Task struct {
+	Height int64
+}
+
 type polynomial struct {
 	items map[int]*big.Int
 }
