@@ -2,6 +2,7 @@ package stch
 
 import (
 	"github.com/232425wxy/meta--/p2p"
+	"time"
 )
 
 type Reactor struct {
@@ -54,20 +55,33 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 				r.Logger.Error("failed to handle IdentityX message", "err", err)
 				return
 			}
-			fnX := r.ch.CalculateFnXForPeer(msg, r.Switch.NodeInfo().NodeID, src.NodeID())
+			fnX := r.ch.calculateFnXForPeer(msg, r.Switch.NodeInfo().NodeID, src.NodeID())
 			r.sendFnXToPeer(fnX, src)
 		case *FnX:
 			if ok := r.ch.handleFnX(src, msg); ok {
-				//r.Logger.Error("广播")
 				r.ch.calculateSK(g, q)
 				r.broadcastPKToPeer()
 			}
 		case *PublicKeySeg:
 			if ok := r.ch.handlePublicKeySeg(src, msg); ok {
-				// 收集齐了其他节点的公钥，可以计算变色龙哈希函数的公钥了
-
+				// 收集齐了其他节点的公钥
+				if r.ch.pk != nil {
+					r.ch.calculateHKAndCID(q)
+					r.Logger.Error("计算变色龙公钥", "hk", r.ch.hk.String(), "cid", r.ch.cid.String(), "alpha", r.ch.alpha.String())
+				} else {
+					// 自己的公钥还没制作出来的情况下，需要等待自己的公钥制作出来后再生成变色龙公钥
+					go func() {
+						for {
+							if r.ch.pk != nil {
+								r.ch.calculateHKAndCID(q)
+								r.Logger.Error("计算变色龙公钥", "hk", r.ch.hk.String(), "cid", r.ch.cid.String(), "alpha", r.ch.alpha.String())
+								return
+							}
+							time.Sleep(time.Millisecond * 10)
+						}
+					}()
+				}
 			}
-
 		}
 	}
 }

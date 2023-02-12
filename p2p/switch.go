@@ -37,13 +37,17 @@ func NewSwitch(transport *Transport, metrics *Metrics) *Switch {
 }
 
 func (sw *Switch) Start() error {
-	for _, reactor := range sw.reactors {
-		//if name == "CONSENSUS" {
-		//	continue
-		//}
+	for name, reactor := range sw.reactors {
+		if name == "STCH" {
+			continue
+		}
 		if err := reactor.Start(); err != nil {
 			return err
 		}
+	}
+	time.Sleep(time.Millisecond * 200)
+	if err := sw.Reactor("STCH").Start(); err != nil {
+		return err
 	}
 	go sw.acceptRoutine()
 	sw.addrbook.Start()

@@ -3,6 +3,7 @@ package stch
 import (
 	"fmt"
 	"github.com/232425wxy/meta--/crypto"
+	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/p2p"
 	"math/big"
 	"sync"
@@ -33,6 +34,8 @@ type Chameleon struct {
 	n            int      // 分布式成员数量
 	participants *ParticipantSet
 	hk           *big.Int // 变色龙哈希函数的公钥
+	cid          *big.Int
+	alpha        *big.Int
 	mu           sync.Mutex
 }
 
@@ -42,12 +45,14 @@ func NewChameleon(n int) *Chameleon {
 	ch.fn = &polynomial{items: make(map[int]*big.Int)}
 	ch.n = n
 	ch.participants = NewParticipantSet()
-	ch.GenerateFn(n)
+	ch.generateFn(n)
 	ch.fnX = ch.fn.calculate(ch.x, q)
+	ch.hk = new(big.Int).SetInt64(1)
+	ch.cid = new(big.Int).SetInt64(0)
 	return ch
 }
 
-func (ch *Chameleon) GenerateFn(num int) {
+func (ch *Chameleon) generateFn(num int) {
 	ch.mu.Lock()
 	ch.mu.Unlock()
 	for i := 0; i < num; i++ {
@@ -59,7 +64,7 @@ func (ch *Chameleon) GetX() *big.Int {
 	return ch.x
 }
 
-func (ch *Chameleon) CalculateFnXForPeer(identity *IdentityX, myID crypto.ID, peerID crypto.ID) *FnX {
+func (ch *Chameleon) calculateFnXForPeer(identity *IdentityX, myID crypto.ID, peerID crypto.ID) *FnX {
 	res := &FnX{}
 	res.Data = ch.fn.calculate(identity.X, q)
 	res.From = myID
@@ -82,7 +87,8 @@ func (ch *Chameleon) handleIdentityX(peer *p2p.Peer, identityX *IdentityX) error
 		pk:   nil,
 		peer: peer,
 	}
-	return ch.participants.AddParticipant(participant)
+	ch.participants.ps[peer.NodeID()] = participant
+	return nil
 }
 
 func (ch *Chameleon) handleFnX(peer *p2p.Peer, fnX *FnX) bool {
@@ -128,7 +134,6 @@ func (ch *Chameleon) calculateSK(g, q *big.Int) {
 	ch.sk = new(big.Int).Mul(fn, x)
 	ch.sk.Mod(ch.sk, q)
 	ch.pk = new(big.Int).Exp(g, ch.sk, q)
-	fmt.Println(ch.sk.String(), ch.fn.items[0].String())
 }
 
 func (ch *Chameleon) handlePublicKeySeg(peer *p2p.Peer, key *PublicKeySeg) bool {
@@ -144,5 +149,29 @@ func (ch *Chameleon) handlePublicKeySeg(peer *p2p.Peer, key *PublicKeySeg) bool 
 			receivedFull = false
 		}
 	}
-	return receivedFull
+	return receivedFull && len(ch.participants.ps) == ch.n-1
+}
+
+func (ch *Chameleon) calculateHKAndCID(q *big.Int) {
+	ch.mu.Lock()
+	defer ch.mu.Unlock()
+	for _, participant := range ch.participants.ps {
+		ch.hk.Mul(ch.hk, participant.pk)
+		ch.hk.Mod(ch.hk, q)
+
+		ch.cid.Add(ch.cid, participant.x)
+		ch.cid.Mod(ch.cid, q)
+	}
+
+	ch.hk.Mul(ch.hk, ch.pk)
+	ch.hk.Mod(ch.hk, q)
+
+	ch.cid.Add(ch.cid, ch.x)
+	ch.cid.Mod(ch.cid, q)
+
+	hashFn := sha256.New()
+	hashFn.Write(ch.cid.Bytes())
+	hashFn.Write(ch.hk.Bytes())
+	h := hashFn.Sum(nil)
+	ch.alpha = new(big.Int).SetBytes(h)
 }
