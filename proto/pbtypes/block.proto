@@ -6,9 +6,17 @@ import "proto/pbcrypto/signature.proto";
 import "gogoproto-1.4.3/protobuf/google/protobuf/timestamp.proto";
 import "gogoproto-1.4.3/gogoproto/gogo.proto";
 
+message ChameleonHash {
+  bytes g_sigma = 1;
+  bytes hk_sigma = 2 [(gogoproto.customname) = "HKSigma"];
+  bytes alpha = 3;
+  bytes hash = 4;
+}
+
 message Block {
   Header header           = 1;
   Data body               = 2;
+  ChameleonHash chameleon_hash = 3;
 }
 
 message BlockHeight {

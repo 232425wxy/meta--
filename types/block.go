@@ -7,6 +7,7 @@ import (
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/proto/pbtypes"
+	"math/big"
 	"time"
 )
 
@@ -14,9 +15,42 @@ import (
 
 // 区块
 
+type ChameleonHash struct {
+	GSigma  *big.Int
+	HKSigma *big.Int
+
+	Alpha *big.Int
+	Hash  []byte
+}
+
+func (ch *ChameleonHash) ToProto() *pbtypes.ChameleonHash {
+	if ch == nil {
+		return nil
+	}
+	return &pbtypes.ChameleonHash{
+		GSigma:  ch.GSigma.Bytes(),
+		HKSigma: ch.HKSigma.Bytes(),
+		Alpha:   ch.Alpha.Bytes(),
+		Hash:    ch.Hash,
+	}
+}
+
+func ChameleonHashFromProto(pb *pbtypes.ChameleonHash) *ChameleonHash {
+	if pb == nil {
+		return nil
+	}
+	return &ChameleonHash{
+		GSigma:  new(big.Int).SetBytes(pb.GSigma),
+		HKSigma: new(big.Int).SetBytes(pb.HKSigma),
+		Alpha:   new(big.Int).SetBytes(pb.Alpha),
+		Hash:    pb.Hash,
+	}
+}
+
 type Block struct {
-	Header *Header `json:"header"`
-	Body   *Data   `json:"body"`
+	Header        *Header        `json:"header"`
+	Body          *Data          `json:"body"`
+	ChameleonHash *ChameleonHash `json:"chameleon_hash"`
 }
 
 func (b *Block) ValidateBasic() error {
@@ -49,8 +83,9 @@ func (b *Block) ToProto() *pbtypes.Block {
 		return nil
 	}
 	pb := &pbtypes.Block{
-		Header: b.Header.ToProto(),
-		Body:   b.Body.ToProto(),
+		Header:        b.Header.ToProto(),
+		Body:          b.Body.ToProto(),
+		ChameleonHash: b.ChameleonHash.ToProto(),
 	}
 	return pb
 }
@@ -60,8 +95,9 @@ func BlockFromProto(pb *pbtypes.Block) *Block {
 		return nil
 	}
 	return &Block{
-		Header: HeaderFromProto(pb.Header),
-		Body:   DataFromProto(pb.Body),
+		Header:        HeaderFromProto(pb.Header),
+		Body:          DataFromProto(pb.Body),
+		ChameleonHash: ChameleonHashFromProto(pb.ChameleonHash),
 	}
 }
 
@@ -69,8 +105,8 @@ func (b *Block) String() string {
 	if b == nil {
 		return "Block{nil}"
 	}
-	str := fmt.Sprintf("Block{\n\tHeader{\n\t\tPreviousBlockHash: %x\n\t\tHash: %x\n\t\tHeight: %d\n\t\tTimestamp: %s\n\t\tProposer: %s\n\t}\n\tBody{\n\t\tRootHash: %x\n\t\tTxsNum: %d\n\t}\n}",
-		b.Header.PreviousBlockHash, b.Header.Hash, b.Header.Height, b.Header.Timestamp.Format(time.RFC3339), b.Header.Proposer, b.Body.RootHash, len(b.Body.Txs))
+	str := fmt.Sprintf("Block{\n\tHeader{\n\t\tPreviousBlockHash: %x\n\t\tHash: %x\n\t\tHeight: %d\n\t\tTimestamp: %s\n\t\tProposer: %s\n\t}\n\tBody{\n\t\tRootHash: %x\n\t\tTxsNum: %d\n\t}\n\tChameleonHash{\n\t\tGSigma: %x\n\t\tHKSigma: %x\n\t\tAlpha: %x\n\t\tHash: %x\n\t}\n}",
+		b.Header.PreviousBlockHash, b.Header.Hash, b.Header.Height, b.Header.Timestamp.Format(time.RFC3339), b.Header.Proposer, b.Body.RootHash, len(b.Body.Txs), b.ChameleonHash.GSigma.Bytes(), b.ChameleonHash.HKSigma.Bytes(), b.ChameleonHash.Alpha.Bytes(), b.ChameleonHash.Hash)
 	return str
 }
 

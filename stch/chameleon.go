@@ -5,6 +5,7 @@ import (
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/p2p"
+	"github.com/232425wxy/meta--/types"
 	"math/big"
 	"sync"
 )
@@ -174,4 +175,16 @@ func (ch *Chameleon) calculateHKAndCID(q *big.Int) {
 	hashFn.Write(ch.hk.Bytes())
 	h := hashFn.Sum(nil)
 	ch.alpha = new(big.Int).SetBytes(h)
+}
+
+func (ch *Chameleon) Hash(block *types.Block) {
+	blockDataHash := block.Hash()
+	if block.ChameleonHash == nil {
+		block.ChameleonHash = &types.ChameleonHash{}
+	}
+	sigma := new(big.Int).SetBytes(blockDataHash)
+	block.ChameleonHash.GSigma = new(big.Int).Exp(g, sigma, q)
+	block.ChameleonHash.HKSigma = new(big.Int).Exp(ch.hk, sigma, q)
+	block.ChameleonHash.Alpha = ch.alpha
+	block.ChameleonHash.Hash = new(big.Int).Mul(block.ChameleonHash.GSigma, new(big.Int).Exp(block.ChameleonHash.Alpha, sigma, q)).Bytes()
 }

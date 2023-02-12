@@ -102,7 +102,8 @@ func CreateParticipants(n, t int) []*Participant2 {
 
 	msg := []byte("name=wxy")
 
-	sigma := randGen(Q)
+	//sigma := randGen(Q)
+	sigma := HashBytes(msg)
 
 	type R struct {
 		val1 *big.Int
@@ -230,6 +231,8 @@ func TestExample(t *testing.T) {
 	res3 := new(big.Int).Mul(res1, res2)
 	res3.Mod(res3, seven)
 	fmt.Println(res3)
+
+	fmt.Println(len(Q.Bytes()))
 }
 
 func HashBigInt(vals ...*big.Int) *big.Int {

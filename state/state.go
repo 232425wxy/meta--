@@ -4,6 +4,7 @@ import (
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/merkle"
 	"github.com/232425wxy/meta--/proto/pbstate"
+	"github.com/232425wxy/meta--/stch"
 	"github.com/232425wxy/meta--/types"
 	"github.com/cosmos/gogoproto/proto"
 	"time"
@@ -19,6 +20,7 @@ type State struct {
 	PreviousBlock   *types.Block
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
+	Chameleon       *stch.Chameleon
 }
 
 func (s *State) Copy() *State {
@@ -31,6 +33,10 @@ func (s *State) Copy() *State {
 	}
 }
 
+func (s *State) SetChameleon(ch *stch.Chameleon) {
+	s.Chameleon = ch
+}
+
 func (s *State) MakeBlock(height int64, txs []types.Tx, proposer crypto.ID, lastBlockHash []byte) *types.Block {
 	block := &types.Block{
 		Header: &types.Header{PreviousBlockHash: lastBlockHash, Height: height, Timestamp: time.Now(), Proposer: proposer},
@@ -41,7 +47,7 @@ func (s *State) MakeBlock(height int64, txs []types.Tx, proposer crypto.ID, last
 		copy(_txs[i], tx)
 	}
 	block.Body.RootHash = merkle.ComputeMerkleRoot(_txs)
-	block.Hash()
+	s.Chameleon.Hash(block)
 	return block
 }
 

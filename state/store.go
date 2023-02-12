@@ -160,7 +160,7 @@ func (sb *StoreBlock) SaveBlock(block *types.Block) {
 	if err != nil {
 		panic(err)
 	}
-	if err = sb.db.SetSync(calcBlockHashKey(block.Hash()), bzh); err != nil {
+	if err = sb.db.SetSync(calcBlockHashKey(block.ChameleonHash.Hash), bzh); err != nil {
 		panic(err)
 	}
 	if err = sb.db.SetSync(calcBlockHeightKey(block.Header.Height), bz); err != nil {
