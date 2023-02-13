@@ -210,3 +210,45 @@ func (ch *Chameleon) AppendRedactTask(task *Task) {
 		}()
 	}
 }
+
+func (ch *Chameleon) handleRedactTask(task *Task) ([]byte, error) {
+	block := task.Block
+	if task.TxIndex >= len(block.Body.Txs)+1 {
+		return nil, fmt.Errorf("you can only redact existed txs or append tx, origin_txs_num: %d, redact_tx_index: %d", len(block.Body.Txs), task.TxIndex)
+	}
+	if task.TxIndex == len(block.Body.Txs) {
+		block.Body.Txs = append(block.Body.Txs, []byte(fmt.Sprintf("%v=%v", task.Key, task.Value)))
+	}
+	if task.TxIndex < len(block.Body.Txs) {
+		tx := []byte(fmt.Sprintf("%v=%v", task.Key, task.Value))
+		block.Body.Txs[task.TxIndex] = tx
+	}
+	old_msg := block.Header.BlockDataHash
+	new_msg := block.BlockDataHash()
+
+	e := new(big.Int).Sub(new(big.Int).SetBytes(old_msg), new(big.Int).SetBytes(new_msg))
+	s := new(big.Int).Mul(ch.sk, e)
+	s.Add(s, ch.k)
+	d := new(big.Int)
+	alpha := new(big.Int).Set(block.ChameleonHash.Alpha)
+	if s.Cmp(new(big.Int).SetInt64(0)) < 0 {
+		inverseAlpha := calcInverseElem(alpha, q)
+		s.Neg(s)
+		d = d.Exp(inverseAlpha, s, q)
+	} else {
+		d = d.Exp(alpha, s, q)
+	}
+	ss := &LeaderSchnorrSig{
+		S:       s,
+		D:       d,
+		Block:   task.Block,
+		TxIndex: task.TxIndex,
+		NewTx:   []byte(fmt.Sprintf("%v=%v", task.Key, task.Value)),
+	}
+	bz := MustEncode(ss)
+	return bz, nil
+}
+
+func (ch *Chameleon) verifySchnorrSig(sig *LeaderSchnorrSig) {
+
+}

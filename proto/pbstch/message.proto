@@ -3,6 +3,14 @@ syntax = "proto3";
 package pbstch;
 
 import "gogoproto-1.4.3/gogoproto/gogo.proto";
+import "proto/pbtypes/block.proto";
+
+enum From {
+  option (gogoproto.goproto_enum_stringer) = true;
+  option (gogoproto.goproto_enum_prefix)   = true;
+  LEADER = 0 [(gogoproto.enumvalue_customname) = "Leader"];
+  REPLICA = 1 [(gogoproto.enumvalue_customname) = "Replica"];
+}
 
 message IdentityX {
   bytes x = 1;
@@ -21,8 +29,12 @@ message PublicKeySeg {
 }
 
 message SchnorrSig {
-  bytes s = 1;
-  bytes d = 2;
+  From from = 1;
+  bytes s = 2;
+  bytes d = 3;
+  pbtypes.Block block = 4;
+  int64 tx_index = 5;
+  bytes tx = 6;
 }
 
 message Message {

@@ -6,7 +6,6 @@ import (
 	"github.com/232425wxy/meta--/log"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
@@ -100,8 +99,15 @@ func TestCreateAndStartNode(t *testing.T) {
 }
 
 func TestSelect(t *testing.T) {
-	x := new(big.Int).SetInt64(-100)
-	fmt.Println(x.String())
-	x.Neg(x)
-	fmt.Println(x.String())
+	c := 8 * 7 * 6 * 5
+	c = c % 9
+	t.Log(c)
+
+	c1 := 8 * 7
+	c1 = c1 % 9
+	c1 = c1 * 6
+	c1 = c1 % 9
+	c1 = c1 * 5
+	c1 = c1 % 9
+	t.Log(c1)
 }

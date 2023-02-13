@@ -1,9 +1,7 @@
 package stch
 
 import (
-	"fmt"
 	"github.com/232425wxy/meta--/p2p"
-	"math/big"
 	"time"
 )
 
@@ -84,7 +82,7 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 					}()
 				}
 			}
-		case *SchnorrSig:
+		case *LeaderSchnorrSig:
 			r.Logger.Error("来任务了，需要修改区块链了")
 		}
 	}
@@ -122,45 +120,13 @@ func (r *Reactor) processRedactTaskRoutine() {
 		if r.ch.redactAvailable {
 			select {
 			case task := <-r.ch.redactTaskChan:
-				r.handleRedactTask(task)
+				data, err := r.ch.handleRedactTask(task)
+				if err != nil {
+					r.Logger.Error("failed to handle redact task", "err", err)
+				} else {
+					r.Switch.Broadcast(p2p.STCHChannel, data)
+				}
 			}
 		}
 	}
-}
-
-func (r *Reactor) handleRedactTask(task *Task) {
-	block := task.Block
-	fmt.Println(task, block)
-	if task.TxIndex >= len(block.Body.Txs)+1 {
-		r.Logger.Error("you can only redact existed txs or append tx", "origin_txs_num", len(block.Body.Txs), "redact_tx_index", task.TxIndex)
-		return
-	}
-	if task.TxIndex == len(block.Body.Txs) {
-		block.Body.Txs = append(block.Body.Txs, []byte(fmt.Sprintf("%v=%v", task.Key, task.Value)))
-	}
-	if task.TxIndex < len(block.Body.Txs) {
-		tx := []byte(fmt.Sprintf("%v=%v", task.Key, task.Value))
-		block.Body.Txs[task.TxIndex] = tx
-	}
-	old_msg := block.Header.BlockDataHash
-	new_msg := block.BlockDataHash()
-
-	e := new(big.Int).Sub(new(big.Int).SetBytes(old_msg), new(big.Int).SetBytes(new_msg))
-	s := new(big.Int).Mul(r.ch.sk, e)
-	s.Add(s, r.ch.k)
-	d := new(big.Int)
-	alpha := new(big.Int).Set(block.ChameleonHash.Alpha)
-	if s.Cmp(new(big.Int).SetInt64(0)) < 0 {
-		inverseAlpha := calcInverseElem(alpha, q)
-		s.Neg(s)
-		d = d.Exp(inverseAlpha, s, q)
-	} else {
-		d = d.Exp(alpha, s, q)
-	}
-	ss := &SchnorrSig{
-		S: s,
-		D: d,
-	}
-	bz := MustEncode(ss)
-	r.Switch.Broadcast(p2p.STCHChannel, bz)
 }

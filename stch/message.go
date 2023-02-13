@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/proto/pbstch"
+	"github.com/232425wxy/meta--/types"
 	"github.com/cosmos/gogoproto/proto"
 	"math/big"
 )
@@ -96,32 +97,75 @@ func PublicKeySegFromProto(pb *pbstch.PublicKeySeg) *PublicKeySeg {
 
 func (pks *PublicKeySeg) ChameleonFn() {}
 
-type SchnorrSig struct {
-	S *big.Int
-	D *big.Int
+type LeaderSchnorrSig struct {
+	S       *big.Int
+	D       *big.Int
+	Block   *types.Block
+	TxIndex int
+	NewTx   types.Tx
 }
 
-func (ss *SchnorrSig) ToProto() *pbstch.SchnorrSig {
+func (ss *LeaderSchnorrSig) ToProto() *pbstch.SchnorrSig {
 	if ss == nil {
 		return nil
 	}
 	return &pbstch.SchnorrSig{
-		S: ss.S.Bytes(),
-		D: ss.D.Bytes(),
+		From:    pbstch.From_Leader,
+		S:       ss.S.Bytes(),
+		D:       ss.D.Bytes(),
+		Block:   ss.Block.ToProto(),
+		TxIndex: int64(ss.TxIndex),
+		Tx:      ss.NewTx,
 	}
 }
 
-func SchnorrSigFromProto(pb *pbstch.SchnorrSig) *SchnorrSig {
+func LeaderSchnorrSigFromProto(pb *pbstch.SchnorrSig) *LeaderSchnorrSig {
 	if pb == nil {
 		return nil
 	}
-	return &SchnorrSig{
-		S: new(big.Int).SetBytes(pb.S),
-		D: new(big.Int).SetBytes(pb.D),
+	return &LeaderSchnorrSig{
+		S:       new(big.Int).SetBytes(pb.S),
+		D:       new(big.Int).SetBytes(pb.D),
+		Block:   types.BlockFromProto(pb.Block),
+		TxIndex: int(pb.TxIndex),
+		NewTx:   pb.Tx,
 	}
 }
 
-func (ss *SchnorrSig) ChameleonFn() {}
+func (ss *LeaderSchnorrSig) ChameleonFn() {}
+
+type ReplicaSchnorrSig struct {
+	S       *big.Int
+	D       *big.Int
+	Block   *types.Block
+	TxIndex int
+	NewTx   types.Tx
+}
+
+func (ss *ReplicaSchnorrSig) ToProto() *pbstch.SchnorrSig {
+	if ss == nil {
+		return nil
+	}
+	return &pbstch.SchnorrSig{
+		From:  pbstch.From_Replica,
+		S:     ss.S.Bytes(),
+		D:     ss.D.Bytes(),
+		Block: ss.Block.ToProto(),
+	}
+}
+
+func ReplicaSchnorrSigFromProto(pb *pbstch.SchnorrSig) *ReplicaSchnorrSig {
+	if pb == nil {
+		return nil
+	}
+	return &ReplicaSchnorrSig{
+		S:     new(big.Int).SetBytes(pb.S),
+		D:     new(big.Int).SetBytes(pb.D),
+		Block: types.BlockFromProto(pb.Block),
+	}
+}
+
+func (ss *ReplicaSchnorrSig) ChameleonFn() {}
 
 ///////////////////////////////////////////////
 
@@ -137,7 +181,9 @@ func MustEncode(message Message) []byte {
 		pb.Data = &pbstch.Message_Fnx{Fnx: msg.ToProto()}
 	case *PublicKeySeg:
 		pb.Data = &pbstch.Message_PublicKeySeg{PublicKeySeg: msg.ToProto()}
-	case *SchnorrSig:
+	case *LeaderSchnorrSig:
+		pb.Data = &pbstch.Message_SchnorrSig{SchnorrSig: msg.ToProto()}
+	case *ReplicaSchnorrSig:
 		pb.Data = &pbstch.Message_SchnorrSig{SchnorrSig: msg.ToProto()}
 	default:
 		panic(fmt.Sprintf("unknown message type: %T", msg))
@@ -166,7 +212,12 @@ func MustDecode(bz []byte) (msg Message) {
 	case *pbstch.Message_PublicKeySeg:
 		msg = PublicKeySegFromProto(data.PublicKeySeg)
 	case *pbstch.Message_SchnorrSig:
-		msg = SchnorrSigFromProto(data.SchnorrSig)
+		switch data.SchnorrSig.From {
+		case pbstch.From_Leader:
+			msg = LeaderSchnorrSigFromProto(data.SchnorrSig)
+		case pbstch.From_Replica:
+			msg = ReplicaSchnorrSigFromProto(data.SchnorrSig)
+		}
 	default:
 		panic(fmt.Sprintf("unknown message type: %T", data))
 	}

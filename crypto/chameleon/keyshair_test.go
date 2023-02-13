@@ -3,6 +3,7 @@ package chameleon
 import (
 	"fmt"
 	"github.com/232425wxy/meta--/crypto/sha256"
+	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
 )
@@ -31,8 +32,74 @@ type Participant2 struct {
 	ski       *big.Int
 	pki       *big.Int
 	ai        *big.Int
-	f         *big.Int
+	fnx       *big.Int
 	auxiliary *big.Int
+}
+
+func TestDistributedChameleonHash(t *testing.T) {
+	n := 4
+	ps := make([]*Participant2, n)
+	for i := 0; i < n; i++ {
+		p := &Participant2{
+			poly: &Polynomial{items: make(map[int]*big.Int)},
+			k:    randGen(Q),
+		}
+		p.x = new(big.Int).Exp(G, p.k, Q)
+		for j := 0; j < n; j++ {
+			p.poly.items[j] = randGen(Q)
+		}
+		ps[i] = p
+	}
+
+	for _, pi := range ps {
+		fnx := new(big.Int).SetInt64(0)
+		for _, pj := range ps {
+			fnx.Add(fnx, pj.poly.calc(pi.x))
+		}
+		pi.fnx = fnx.Mod(fnx, Q)
+	}
+
+	cid := new(big.Int).SetInt64(0)
+	for _, pi := range ps {
+		x := new(big.Int).SetInt64(1)
+		for _, pj := range ps {
+			if pi.x.Cmp(pj.x) == 0 {
+				continue
+			}
+			_xj := new(big.Int).Neg(pj.x)
+			diff_xi_xj := new(big.Int).Sub(pi.x, pj.x)
+			_diff_xi_xj := calcInverseElem(diff_xi_xj, Q)
+			x.Mul(x, new(big.Int).Mul(_xj, _diff_xi_xj))
+		}
+		pi.ski = new(big.Int).Mul(pi.fnx, x)
+		pi.ski.Mod(pi.ski, Q)
+		tk.Add(tk, pi.ski)
+		pi.pki = new(big.Int).Exp(G, pi.ski, Q)
+		cid.Add(cid, pi.x)
+	}
+	hk = new(big.Int).Exp(G, tk, Q)
+	cid.Mod(cid, Q)
+
+	a := HashBigInt(cid, hk)
+	A := new(big.Int).SetInt64(1)
+	for _, p := range ps {
+		p.ai = new(big.Int).Exp(a, p.k, Q)
+		A.Mul(A, p.ai)
+	}
+	A.Mod(A, Q)
+}
+
+func TestO(t *testing.T) {
+	pstr := `FFFFFFFFFFFFFFFFADF85458A2BB4A9AAFDC5620273D3CF1D8B9C583CE2D3695A9E13641146433FBCC939DCE249B3EF97D2FE363630C75D8F681B202AEC4617AD3DF1ED5D5FD65612433F51F5F066ED0856365553DED1AF3B557135E7F57C935984F0C70E0E68B77E2A689DAF3EFE8721DF158A136ADE73530ACCA4F483A797ABC0AB182B324FB61D108A94BB2C8E3FBB96ADAB760D7F4681D4F42A3DE394DF4AE56EDE76372BB190B07A7C8EE0A6D709E02FCE1CDF7E2ECC03404CD28342F619172FE9CE98583FF8E4F1232EEF28183C3FE3B1B4C6FAD733BB5FCBC2EC22005C58EF1837D1683B2C6F34A26C1B2EFFA886B423861285C97FFFFFFFFFFFFFFFF`
+	qstr := `7FFFFFFFFFFFFFFFD6FC2A2C515DA54D57EE2B10139E9E78EC5CE2C1E7169B4AD4F09B208A3219FDE649CEE7124D9F7CBE97F1B1B1863AEC7B40D901576230BD69EF8F6AEAFEB2B09219FA8FAF83376842B1B2AA9EF68D79DAAB89AF3FABE49ACC278638707345BBF15344ED79F7F4390EF8AC509B56F39A98566527A41D3CBD5E0558C159927DB0E88454A5D96471FDDCB56D5BB06BFA340EA7A151EF1CA6FA572B76F3B1B95D8C8583D3E4770536B84F017E70E6FBF176601A0266941A17B0C8B97F4E74C2C1FFC7278919777940C1E1FF1D8DA637D6B99DDAFE5E17611002E2C778C1BE8B41D96379A51360D977FD4435A11C30942E4BFFFFFFFFFFFFFFFF`
+	p, ok := new(big.Int).SetString(pstr, 16)
+	assert.True(t, ok)
+	fmt.Println(p)
+	fmt.Println(p.BitLen())
+	fmt.Println(p.ProbablyPrime(1000))
+	q, ok := new(big.Int).SetString(qstr, 16)
+	assert.True(t, ok)
+	fmt.Println(q.ProbablyPrime(1000))
 }
 
 func CreateParticipants(n, t int) []*Participant2 {
@@ -41,7 +108,7 @@ func CreateParticipants(n, t int) []*Participant2 {
 		participant := &Participant2{
 			poly:      &Polynomial{items: make(map[int]*big.Int)},
 			k:         randGen(Q),
-			f:         new(big.Int).SetInt64(0),
+			fnx:       new(big.Int).SetInt64(0),
 			auxiliary: new(big.Int).SetInt64(1),
 		}
 		participant.x = new(big.Int).Exp(G, participant.k, Q)
@@ -60,8 +127,8 @@ func CreateParticipants(n, t int) []*Participant2 {
 
 	for _, participantx := range participants {
 		for _, participanty := range participants {
-			participantx.f.Add(participantx.f, participanty.poly.calc(participantx.x))
-			participantx.f.Mod(participantx.f, Q)
+			participantx.fnx.Add(participantx.fnx, participanty.poly.calc(participantx.x))
+			participantx.fnx.Mod(participantx.fnx, Q)
 		}
 	}
 
@@ -82,7 +149,7 @@ func CreateParticipants(n, t int) []*Participant2 {
 	CID := new(big.Int).SetInt64(0)
 	_secretKey := new(big.Int).SetInt64(0)
 	for _, participant := range authorized {
-		m := new(big.Int).Mul(participant.f, participant.auxiliary)
+		m := new(big.Int).Mul(participant.fnx, participant.auxiliary)
 		m = m.Mod(m, Q)
 		participant.ski = m
 		participant.pki = new(big.Int).Exp(G, m, Q)
@@ -143,7 +210,7 @@ func CreateParticipants(n, t int) []*Participant2 {
 	_ = d1
 
 	s2 := new(big.Int).Mul(authorized[1].ski, ee)
-	s2.Add(s2, authorized[1].k)
+	s2.Mod(s2, Q)
 	d2 := new(big.Int).Exp(alpha, s2, Q)
 	_ = d2
 
@@ -196,6 +263,18 @@ func CreateParticipants(n, t int) []*Participant2 {
 	c.Mul(c, d3)
 	c.Mul(c, d4)
 	c.Mul(c, _A)
+	c.Mod(c, Q)
+
+	tt := new(big.Int).SetInt64(1)
+	for _, p := range authorized {
+		mp := new(big.Int).Exp(alpha, p.ski, Q)
+		tt.Mul(tt, mp)
+	}
+	tt.Mod(tt, Q)
+	tt.Exp(tt, ee, Q)
+
+	fmt.Println("c:", c)
+	fmt.Println("tt:", tt)
 
 	_r := &R{}
 	tmp := new(big.Int).Exp(alpha, ee, Q)
@@ -211,6 +290,14 @@ func CreateParticipants(n, t int) []*Participant2 {
 
 	fmt.Println("碰撞哈希值：", res.String())
 
+	ver := new(big.Int).Set(_r.val1)
+	for _, p := range authorized {
+		ver.Mul(ver, p.pki)
+		ver.Mod(ver, Q)
+	}
+
+	fmt.Println(ver.Cmp(_r.val2))
+
 	return participants
 }
 
@@ -218,21 +305,6 @@ func TestExample(t *testing.T) {
 	CreateParticipants(7, 4)
 
 	fmt.Println("---------------------------------")
-
-	seven := new(big.Int).SetInt64(9)
-	two := new(big.Int).SetInt64(5)
-	_two := calcInverseElem(two, seven)
-	//fmt.Println(_two)
-	//_ex := new(big.Int).SetInt64(-3)
-	ex := new(big.Int).SetInt64(6)
-
-	res1 := new(big.Int).Exp(_two, ex, seven)
-	res2 := new(big.Int).Exp(two, ex, seven)
-	res3 := new(big.Int).Mul(res1, res2)
-	res3.Mod(res3, seven)
-	fmt.Println(res3)
-
-	fmt.Println(len(Q.Bytes()))
 }
 
 func HashBigInt(vals ...*big.Int) *big.Int {
@@ -331,4 +403,27 @@ func TestName2(t *testing.T) {
 	num2 := new(big.Int).Set(calcInverseElem(num, pp))
 	res := new(big.Int).Mul(num2, num)
 	t.Log(res.Mod(res, pp))
+}
+
+func TestName(t *testing.T) {
+	q := new(big.Int).SetInt64(9)
+	alpha := new(big.Int).SetInt64(2)
+	s1 := new(big.Int).Add(new(big.Int).SetInt64(1), new(big.Int).SetInt64(2))
+	d1 := new(big.Int).Exp(alpha, s1, q)
+
+	s2 := new(big.Int).Add(new(big.Int).SetInt64(2), new(big.Int).SetInt64(3))
+	d2 := new(big.Int).Exp(alpha, s2, q)
+
+	X := new(big.Int).Exp(alpha, new(big.Int).Add(new(big.Int).SetInt64(2), new(big.Int).SetInt64(3)), q)
+	_X := calcInverseElem(X, q)
+
+	fmt.Println("X乘以X的逆：", new(big.Int).Mod(new(big.Int).Mul(X, _X), q))
+
+	c := new(big.Int).Mul(d1, d2)
+
+	c.Mod(c, q)
+
+	ver := new(big.Int).Mod(new(big.Int).Mul(c, _X), q)
+
+	fmt.Println("验证结果：", ver)
 }
