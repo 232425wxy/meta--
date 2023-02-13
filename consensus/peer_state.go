@@ -45,11 +45,11 @@ func (ps *PeerState) SetStep(step Step) {
 }
 
 func (ps *PeerState) SetPrepare(prepare *types.Prepare) {
-	ps.prepare = prepare.Block.Header.Hash
+	ps.prepare = prepare.Block.Header.BlockDataHash
 }
 
 func (ps *PeerState) HasPrepare(prepare *types.Prepare) bool {
-	return bytes.Equal(ps.prepare, prepare.Block.Header.Hash)
+	return bytes.Equal(ps.prepare, prepare.Block.Header.BlockDataHash)
 }
 
 func (ps *PeerState) SetPreCommit(preCommit *types.PreCommit) {

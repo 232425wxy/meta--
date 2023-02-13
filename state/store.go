@@ -122,14 +122,15 @@ func (sb *StoreBlock) LoadBlockByHeight(height int64) *types.Block {
 	pb := &pbtypes.Block{}
 	bz, err := sb.db.Get(calcBlockHeightKey(height))
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	if err = proto.Unmarshal(bz, pb); err != nil {
-		panic(err)
+		return nil
 	}
 	block := &types.Block{
-		Header: types.HeaderFromProto(pb.Header),
-		Body:   types.DataFromProto(pb.Body),
+		Header:        types.HeaderFromProto(pb.Header),
+		Body:          types.DataFromProto(pb.Body),
+		ChameleonHash: types.ChameleonHashFromProto(pb.ChameleonHash),
 	}
 	return block
 }

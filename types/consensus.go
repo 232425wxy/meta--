@@ -61,11 +61,11 @@ func NewPrepare(height int64, block *Block, id crypto.ID, privateKey *bls12.Priv
 		Block:     block,
 		Timestamp: time.Now(),
 	}
-	if len(block.Header.Hash) == 0 {
+	if len(block.Header.BlockDataHash) == 0 {
 		panic("block's hash is empty")
 	}
 	hash := sha256.Hash{}
-	copy(hash[:], block.Header.Hash)
+	copy(hash[:], block.Header.BlockDataHash)
 	var err error
 	p.Signature, err = privateKey.Sign(hash)
 	if err != nil {

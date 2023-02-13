@@ -11,7 +11,10 @@ import (
 )
 
 type Task struct {
-	Height int64
+	Block   *types.Block
+	TxIndex int
+	Key     []byte
+	Value   []byte
 }
 
 type polynomial struct {
@@ -30,18 +33,20 @@ func (p *polynomial) calculate(x, q *big.Int) *big.Int {
 }
 
 type Chameleon struct {
-	k            *big.Int
-	x            *big.Int
-	fn           *polynomial
-	fnX          *big.Int
-	sk           *big.Int // 节点自己的私钥
-	pk           *big.Int // 节点自己的公钥
-	n            int      // 分布式成员数量
-	participants *ParticipantSet
-	hk           *big.Int // 变色龙哈希函数的公钥
-	cid          *big.Int
-	alpha        *big.Int
-	mu           sync.Mutex
+	k               *big.Int
+	x               *big.Int
+	fn              *polynomial
+	fnX             *big.Int
+	sk              *big.Int // 节点自己的私钥
+	pk              *big.Int // 节点自己的公钥
+	n               int      // 分布式成员数量
+	participants    *ParticipantSet
+	hk              *big.Int // 变色龙哈希函数的公钥
+	cid             *big.Int
+	alpha           *big.Int
+	redactTaskChan  chan *Task
+	redactAvailable bool
+	mu              sync.Mutex
 }
 
 func NewChameleon(n int) *Chameleon {
@@ -54,6 +59,7 @@ func NewChameleon(n int) *Chameleon {
 	ch.fnX = ch.fn.calculate(ch.x, q)
 	ch.hk = new(big.Int).SetInt64(1)
 	ch.cid = new(big.Int).SetInt64(0)
+	ch.redactTaskChan = make(chan *Task, 1)
 	return ch
 }
 
@@ -182,14 +188,25 @@ func (ch *Chameleon) calculateHKAndCID(q *big.Int) {
 }
 
 func (ch *Chameleon) Hash(block *types.Block) {
-	blockDataHash := block.Hash()
+	blockDataHash := block.BlockDataHash()
 	if block.ChameleonHash == nil {
 		block.ChameleonHash = &types.ChameleonHash{}
 	}
 	sigma := new(big.Int).SetBytes(blockDataHash)
 	block.ChameleonHash.GSigma = new(big.Int).Exp(g, sigma, q)
-	fmt.Println(block.ChameleonHash.HKSigma)
 	block.ChameleonHash.HKSigma = new(big.Int).Exp(ch.hk, sigma, q)
 	block.ChameleonHash.Alpha = ch.alpha
 	block.ChameleonHash.Hash = new(big.Int).Mul(block.ChameleonHash.GSigma, new(big.Int).Exp(block.ChameleonHash.Alpha, sigma, q)).Bytes()
+}
+
+func (ch *Chameleon) AppendRedactTask(task *Task) {
+	select {
+	case ch.redactTaskChan <- task:
+		ch.redactAvailable = true
+	default:
+		go func() {
+			ch.redactTaskChan <- task
+			ch.redactAvailable = true
+		}()
+	}
 }

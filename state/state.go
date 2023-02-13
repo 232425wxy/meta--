@@ -20,6 +20,7 @@ type State struct {
 	PreviousBlock   *types.Block
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
+	BlockStore      *StoreBlock
 	Chameleon       *stch.Chameleon
 }
 
@@ -35,6 +36,10 @@ func (s *State) Copy() *State {
 
 func (s *State) SetChameleon(ch *stch.Chameleon) {
 	s.Chameleon = ch
+}
+
+func (s *State) SetBlockStore(store *StoreBlock) {
+	s.BlockStore = store
 }
 
 func (s *State) MakeBlock(height int64, txs []types.Tx, proposer crypto.ID, lastBlockHash []byte) *types.Block {
@@ -101,5 +106,12 @@ func (s *State) IsEmpty() bool {
 }
 
 func (s *State) RedactBlock(height int64, txIndex int, key, value []byte) {
-
+	block := s.BlockStore.LoadBlockByHeight(height)
+	task := &stch.Task{
+		Block:   block,
+		TxIndex: txIndex,
+		Key:     key,
+		Value:   value,
+	}
+	s.Chameleon.AppendRedactTask(task)
 }

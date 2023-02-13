@@ -20,10 +20,16 @@ message PublicKeySeg {
   bytes public_key = 2;
 }
 
+message SchnorrSig {
+  bytes s = 1;
+  bytes d = 2;
+}
+
 message Message {
   oneof data {
     IdentityX identity_x = 1;
     FnX Fnx = 2;
     PublicKeySeg PublicKeySeg = 3;
+    SchnorrSig SchnorrSig = 4;
   }
 }

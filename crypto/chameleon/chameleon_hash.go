@@ -71,10 +71,10 @@ func run() {
 	s1 := randGen(Q)
 	message1 := []byte("太难了！")
 	h := Hash(message1, r1, s1)
-	fmt.Println("origin Hash value:", h)
+	fmt.Println("origin BlockDataHash value:", h)
 
 	message2 := []byte("给我成！")
 	r2, s2 := Forge(h, message2)
 	newHash := Hash(message2, r2, s2)
-	fmt.Println("current Hash value:", newHash)
+	fmt.Println("current BlockDataHash value:", newHash)
 }

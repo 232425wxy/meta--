@@ -14,6 +14,7 @@ import (
 
 type BlockExecutor struct {
 	store          *StoreState
+	blockStore     *StoreBlock
 	proxyConsensus *proxy.AppConnConsensus
 	txsPool        *txspool.TxsPool
 	eventBus       *events.EventBus
@@ -21,9 +22,10 @@ type BlockExecutor struct {
 	logger         log.Logger
 }
 
-func NewBlockExecutor(cfg *config.Config, store *StoreState, consensus *proxy.AppConnConsensus, txsPool *txspool.TxsPool, logger log.Logger) *BlockExecutor {
+func NewBlockExecutor(cfg *config.Config, store *StoreState, blockStore *StoreBlock, consensus *proxy.AppConnConsensus, txsPool *txspool.TxsPool, logger log.Logger) *BlockExecutor {
 	return &BlockExecutor{
 		store:          store,
+		blockStore:     blockStore,
 		proxyConsensus: consensus,
 		txsPool:        txsPool,
 		cfg:            cfg.TxsPoolConfig,
@@ -45,6 +47,7 @@ func (be *BlockExecutor) ApplyBlock(state *State, block *types.Block) (*State, e
 	if err != nil {
 		return state, err
 	}
+	be.blockStore.SaveBlock(block)
 	be.txsPool.Lock()
 	defer be.txsPool.Unlock()
 	// TODO 这里直接将区块里的交易数据从交易池里删除了

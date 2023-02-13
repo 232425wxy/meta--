@@ -6,7 +6,7 @@ import (
 	"github.com/232425wxy/meta--/log"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"math/rand"
+	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
@@ -60,60 +60,48 @@ func TestCreateAndStartNode(t *testing.T) {
 
 	time.Sleep(time.Second * 4)
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 200; i++ {
 		tx := []byte(fmt.Sprintf("number=%d", i))
 		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
 		assert.Nil(t, err)
 		time.Sleep(time.Millisecond * 2)
 	}
 
-	time.Sleep(time.Second * 5)
-	fmt.Println("第二阶段...")
-	for i := 0; i < 5; i++ {
-		tx := []byte(fmt.Sprintf("number=%d", i+1000))
-		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
-		assert.Nil(t, err)
-		time.Sleep(time.Second * 2)
-	}
+	//time.Sleep(time.Second * 5)
+	//fmt.Println("第二阶段...")
+	//for i := 0; i < 5; i++ {
+	//	tx := []byte(fmt.Sprintf("number=%d", i+1000))
+	//	err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
+	//	assert.Nil(t, err)
+	//	time.Sleep(time.Second * 2)
+	//}
 
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 6)
 
-	fmt.Println("第三阶段...")
-	for i := 0; i < 3; i++ {
-		tx := []byte(fmt.Sprintf("number=%d", i+1005))
-		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
-		assert.Nil(t, err)
-		time.Sleep(time.Second * 3)
-	}
-	time.Sleep(time.Second * 10)
-	fmt.Println("第四阶段...")
-	for i := 0; i < 2; i++ {
-		tx := []byte(fmt.Sprintf("number=%d", i+1008))
-		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
-		assert.Nil(t, err)
-		time.Sleep(time.Second * 4)
-	}
+	nodes[0].State().RedactBlock(2, 3, []byte("学校"), []byte("信息工程大学"))
+
+	//fmt.Println("第三阶段...")
+	//for i := 0; i < 3; i++ {
+	//	tx := []byte(fmt.Sprintf("number=%d", i+1005))
+	//	err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
+	//	assert.Nil(t, err)
+	//	time.Sleep(time.Second * 3)
+	//}
+	//time.Sleep(time.Second * 10)
+	//fmt.Println("第四阶段...")
+	//for i := 0; i < 2; i++ {
+	//	tx := []byte(fmt.Sprintf("number=%d", i+1008))
+	//	err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
+	//	assert.Nil(t, err)
+	//	time.Sleep(time.Second * 4)
+	//}
 
 	select {}
 }
 
 func TestSelect(t *testing.T) {
-	channel := make(chan int)
-	c := make(chan struct{})
-	go func() {
-		for i := 0; i < 4; i++ {
-			channel <- i + 100
-			time.Sleep(time.Second * time.Duration(rand.Intn(4)))
-		}
-	}()
-
-	for {
-		fmt.Println("ee")
-		select {
-		case num := <-channel:
-			t.Log(num)
-		case <-c:
-
-		}
-	}
+	x := new(big.Int).SetInt64(-100)
+	fmt.Println(x.String())
+	x.Neg(x)
+	fmt.Println(x.String())
 }

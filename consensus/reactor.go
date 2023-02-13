@@ -241,3 +241,7 @@ func (r *Reactor) broadcastNewStep(step *events.EventDataNewStep) {
 	bz := events.MustEncode(step)
 	r.Switch.Broadcast(p2p.ReplicaStateChannel, bz)
 }
+
+func (r *Reactor) State() *state.State {
+	return r.core.state
+}

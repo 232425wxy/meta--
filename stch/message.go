@@ -37,9 +37,7 @@ func IdentityXFromProto(pb *pbstch.IdentityX) *IdentityX {
 	}
 }
 
-func (ix *IdentityX) ChameleonFn() {
-
-}
+func (ix *IdentityX) ChameleonFn() {}
 
 type FnX struct {
 	From crypto.ID
@@ -69,9 +67,7 @@ func FnXFromProto(pb *pbstch.FnX) *FnX {
 	}
 }
 
-func (fx *FnX) ChameleonFn() {
-
-}
+func (fx *FnX) ChameleonFn() {}
 
 type PublicKeySeg struct {
 	From      crypto.ID
@@ -98,9 +94,34 @@ func PublicKeySegFromProto(pb *pbstch.PublicKeySeg) *PublicKeySeg {
 	}
 }
 
-func (pks *PublicKeySeg) ChameleonFn() {
+func (pks *PublicKeySeg) ChameleonFn() {}
 
+type SchnorrSig struct {
+	S *big.Int
+	D *big.Int
 }
+
+func (ss *SchnorrSig) ToProto() *pbstch.SchnorrSig {
+	if ss == nil {
+		return nil
+	}
+	return &pbstch.SchnorrSig{
+		S: ss.S.Bytes(),
+		D: ss.D.Bytes(),
+	}
+}
+
+func SchnorrSigFromProto(pb *pbstch.SchnorrSig) *SchnorrSig {
+	if pb == nil {
+		return nil
+	}
+	return &SchnorrSig{
+		S: new(big.Int).SetBytes(pb.S),
+		D: new(big.Int).SetBytes(pb.D),
+	}
+}
+
+func (ss *SchnorrSig) ChameleonFn() {}
 
 ///////////////////////////////////////////////
 
@@ -116,6 +137,8 @@ func MustEncode(message Message) []byte {
 		pb.Data = &pbstch.Message_Fnx{Fnx: msg.ToProto()}
 	case *PublicKeySeg:
 		pb.Data = &pbstch.Message_PublicKeySeg{PublicKeySeg: msg.ToProto()}
+	case *SchnorrSig:
+		pb.Data = &pbstch.Message_SchnorrSig{SchnorrSig: msg.ToProto()}
 	default:
 		panic(fmt.Sprintf("unknown message type: %T", msg))
 	}
@@ -142,6 +165,8 @@ func MustDecode(bz []byte) (msg Message) {
 		msg = FnXFromProto(data.Fnx)
 	case *pbstch.Message_PublicKeySeg:
 		msg = PublicKeySegFromProto(data.PublicKeySeg)
+	case *pbstch.Message_SchnorrSig:
+		msg = SchnorrSigFromProto(data.SchnorrSig)
 	default:
 		panic(fmt.Sprintf("unknown message type: %T", data))
 	}

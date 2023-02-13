@@ -63,18 +63,18 @@ func (b *Block) ValidateBasic() error {
 	return nil
 }
 
-// Hash
+// BlockDataHash
 // 计算区块的哈希值
 // TODO 将来换成变色龙哈希
-func (b *Block) Hash() []byte {
+func (b *Block) BlockDataHash() []byte {
 	h := sha256.New()
 	h.Write(b.Header.PreviousBlockHash)
 	h.Write([]byte(fmt.Sprintf("%d", b.Header.Height)))
 	h.Write([]byte(b.Header.Timestamp.String()))
 	h.Write([]byte(b.Header.Proposer))
 	h.Write(b.Body.RootHash)
-	b.Header.Hash = h.Sum(nil)
-	return b.Header.Hash
+	b.Header.BlockDataHash = h.Sum(nil)
+	return b.Header.BlockDataHash
 }
 
 func (b *Block) ToProto() *pbtypes.Block {
@@ -106,7 +106,7 @@ func (b *Block) String() string {
 		return "Block{nil}"
 	}
 	str := fmt.Sprintf("Block{\n\tHeader{\n\t\tPreviousBlockHash: %x\n\t\tHash: %x\n\t\tHeight: %d\n\t\tTimestamp: %s\n\t\tProposer: %s\n\t}\n\tBody{\n\t\tRootHash: %x\n\t\tTxsNum: %d\n\t}\n\tChameleonHash{\n\t\tGSigma: %x\n\t\tHKSigma: %x\n\t\tAlpha: %x\n\t\tHash: %x\n\t}\n}",
-		b.Header.PreviousBlockHash, b.Header.Hash, b.Header.Height, b.Header.Timestamp.Format(time.RFC3339), b.Header.Proposer, b.Body.RootHash, len(b.Body.Txs), b.ChameleonHash.GSigma.Bytes(), b.ChameleonHash.HKSigma.Bytes(), b.ChameleonHash.Alpha.Bytes(), b.ChameleonHash.Hash)
+		b.Header.PreviousBlockHash, b.Header.BlockDataHash, b.Header.Height, b.Header.Timestamp.Format(time.RFC3339), b.Header.Proposer, b.Body.RootHash, len(b.Body.Txs), b.ChameleonHash.GSigma.Bytes(), b.ChameleonHash.HKSigma.Bytes(), b.ChameleonHash.Alpha.Bytes(), b.ChameleonHash.Hash)
 	return str
 }
 
@@ -140,7 +140,7 @@ type CommitBlock struct {
 
 type Header struct {
 	PreviousBlockHash []byte    `json:"previous_block_hash"`
-	Hash              []byte    `json:"hash"` // 当前区块哈希
+	BlockDataHash     []byte    `json:"block_data_hash"`
 	Height            int64     `json:"height"`
 	Timestamp         time.Time `json:"timestamp"`
 	Proposer          crypto.ID `json:"proposer"`
@@ -152,7 +152,7 @@ func (h *Header) ToProto() *pbtypes.Header {
 	}
 	return &pbtypes.Header{
 		PreviousBlockHash: h.PreviousBlockHash,
-		Hash:              h.Hash,
+		BlockDataHash:     h.BlockDataHash,
 		Height:            h.Height,
 		Timestamp:         h.Timestamp,
 		Proposer:          string(h.Proposer),
@@ -165,7 +165,7 @@ func HeaderFromProto(pb *pbtypes.Header) *Header {
 	}
 	return &Header{
 		PreviousBlockHash: pb.PreviousBlockHash,
-		Hash:              pb.Hash,
+		BlockDataHash:     pb.BlockDataHash,
 		Height:            pb.Height,
 		Timestamp:         pb.Timestamp,
 		Proposer:          crypto.ID(pb.Proposer),

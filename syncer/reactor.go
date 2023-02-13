@@ -224,7 +224,7 @@ LOOP:
 			} else {
 				didProcessCh <- struct{}{}
 			}
-			if !bytes.Equal(second.Header.PreviousBlockHash, first.Header.Hash) {
+			if !bytes.Equal(second.Header.PreviousBlockHash, first.Header.BlockDataHash) {
 				peerID1 := r.chain.RedoRequest(first.Header.Height)
 				if p := r.Switch.Peers().GetPeer(peerID1); p != nil {
 					r.Switch.StopPeerForError(p, fmt.Errorf("provide invalid blocks"))

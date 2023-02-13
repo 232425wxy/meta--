@@ -63,10 +63,10 @@ func DefaultTxsPoolProvider(cfg *config.Config, proxyAppConn *proxy.AppConns, st
 	return pool, reactor
 }
 
-type ConsensusProvider func(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, privateKey *bls12.PrivateKey, bls *bls12.CryptoBLS12, logger log.Logger) (*consensus.Core, *consensus.Reactor)
+type ConsensusProvider func(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, txsPool *txspool.TxsPool, privateKey *bls12.PrivateKey, bls *bls12.CryptoBLS12, logger log.Logger) (*consensus.Core, *consensus.Reactor)
 
-func DefaultConsensusProvider(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, blockStore *state.StoreBlock, txsPool *txspool.TxsPool, privateKey *bls12.PrivateKey, bls *bls12.CryptoBLS12, logger log.Logger) (*consensus.Core, *consensus.Reactor) {
-	core := consensus.NewCore(cfg.ConsensusConfig, privateKey, stat, exec, blockStore, txsPool, bls)
+func DefaultConsensusProvider(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, txsPool *txspool.TxsPool, privateKey *bls12.PrivateKey, bls *bls12.CryptoBLS12, logger log.Logger) (*consensus.Core, *consensus.Reactor) {
+	core := consensus.NewCore(cfg.ConsensusConfig, privateKey, stat, exec, txsPool, bls)
 	core.SetLogger(logger.New("module", "Consensus"))
 	reactor := consensus.NewReactor(core)
 	reactor.SetLogger(logger.New("module", "Consensus_Reactor"))
@@ -199,15 +199,16 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	txsPool, txsPoolReactor := provider.TxspoolProvider(cfg, proxyAppConns, stat, logger)
 	txsPool.SetLogger(logger)
 
-	blockExec := state.NewBlockExecutor(cfg, stateStore, proxyAppConns.Consensus(), txsPool, logger.New("module", "state"))
+	blockExec := state.NewBlockExecutor(cfg, stateStore, blockStore, proxyAppConns.Consensus(), txsPool, logger.New("module", "state"))
 
-	consensusCore, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, blockStore, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger)
+	consensusCore, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger)
 	consensusCore.SetEventBus(eventBus)
 
 	syncerReactor := provider.SyncerProvider(stat, blockExec, blockStore, logger)
 
 	stchReactor := provider.STCHProvider(len(cfg.P2PConfig.NeighboursSlice()), logger)
 	stat.SetChameleon(stchReactor.Chameleon())
+	stat.SetBlockStore(blockStore)
 	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, syncerReactor, stchReactor, logger)
 
 	addrBook := p2p.NewAddrBook(cfg.P2PConfig.AddrBookPath())
@@ -257,4 +258,8 @@ func (n *Node) Start() error {
 
 	n.sw.DialPeerAsync(n.cfg.P2PConfig.NeighboursSlice())
 	return n.BaseService.Start()
+}
+
+func (n *Node) State() *state.State {
+	return n.consensusReactor.State()
 }
