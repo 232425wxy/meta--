@@ -57,45 +57,40 @@ func TestCreateAndStartNode(t *testing.T) {
 		go func(i int) { assert.Nil(t, nodes[i].Start()) }(i)
 	}
 
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 6)
 
-	tx := []byte(fmt.Sprintf("number=%d", 1))
-	err := nodes[1%4].txsPool.CheckTx(tx, nodes[1%4].nodeInfo.ID())
-	assert.Nil(t, err)
-	//time.Sleep(time.Millisecond * 2)
+	for i := 0; i < 200; i++ {
+		tx := []byte(fmt.Sprintf("number=%d", i))
+		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
+		assert.Nil(t, err)
+		time.Sleep(time.Millisecond * 1)
+	}
 
-	time.Sleep(time.Second * 5)
-	//fmt.Println("第二阶段...")
-	//for i := 0; i < 5; i++ {
-	//	tx := []byte(fmt.Sprintf("number=%d", i+1000))
-	//	err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
-	//	assert.Nil(t, err)
-	//	time.Sleep(time.Second * 2)
-	//}
+	time.Sleep(time.Second * 10)
 
 	fmt.Println("修改前")
 	for _, n := range nodes {
-		fmt.Println(n.blockStore.LoadBlockByHeight(1))
+		fmt.Println(n.blockStore.LoadBlockByHeight(2))
 	}
 
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 10)
 
-	nodes[0].State().RedactBlock(1, 0, []byte("学校"), []byte("信息工程大学"))
+	nodes[0].State().RedactBlock(2, 0, []byte("学校"), []byte("信息工程大学"))
 
 	time.Sleep(time.Second * 4)
 
 	fmt.Println("修改后")
 	for _, n := range nodes {
-		fmt.Println(n.blockStore.LoadBlockByHeight(1))
+		fmt.Println(n.blockStore.LoadBlockByHeight(2))
 	}
 
-	nodes[0].State().RedactBlock(1, 0, []byte("学校"), []byte("西北工业大学"))
+	nodes[0].State().RedactBlock(2, 0, []byte("学校"), []byte("西北工业大学"))
 
-	time.Sleep(time.Second * 4)
+	time.Sleep(time.Second * 10)
 
 	fmt.Println("再次修改后")
 	for _, n := range nodes {
-		fmt.Println(n.blockStore.LoadBlockByHeight(1))
+		fmt.Println(n.blockStore.LoadBlockByHeight(2))
 	}
 
 	//fmt.Println("第三阶段...")
