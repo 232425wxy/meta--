@@ -7,13 +7,13 @@ import (
 	"github.com/232425wxy/meta--/common/service"
 	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/consensus"
+	state2 "github.com/232425wxy/meta--/consensus/state"
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/database"
 	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/p2p"
 	"github.com/232425wxy/meta--/proxy"
-	"github.com/232425wxy/meta--/state"
 	"github.com/232425wxy/meta--/stch"
 	"github.com/232425wxy/meta--/store"
 	"github.com/232425wxy/meta--/syncer"
@@ -55,18 +55,18 @@ func DefaultApplicationProvider(cfg *config.Config) abci.Application {
 	return app
 }
 
-type TxspoolProvider func(cfg *config.Config, proxyAppConn *proxy.AppConns, state *state.State, logger log.Logger) (*txspool.TxsPool, *txspool.Reactor)
+type TxspoolProvider func(cfg *config.Config, proxyAppConn *proxy.AppConns, state *state2.State, logger log.Logger) (*txspool.TxsPool, *txspool.Reactor)
 
-func DefaultTxsPoolProvider(cfg *config.Config, proxyAppConn *proxy.AppConns, state *state.State, logger log.Logger) (*txspool.TxsPool, *txspool.Reactor) {
+func DefaultTxsPoolProvider(cfg *config.Config, proxyAppConn *proxy.AppConns, state *state2.State, logger log.Logger) (*txspool.TxsPool, *txspool.Reactor) {
 	pool := txspool.NewTxsPool(cfg.TxsPoolConfig, proxyAppConn.TxsPool(), state.LastBlockHeight)
 	reactor := txspool.NewReactor(cfg.TxsPoolConfig, pool)
 	reactor.SetLogger(logger.New("module", "TxsPool"))
 	return pool, reactor
 }
 
-type ConsensusProvider func(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, txsPool *txspool.TxsPool, privateKey *bls12.PrivateKey, bls *bls12.CryptoBLS12, logger log.Logger) (*consensus.Core, *consensus.Reactor)
+type ConsensusProvider func(cfg *config.Config, stat *state2.State, exec *state2.BlockExecutor, txsPool *txspool.TxsPool, privateKey *bls12.PrivateKey, bls *bls12.CryptoBLS12, logger log.Logger) (*consensus.Core, *consensus.Reactor)
 
-func DefaultConsensusProvider(cfg *config.Config, stat *state.State, exec *state.BlockExecutor, txsPool *txspool.TxsPool, privateKey *bls12.PrivateKey, bls *bls12.CryptoBLS12, logger log.Logger) (*consensus.Core, *consensus.Reactor) {
+func DefaultConsensusProvider(cfg *config.Config, stat *state2.State, exec *state2.BlockExecutor, txsPool *txspool.TxsPool, privateKey *bls12.PrivateKey, bls *bls12.CryptoBLS12, logger log.Logger) (*consensus.Core, *consensus.Reactor) {
 	core := consensus.NewCore(cfg.ConsensusConfig, privateKey, stat, exec, txsPool, bls)
 	core.SetLogger(logger.New("module", "Consensus"))
 	reactor := consensus.NewReactor(core)
@@ -91,9 +91,9 @@ func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p
 	return transport, sw
 }
 
-type SyncerProvider func(stat *state.State, blockExec *state.BlockExecutor, blockStore *store.BlockStore, logger log.Logger) *syncer.Reactor
+type SyncerProvider func(stat *state2.State, blockExec *state2.BlockExecutor, blockStore *store.BlockStore, logger log.Logger) *syncer.Reactor
 
-func DefaultSyncerProvider(stat *state.State, blockExec *state.BlockExecutor, blockStore *store.BlockStore, logger log.Logger) *syncer.Reactor {
+func DefaultSyncerProvider(stat *state2.State, blockExec *state2.BlockExecutor, blockStore *store.BlockStore, logger log.Logger) *syncer.Reactor {
 	reactor := syncer.NewReactor(stat, blockExec, blockStore, logger.New("module", "Syncer"))
 	return reactor
 }
@@ -141,7 +141,7 @@ type Node struct {
 	nodeInfo   *p2p.NodeInfo
 	nodeKey    *p2p.NodeKey
 	eventBUs   *events.EventBus
-	stateStore *state.StoreState
+	stateStore *state2.StoreState
 	blockStore *store.BlockStore
 	txsPool    *txspool.TxsPool
 
@@ -171,7 +171,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	if err != nil {
 		return nil, err
 	}
-	stateStore := state.NewStoreState(stateDB)
+	stateStore := state2.NewStoreState(stateDB)
 
 	genesis, err := provider.GenesisProvider(cfg)
 	if err != nil {
@@ -200,7 +200,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	txsPool, txsPoolReactor := provider.TxspoolProvider(cfg, proxyAppConns, stat, logger)
 	txsPool.SetLogger(logger)
 
-	blockExec := state.NewBlockExecutor(cfg, stateStore, blockStore, proxyAppConns.Consensus(), txsPool, logger.New("module", "state"))
+	blockExec := state2.NewBlockExecutor(cfg, stateStore, blockStore, proxyAppConns.Consensus(), txsPool, logger.New("module", "state"))
 
 	consensusCore, consensusReactor := provider.ConsensusProvider(cfg, stat, blockExec, txsPool, nodeKey.PrivateKey, nodeInfo.CryptoBLS12, logger)
 	consensusCore.SetEventBus(eventBus)
@@ -262,6 +262,6 @@ func (n *Node) Start() error {
 	return n.BaseService.Start()
 }
 
-func (n *Node) State() *state.State {
+func (n *Node) State() *state2.State {
 	return n.consensusReactor.State()
 }

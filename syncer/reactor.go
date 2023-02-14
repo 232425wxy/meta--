@@ -3,10 +3,10 @@ package syncer
 import (
 	"bytes"
 	"fmt"
+	state2 "github.com/232425wxy/meta--/consensus/state"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/p2p"
 	"github.com/232425wxy/meta--/proto/pbsyncer"
-	"github.com/232425wxy/meta--/state"
 	"github.com/232425wxy/meta--/store"
 	"github.com/232425wxy/meta--/types"
 	"time"
@@ -14,15 +14,15 @@ import (
 
 type Reactor struct {
 	p2p.BaseReactor
-	initialState  *state.State
-	blockExecutor *state.BlockExecutor
+	initialState  *state2.State
+	blockExecutor *state2.BlockExecutor
 	blockStore    *store.BlockStore
 	chain         *Blockchain
 	requestsCh    chan BlockRequest
 	errorsCh      chan peerError
 }
 
-func NewReactor(stat *state.State, blockExecutor *state.BlockExecutor, blockStore *store.BlockStore, logger log.Logger) *Reactor {
+func NewReactor(stat *state2.State, blockExecutor *state2.BlockExecutor, blockStore *store.BlockStore, logger log.Logger) *Reactor {
 	if stat.LastBlockHeight != blockStore.Height() {
 		panic(fmt.Sprintf("state height %d and store height %d mismatch", stat.LastBlockHeight, blockStore.Height()))
 	}
@@ -252,7 +252,7 @@ LOOP:
 }
 
 type consensusReactor interface {
-	SwitchToConsensus(stat *state.State)
+	SwitchToConsensus(stat *state2.State)
 }
 
 // for test

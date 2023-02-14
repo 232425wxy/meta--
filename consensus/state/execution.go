@@ -8,7 +8,7 @@ import (
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbabci"
 	"github.com/232425wxy/meta--/proxy"
-	store "github.com/232425wxy/meta--/store"
+	"github.com/232425wxy/meta--/store"
 	"github.com/232425wxy/meta--/txspool"
 	"github.com/232425wxy/meta--/types"
 )

@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"github.com/232425wxy/meta--/common/service"
 	"github.com/232425wxy/meta--/config"
+	state2 "github.com/232425wxy/meta--/consensus/state"
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbtypes"
-	"github.com/232425wxy/meta--/state"
 	"github.com/232425wxy/meta--/txspool"
 	"github.com/232425wxy/meta--/types"
 	"sync"
@@ -26,9 +26,9 @@ type Core struct {
 	cfg                 *config.ConsensusConfig
 	privateKey          *bls12.PrivateKey // 为共识消息签名的私钥
 	publicKey           *bls12.PublicKey
-	id                  crypto.ID            // 自己的节点ID
-	blockExec           *state.BlockExecutor // 创建区块和执行区块里的交易指令
-	state               *state.State
+	id                  crypto.ID             // 自己的节点ID
+	blockExec           *state2.BlockExecutor // 创建区块和执行区块里的交易指令
+	state               *state2.State
 	txsPool             *txspool.TxsPool
 	hasTxs              bool // hasTxs与交易池里的notifiedAvailable相互配合，保证主节点不会错失有交易数据到来的信号
 	eventBus            *events.EventBus
@@ -44,7 +44,7 @@ type Core struct {
 	cryptoBLS12         *bls12.CryptoBLS12
 }
 
-func NewCore(cfg *config.ConsensusConfig, privateKey *bls12.PrivateKey, state *state.State, blockExec *state.BlockExecutor, txsPool *txspool.TxsPool, cryptoBLS12 *bls12.CryptoBLS12) *Core {
+func NewCore(cfg *config.ConsensusConfig, privateKey *bls12.PrivateKey, state *state2.State, blockExec *state2.BlockExecutor, txsPool *txspool.TxsPool, cryptoBLS12 *bls12.CryptoBLS12) *Core {
 	core := &Core{
 		BaseService:         *service.NewBaseService(nil, "Consensus_Core"),
 		cfg:                 cfg,

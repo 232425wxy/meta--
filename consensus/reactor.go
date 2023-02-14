@@ -2,9 +2,9 @@ package consensus
 
 import (
 	"fmt"
+	"github.com/232425wxy/meta--/consensus/state"
 	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/p2p"
-	"github.com/232425wxy/meta--/state"
 	"github.com/232425wxy/meta--/types"
 	"sync"
 )
