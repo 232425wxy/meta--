@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12"
+	"github.com/232425wxy/meta--/crypto/merkle"
 	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/proto/pbtypes"
 	"math/big"
@@ -53,6 +54,36 @@ type Block struct {
 	ChameleonHash *ChameleonHash `json:"chameleon_hash"`
 }
 
+func (b *Block) Copy() *Block {
+	if b == nil {
+		return nil
+	}
+	cp := &Block{
+		Header: &Header{
+			PreviousBlockHash: b.Header.PreviousBlockHash,
+			BlockDataHash:     b.Header.BlockDataHash,
+			Height:            b.Header.Height,
+			Timestamp:         b.Header.Timestamp,
+			Proposer:          b.Header.Proposer,
+		},
+		Body: &Data{
+			RootHash: b.Body.RootHash,
+			Txs:      make(Txs, len(b.Body.Txs)),
+		},
+		ChameleonHash: &ChameleonHash{
+			GSigma:  new(big.Int).Set(b.ChameleonHash.GSigma),
+			HKSigma: new(big.Int).Set(b.ChameleonHash.HKSigma),
+			Alpha:   new(big.Int).Set(b.ChameleonHash.Alpha),
+			Hash:    b.ChameleonHash.Hash,
+		},
+	}
+	for i, tx := range b.Body.Txs {
+		cp.Body.Txs[i] = tx
+	}
+
+	return cp
+}
+
 func (b *Block) ValidateBasic() error {
 	if b == nil {
 		return errors.New("nil block")
@@ -72,6 +103,11 @@ func (b *Block) BlockDataHash() []byte {
 	h.Write([]byte(fmt.Sprintf("%d", b.Header.Height)))
 	h.Write([]byte(b.Header.Timestamp.String()))
 	h.Write([]byte(b.Header.Proposer))
+	_txs := make([][]byte, len(b.Body.Txs))
+	for i, tx := range b.Body.Txs {
+		_txs[i] = tx
+	}
+	b.Body.RootHash = merkle.ComputeMerkleRoot(_txs)
 	h.Write(b.Body.RootHash)
 	b.Header.BlockDataHash = h.Sum(nil)
 	return b.Header.BlockDataHash

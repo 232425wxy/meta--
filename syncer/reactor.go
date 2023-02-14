@@ -7,6 +7,7 @@ import (
 	"github.com/232425wxy/meta--/p2p"
 	"github.com/232425wxy/meta--/proto/pbsyncer"
 	"github.com/232425wxy/meta--/state"
+	"github.com/232425wxy/meta--/store"
 	"github.com/232425wxy/meta--/types"
 	"time"
 )
@@ -15,13 +16,13 @@ type Reactor struct {
 	p2p.BaseReactor
 	initialState  *state.State
 	blockExecutor *state.BlockExecutor
-	blockStore    *state.StoreBlock
+	blockStore    *store.BlockStore
 	chain         *Blockchain
 	requestsCh    chan BlockRequest
 	errorsCh      chan peerError
 }
 
-func NewReactor(stat *state.State, blockExecutor *state.BlockExecutor, blockStore *state.StoreBlock, logger log.Logger) *Reactor {
+func NewReactor(stat *state.State, blockExecutor *state.BlockExecutor, blockStore *store.BlockStore, logger log.Logger) *Reactor {
 	if stat.LastBlockHeight != blockStore.Height() {
 		panic(fmt.Sprintf("state height %d and store height %d mismatch", stat.LastBlockHeight, blockStore.Height()))
 	}
@@ -256,6 +257,6 @@ type consensusReactor interface {
 
 // for test
 
-func (r *Reactor) BlockStore() *state.StoreBlock {
+func (r *Reactor) BlockStore() *store.BlockStore {
 	return r.blockStore
 }

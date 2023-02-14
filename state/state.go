@@ -1,17 +1,20 @@
 package state
 
 import (
+	"errors"
+	"fmt"
 	"github.com/232425wxy/meta--/crypto"
-	"github.com/232425wxy/meta--/crypto/merkle"
+	"github.com/232425wxy/meta--/database"
 	"github.com/232425wxy/meta--/proto/pbstate"
+	"github.com/232425wxy/meta--/proto/pbtypes"
 	"github.com/232425wxy/meta--/stch"
+	"github.com/232425wxy/meta--/store"
 	"github.com/232425wxy/meta--/types"
 	"github.com/cosmos/gogoproto/proto"
 	"time"
 )
 
 var StoreStateKey = []byte("meta--/store-state")
-var StoreBlockKey = []byte("meta--/store-block")
 var ValidatorsKey = []byte("meta--/state/validators")
 
 type State struct {
@@ -20,7 +23,7 @@ type State struct {
 	PreviousBlock   *types.Block
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
-	BlockStore      *StoreBlock
+	BlockStore      *store.BlockStore
 	Chameleon       *stch.Chameleon
 }
 
@@ -38,7 +41,7 @@ func (s *State) SetChameleon(ch *stch.Chameleon) {
 	s.Chameleon = ch
 }
 
-func (s *State) SetBlockStore(store *StoreBlock) {
+func (s *State) SetBlockStore(store *store.BlockStore) {
 	s.BlockStore = store
 }
 
@@ -47,11 +50,11 @@ func (s *State) MakeBlock(height int64, txs []types.Tx, proposer crypto.ID, last
 		Header: &types.Header{PreviousBlockHash: lastBlockHash, Height: height, Timestamp: time.Now(), Proposer: proposer},
 		Body:   &types.Data{Txs: txs},
 	}
-	_txs := make([][]byte, len(txs))
-	for i, tx := range txs {
-		copy(_txs[i], tx)
-	}
-	block.Body.RootHash = merkle.ComputeMerkleRoot(_txs)
+	//_txs := make([][]byte, len(txs))
+	//for i, tx := range txs {
+	//	_txs[i] = tx
+	//}
+	//block.Body.RootHash = merkle.ComputeMerkleRoot(_txs)
 	s.Chameleon.Hash(block)
 	return block
 }
@@ -106,12 +109,84 @@ func (s *State) IsEmpty() bool {
 }
 
 func (s *State) RedactBlock(height int64, txIndex int, key, value []byte) {
-	block := s.BlockStore.LoadBlockByHeight(height)
+	//block := s.BlockStore.LoadBlockByHeight(height)
 	task := &stch.Task{
-		Block:   block,
-		TxIndex: txIndex,
-		Key:     key,
-		Value:   value,
+		BlockHeight: height,
+		TxIndex:     txIndex,
+		Key:         key,
+		Value:       value,
 	}
 	s.Chameleon.AppendRedactTask(task)
+}
+
+type StoreState struct {
+	db database.DB
+}
+
+func NewStoreState(db database.DB) *StoreState {
+	return &StoreState{db: db}
+}
+
+func (s *StoreState) LoadFromDBOrGenesis(genesis *types.Genesis) *State {
+	stat, err := s.LoadState()
+	if err != nil {
+		return &State{}
+	}
+	if stat.IsEmpty() {
+		stat = MakeGenesisState(genesis)
+	}
+	return stat
+}
+
+func (s *StoreState) LoadState() (*State, error) {
+	bz, err := s.db.Get(StoreStateKey)
+	if err != nil {
+		return nil, err
+	}
+	if len(bz) == 0 {
+		return &State{}, nil
+	}
+	pb := new(pbstate.State)
+	err = proto.Unmarshal(bz, pb)
+	if err != nil {
+		return nil, err
+	}
+	stat := StateFromProto(pb)
+	return stat, nil
+}
+
+func (s *StoreState) SaveState(stat *State) error {
+	return s.db.SetSync(StoreStateKey, stat.ToBytes())
+}
+
+func (s *StoreState) Bootstrap(stat *State) error {
+	return s.SaveState(stat)
+}
+
+func (s *StoreState) SaveValidators(height int64, validators *types.ValidatorSet) error {
+	pb := validators.ToProto()
+	bz, err := proto.Marshal(pb)
+	if err != nil {
+		return err
+	}
+	return s.db.SetSync(calcValidatorsKey(height), bz)
+}
+
+func (s *StoreState) LoadValidators(height int64) (*types.ValidatorSet, error) {
+	bz, err := s.db.Get(calcValidatorsKey(height))
+	if err != nil {
+		return nil, err
+	}
+	if len(bz) == 0 {
+		return nil, errors.New("validators retrieved from db is empty")
+	}
+	pb := &pbtypes.ValidatorSet{}
+	if err = proto.Unmarshal(bz, pb); err != nil {
+		return nil, err
+	}
+	return types.ValidatorSetFromProto(pb), nil
+}
+
+func calcValidatorsKey(height int64) []byte {
+	return append(ValidatorsKey, fmt.Sprintf("%d", height)...)
 }

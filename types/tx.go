@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/232425wxy/meta--/crypto/merkle"
 	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/proto/pbtypes"
@@ -30,9 +29,9 @@ func (t Tx) Hash() []byte {
 	return h[:]
 }
 
-func (t Tx) String() string {
-	return fmt.Sprintf("Tx{%x}", []byte(t))
-}
+//func (t Tx) String() string {
+//	return fmt.Sprintf("Tx{%x}", []byte(t))
+//}
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
 

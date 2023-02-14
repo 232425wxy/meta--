@@ -84,6 +84,7 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 			}
 		case *LeaderSchnorrSig:
 			r.Logger.Error("来任务了，需要修改区块链了")
+			r.ch.verifyLeaderSchnorrSig(msg, src)
 		}
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/232425wxy/meta--/proxy"
 	"github.com/232425wxy/meta--/state"
 	"github.com/232425wxy/meta--/stch"
+	"github.com/232425wxy/meta--/store"
 	"github.com/232425wxy/meta--/syncer"
 	"github.com/232425wxy/meta--/txspool"
 	"github.com/232425wxy/meta--/types"
@@ -90,9 +91,9 @@ func DefaultP2PProvider(cfg *config.Config, nodeInfo *p2p.NodeInfo, nodeKey *p2p
 	return transport, sw
 }
 
-type SyncerProvider func(stat *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock, logger log.Logger) *syncer.Reactor
+type SyncerProvider func(stat *state.State, blockExec *state.BlockExecutor, blockStore *store.BlockStore, logger log.Logger) *syncer.Reactor
 
-func DefaultSyncerProvider(stat *state.State, blockExec *state.BlockExecutor, blockStore *state.StoreBlock, logger log.Logger) *syncer.Reactor {
+func DefaultSyncerProvider(stat *state.State, blockExec *state.BlockExecutor, blockStore *store.BlockStore, logger log.Logger) *syncer.Reactor {
 	reactor := syncer.NewReactor(stat, blockExec, blockStore, logger.New("module", "Syncer"))
 	return reactor
 }
@@ -141,7 +142,7 @@ type Node struct {
 	nodeKey    *p2p.NodeKey
 	eventBUs   *events.EventBus
 	stateStore *state.StoreState
-	blockStore *state.StoreBlock
+	blockStore *store.BlockStore
 	txsPool    *txspool.TxsPool
 
 	txsPoolReactor   *txspool.Reactor
@@ -164,7 +165,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 		return nil, err
 	}
 
-	blockStore := state.NewStoreBlock(blockStoreDB)
+	blockStore := store.NewStoreBlock(blockStoreDB)
 
 	stateDB, err := provider.DBProvider("state", cfg)
 	if err != nil {
@@ -209,6 +210,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	stchReactor := provider.STCHProvider(len(cfg.P2PConfig.NeighboursSlice()), logger)
 	stat.SetChameleon(stchReactor.Chameleon())
 	stat.SetBlockStore(blockStore)
+	stchReactor.Chameleon().SetBlockStore(blockStore)
 	transport, sw := provider.P2PProvider(cfg, nodeInfo, nodeKey, txsPoolReactor, consensusReactor, syncerReactor, stchReactor, logger)
 
 	addrBook := p2p.NewAddrBook(cfg.P2PConfig.AddrBookPath())

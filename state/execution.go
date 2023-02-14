@@ -8,13 +8,14 @@ import (
 	"github.com/232425wxy/meta--/log"
 	"github.com/232425wxy/meta--/proto/pbabci"
 	"github.com/232425wxy/meta--/proxy"
+	store "github.com/232425wxy/meta--/store"
 	"github.com/232425wxy/meta--/txspool"
 	"github.com/232425wxy/meta--/types"
 )
 
 type BlockExecutor struct {
 	store          *StoreState
-	blockStore     *StoreBlock
+	blockStore     *store.BlockStore
 	proxyConsensus *proxy.AppConnConsensus
 	txsPool        *txspool.TxsPool
 	eventBus       *events.EventBus
@@ -22,7 +23,7 @@ type BlockExecutor struct {
 	logger         log.Logger
 }
 
-func NewBlockExecutor(cfg *config.Config, store *StoreState, blockStore *StoreBlock, consensus *proxy.AppConnConsensus, txsPool *txspool.TxsPool, logger log.Logger) *BlockExecutor {
+func NewBlockExecutor(cfg *config.Config, store *StoreState, blockStore *store.BlockStore, consensus *proxy.AppConnConsensus, txsPool *txspool.TxsPool, logger log.Logger) *BlockExecutor {
 	return &BlockExecutor{
 		store:          store,
 		blockStore:     blockStore,

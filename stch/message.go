@@ -98,11 +98,12 @@ func PublicKeySegFromProto(pb *pbstch.PublicKeySeg) *PublicKeySeg {
 func (pks *PublicKeySeg) ChameleonFn() {}
 
 type LeaderSchnorrSig struct {
-	S       *big.Int
-	D       *big.Int
-	Block   *types.Block
-	TxIndex int
-	NewTx   types.Tx
+	Flag        bool // 标志S是否是负数
+	S           *big.Int
+	D           *big.Int
+	BlockHeight int64
+	TxIndex     int
+	NewTx       types.Tx
 }
 
 func (ss *LeaderSchnorrSig) ToProto() *pbstch.SchnorrSig {
@@ -110,12 +111,13 @@ func (ss *LeaderSchnorrSig) ToProto() *pbstch.SchnorrSig {
 		return nil
 	}
 	return &pbstch.SchnorrSig{
-		From:    pbstch.From_Leader,
-		S:       ss.S.Bytes(),
-		D:       ss.D.Bytes(),
-		Block:   ss.Block.ToProto(),
-		TxIndex: int64(ss.TxIndex),
-		Tx:      ss.NewTx,
+		Flag:        ss.Flag,
+		From:        pbstch.From_Leader,
+		S:           ss.S.Bytes(),
+		D:           ss.D.Bytes(),
+		BlockHeight: ss.BlockHeight,
+		TxIndex:     int64(ss.TxIndex),
+		Tx:          ss.NewTx,
 	}
 }
 
@@ -124,22 +126,24 @@ func LeaderSchnorrSigFromProto(pb *pbstch.SchnorrSig) *LeaderSchnorrSig {
 		return nil
 	}
 	return &LeaderSchnorrSig{
-		S:       new(big.Int).SetBytes(pb.S),
-		D:       new(big.Int).SetBytes(pb.D),
-		Block:   types.BlockFromProto(pb.Block),
-		TxIndex: int(pb.TxIndex),
-		NewTx:   pb.Tx,
+		Flag:        pb.Flag,
+		S:           new(big.Int).SetBytes(pb.S),
+		D:           new(big.Int).SetBytes(pb.D),
+		BlockHeight: pb.BlockHeight,
+		TxIndex:     int(pb.TxIndex),
+		NewTx:       pb.Tx,
 	}
 }
 
 func (ss *LeaderSchnorrSig) ChameleonFn() {}
 
 type ReplicaSchnorrSig struct {
-	S       *big.Int
-	D       *big.Int
-	Block   *types.Block
-	TxIndex int
-	NewTx   types.Tx
+	Flag        bool // 标志S是否是负数
+	S           *big.Int
+	D           *big.Int
+	BlockHeight int64
+	TxIndex     int
+	NewTx       types.Tx
 }
 
 func (ss *ReplicaSchnorrSig) ToProto() *pbstch.SchnorrSig {
@@ -147,10 +151,11 @@ func (ss *ReplicaSchnorrSig) ToProto() *pbstch.SchnorrSig {
 		return nil
 	}
 	return &pbstch.SchnorrSig{
-		From:  pbstch.From_Replica,
-		S:     ss.S.Bytes(),
-		D:     ss.D.Bytes(),
-		Block: ss.Block.ToProto(),
+		Flag:        ss.Flag,
+		From:        pbstch.From_Replica,
+		S:           ss.S.Bytes(),
+		D:           ss.D.Bytes(),
+		BlockHeight: ss.BlockHeight,
 	}
 }
 
@@ -159,9 +164,10 @@ func ReplicaSchnorrSigFromProto(pb *pbstch.SchnorrSig) *ReplicaSchnorrSig {
 		return nil
 	}
 	return &ReplicaSchnorrSig{
-		S:     new(big.Int).SetBytes(pb.S),
-		D:     new(big.Int).SetBytes(pb.D),
-		Block: types.BlockFromProto(pb.Block),
+		Flag:        pb.Flag,
+		S:           new(big.Int).SetBytes(pb.S),
+		D:           new(big.Int).SetBytes(pb.D),
+		BlockHeight: pb.BlockHeight,
 	}
 }
 

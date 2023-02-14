@@ -3,18 +3,20 @@ package stch
 import (
 	"fmt"
 	"github.com/232425wxy/meta--/crypto"
+	"github.com/232425wxy/meta--/crypto/merkle"
 	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/p2p"
+	"github.com/232425wxy/meta--/store"
 	"github.com/232425wxy/meta--/types"
 	"math/big"
 	"sync"
 )
 
 type Task struct {
-	Block   *types.Block
-	TxIndex int
-	Key     []byte
-	Value   []byte
+	BlockHeight int64
+	TxIndex     int
+	Key         []byte
+	Value       []byte
 }
 
 type polynomial struct {
@@ -46,6 +48,7 @@ type Chameleon struct {
 	alpha           *big.Int
 	redactTaskChan  chan *Task
 	redactAvailable bool
+	blockStore      *store.BlockStore
 	mu              sync.Mutex
 }
 
@@ -61,6 +64,10 @@ func NewChameleon(n int) *Chameleon {
 	ch.cid = new(big.Int).SetInt64(0)
 	ch.redactTaskChan = make(chan *Task, 1)
 	return ch
+}
+
+func (ch *Chameleon) SetBlockStore(bs *store.BlockStore) {
+	ch.blockStore = bs
 }
 
 func (ch *Chameleon) generateFn(num int) {
@@ -139,8 +146,7 @@ func (ch *Chameleon) calculateSK(g, q *big.Int) {
 		neg := new(big.Int).Neg(participant.x)
 		diff := new(big.Int).Sub(ch.x, participant.x)
 		inverse := calcInverseElem(diff, q)
-		d := new(big.Int).Mul(neg, inverse)
-		x.Mul(x, d)
+		x.Mul(x, new(big.Int).Mul(neg, inverse))
 	}
 	ch.sk = new(big.Int).Mul(fn, x)
 	ch.sk.Mod(ch.sk, q)
@@ -212,43 +218,89 @@ func (ch *Chameleon) AppendRedactTask(task *Task) {
 }
 
 func (ch *Chameleon) handleRedactTask(task *Task) ([]byte, error) {
-	block := task.Block
-	if task.TxIndex >= len(block.Body.Txs)+1 {
-		return nil, fmt.Errorf("you can only redact existed txs or append tx, origin_txs_num: %d, redact_tx_index: %d", len(block.Body.Txs), task.TxIndex)
+	block := ch.blockStore.LoadBlockByHeight(task.BlockHeight)
+	redactBlock := block.Copy()
+	old_msg := redactBlock.BlockDataHash()
+	if task.TxIndex >= len(redactBlock.Body.Txs)+1 {
+		return nil, fmt.Errorf("you can only redact existed txs or append tx, origin_txs_num: %d, redact_tx_index: %d", len(redactBlock.Body.Txs), task.TxIndex)
 	}
-	if task.TxIndex == len(block.Body.Txs) {
-		block.Body.Txs = append(block.Body.Txs, []byte(fmt.Sprintf("%v=%v", task.Key, task.Value)))
+	if task.TxIndex == len(redactBlock.Body.Txs) {
+		redactBlock.Body.Txs = append(redactBlock.Body.Txs, []byte(fmt.Sprintf("%x=%x", task.Key, task.Value)))
 	}
-	if task.TxIndex < len(block.Body.Txs) {
-		tx := []byte(fmt.Sprintf("%v=%v", task.Key, task.Value))
-		block.Body.Txs[task.TxIndex] = tx
+	if task.TxIndex < len(redactBlock.Body.Txs) {
+		tx := []byte(fmt.Sprintf("%x=%x", task.Key, task.Value))
+		redactBlock.Body.Txs[task.TxIndex] = tx
 	}
-	old_msg := block.Header.BlockDataHash
-	new_msg := block.BlockDataHash()
+	_txs := make([][]byte, len(redactBlock.Body.Txs))
+	for i, tx := range redactBlock.Body.Txs {
+		_txs[i] = tx
+	}
+	redactBlock.Body.RootHash = merkle.ComputeMerkleRoot(_txs)
+	new_msg := redactBlock.BlockDataHash()
+	fmt.Println("leader 原始消息：", old_msg)
+	fmt.Println("leader 修改消息：", new_msg)
 
 	e := new(big.Int).Sub(new(big.Int).SetBytes(old_msg), new(big.Int).SetBytes(new_msg))
-	s := new(big.Int).Mul(ch.sk, e)
-	s.Add(s, ch.k)
+	s := new(big.Int).Add(new(big.Int).Mul(ch.sk, e), ch.k)
 	d := new(big.Int)
-	alpha := new(big.Int).Set(block.ChameleonHash.Alpha)
+	alpha := new(big.Int).Set(redactBlock.ChameleonHash.Alpha)
 	if s.Cmp(new(big.Int).SetInt64(0)) < 0 {
 		inverseAlpha := calcInverseElem(alpha, q)
-		s.Neg(s)
-		d = d.Exp(inverseAlpha, s, q)
+		_s := new(big.Int).Neg(s)
+		d = d.Exp(inverseAlpha, _s, q)
 	} else {
 		d = d.Exp(alpha, s, q)
 	}
 	ss := &LeaderSchnorrSig{
-		S:       s,
-		D:       d,
-		Block:   task.Block,
-		TxIndex: task.TxIndex,
-		NewTx:   []byte(fmt.Sprintf("%v=%v", task.Key, task.Value)),
+		S:           s,
+		D:           d,
+		BlockHeight: task.BlockHeight,
+		TxIndex:     task.TxIndex,
+		NewTx:       []byte(fmt.Sprintf("%x=%x", task.Key, task.Value)),
+	}
+	if s.Cmp(new(big.Int).SetInt64(0)) < 0 {
+		ss.Flag = true
+		fmt.Println("s:", ss.S)
 	}
 	bz := MustEncode(ss)
 	return bz, nil
 }
 
-func (ch *Chameleon) verifySchnorrSig(sig *LeaderSchnorrSig) {
+func (ch *Chameleon) verifyLeaderSchnorrSig(sig *LeaderSchnorrSig, peer *p2p.Peer) {
+	block := ch.blockStore.LoadBlockByHeight(sig.BlockHeight)
+	originBlockDataHash := block.BlockDataHash()
+	fmt.Println("原始消息：", originBlockDataHash)
 
+	redactBlock := block.Copy()
+	redactBlock.Body.Txs[sig.TxIndex] = sig.NewTx
+	redactBlockDataHash := redactBlock.BlockDataHash()
+	fmt.Println("修改消息：", redactBlockDataHash)
+
+	e := new(big.Int).Sub(new(big.Int).SetBytes(redactBlockDataHash), new(big.Int).SetBytes(originBlockDataHash))
+	_e := new(big.Int).Neg(e)
+	if sig.Flag {
+		sig.S.Neg(sig.S)
+	}
+	x_ := new(big.Int)
+	if sig.S.Cmp(new(big.Int).SetInt64(0)) < 0 {
+		_g := calcInverseElem(g, q)
+		_s := new(big.Int).Neg(sig.S)
+		x_ = new(big.Int).Exp(_g, _s, q)
+	} else {
+		x_ = new(big.Int).Exp(g, sig.S, q)
+	}
+	fmt.Println("s:", sig.S)
+	fmt.Println("x_:", x_)
+	if e.Cmp(new(big.Int).SetInt64(0)) < 0 {
+		_pk := calcInverseElem(ch.participants.ps[peer.NodeID()].pk, q)
+		x_ = new(big.Int).Mul(x_, new(big.Int).Exp(_pk, _e, q))
+	} else {
+		x_ = new(big.Int).Mul(x_, new(big.Int).Exp(ch.participants.ps[peer.NodeID()].pk, e, q))
+	}
+	x_.Mod(x_, q)
+	if x_.Cmp(ch.participants.ps[peer.NodeID()].x) != 0 {
+		fmt.Println("验证失败！", x_)
+	} else {
+		fmt.Println("验证成功！", x_)
+	}
 }

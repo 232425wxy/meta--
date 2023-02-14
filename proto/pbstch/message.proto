@@ -3,7 +3,6 @@ syntax = "proto3";
 package pbstch;
 
 import "gogoproto-1.4.3/gogoproto/gogo.proto";
-import "proto/pbtypes/block.proto";
 
 enum From {
   option (gogoproto.goproto_enum_stringer) = true;
@@ -29,12 +28,13 @@ message PublicKeySeg {
 }
 
 message SchnorrSig {
-  From from = 1;
-  bytes s = 2;
-  bytes d = 3;
-  pbtypes.Block block = 4;
-  int64 tx_index = 5;
-  bytes tx = 6;
+  bool flag = 1;
+  From from = 2;
+  bytes s = 3;
+  bytes d = 4;
+  int64 block_height = 5;
+  int64 tx_index = 6;
+  bytes tx = 7;
 }
 
 message Message {

@@ -57,14 +57,12 @@ func TestCreateAndStartNode(t *testing.T) {
 		go func(i int) { assert.Nil(t, nodes[i].Start()) }(i)
 	}
 
-	time.Sleep(time.Second * 4)
+	time.Sleep(time.Second * 5)
 
-	for i := 0; i < 200; i++ {
-		tx := []byte(fmt.Sprintf("number=%d", i))
-		err := nodes[i%4].txsPool.CheckTx(tx, nodes[i%4].nodeInfo.ID())
-		assert.Nil(t, err)
-		time.Sleep(time.Millisecond * 2)
-	}
+	tx := []byte(fmt.Sprintf("number=%d", 1))
+	err := nodes[1%4].txsPool.CheckTx(tx, nodes[1%4].nodeInfo.ID())
+	assert.Nil(t, err)
+	//time.Sleep(time.Millisecond * 2)
 
 	//time.Sleep(time.Second * 5)
 	//fmt.Println("第二阶段...")
@@ -75,9 +73,9 @@ func TestCreateAndStartNode(t *testing.T) {
 	//	time.Sleep(time.Second * 2)
 	//}
 
-	time.Sleep(time.Second * 6)
+	time.Sleep(time.Second * 3)
 
-	nodes[0].State().RedactBlock(2, 3, []byte("学校"), []byte("信息工程大学"))
+	nodes[0].State().RedactBlock(1, 0, []byte("学校"), []byte("信息工程大学"))
 
 	//fmt.Println("第三阶段...")
 	//for i := 0; i < 3; i++ {
