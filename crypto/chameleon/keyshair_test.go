@@ -189,7 +189,7 @@ func TestDistributedChameleonHash(t *testing.T) {
 
 	redactHash := new(big.Int).Mul(redactRandom.r1, new(big.Int).Exp(alpha, HashBytes(_msg), Q))
 	redactHash.Mod(redactHash, Q)
-
+	fmt.Println("碰撞哈希：", redactHash)
 	// 集中式验证
 	//ver := new(big.Int).Exp(redactRandom.r1, tk, Q)
 	//if ver.Cmp(redactRandom.r2) == 0 && redactHash.Cmp(originHash) == 0 {

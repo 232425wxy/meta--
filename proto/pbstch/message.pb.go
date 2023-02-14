@@ -304,6 +304,118 @@ func (m *SchnorrSig) GetTx() []byte {
 	return nil
 }
 
+type AlphaExpKAndHK struct {
+	AlphaExpK []byte `protobuf:"bytes,1,opt,name=AlphaExpK,proto3" json:"AlphaExpK,omitempty"`
+	HK        []byte `protobuf:"bytes,2,opt,name=HK,proto3" json:"HK,omitempty"`
+}
+
+func (m *AlphaExpKAndHK) Reset()         { *m = AlphaExpKAndHK{} }
+func (m *AlphaExpKAndHK) String() string { return proto.CompactTextString(m) }
+func (*AlphaExpKAndHK) ProtoMessage()    {}
+func (*AlphaExpKAndHK) Descriptor() ([]byte, []int) {
+	return fileDescriptor_33c57e4bae7b9afd, []int{4}
+}
+func (m *AlphaExpKAndHK) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AlphaExpKAndHK) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AlphaExpKAndHK.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *AlphaExpKAndHK) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AlphaExpKAndHK.Merge(m, src)
+}
+func (m *AlphaExpKAndHK) XXX_Size() int {
+	return m.Size()
+}
+func (m *AlphaExpKAndHK) XXX_DiscardUnknown() {
+	xxx_messageInfo_AlphaExpKAndHK.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AlphaExpKAndHK proto.InternalMessageInfo
+
+func (m *AlphaExpKAndHK) GetAlphaExpK() []byte {
+	if m != nil {
+		return m.AlphaExpK
+	}
+	return nil
+}
+
+func (m *AlphaExpKAndHK) GetHK() []byte {
+	if m != nil {
+		return m.HK
+	}
+	return nil
+}
+
+type FinalVer struct {
+	Val       []byte `protobuf:"bytes,1,opt,name=val,proto3" json:"val,omitempty"`
+	RedactStr string `protobuf:"bytes,2,opt,name=redact_str,json=redactStr,proto3" json:"redact_str,omitempty"`
+	R2        []byte `protobuf:"bytes,3,opt,name=r2,proto3" json:"r2,omitempty"`
+}
+
+func (m *FinalVer) Reset()         { *m = FinalVer{} }
+func (m *FinalVer) String() string { return proto.CompactTextString(m) }
+func (*FinalVer) ProtoMessage()    {}
+func (*FinalVer) Descriptor() ([]byte, []int) {
+	return fileDescriptor_33c57e4bae7b9afd, []int{5}
+}
+func (m *FinalVer) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *FinalVer) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_FinalVer.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *FinalVer) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_FinalVer.Merge(m, src)
+}
+func (m *FinalVer) XXX_Size() int {
+	return m.Size()
+}
+func (m *FinalVer) XXX_DiscardUnknown() {
+	xxx_messageInfo_FinalVer.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_FinalVer proto.InternalMessageInfo
+
+func (m *FinalVer) GetVal() []byte {
+	if m != nil {
+		return m.Val
+	}
+	return nil
+}
+
+func (m *FinalVer) GetRedactStr() string {
+	if m != nil {
+		return m.RedactStr
+	}
+	return ""
+}
+
+func (m *FinalVer) GetR2() []byte {
+	if m != nil {
+		return m.R2
+	}
+	return nil
+}
+
 type Message struct {
 	// Types that are valid to be assigned to Data:
 	//
@@ -311,6 +423,8 @@ type Message struct {
 	//	*Message_Fnx
 	//	*Message_PublicKeySeg
 	//	*Message_SchnorrSig
+	//	*Message_AlphaExpKAndHK
+	//	*Message_FinalVer
 	Data isMessage_Data `protobuf_oneof:"data"`
 }
 
@@ -318,7 +432,7 @@ func (m *Message) Reset()         { *m = Message{} }
 func (m *Message) String() string { return proto.CompactTextString(m) }
 func (*Message) ProtoMessage()    {}
 func (*Message) Descriptor() ([]byte, []int) {
-	return fileDescriptor_33c57e4bae7b9afd, []int{4}
+	return fileDescriptor_33c57e4bae7b9afd, []int{6}
 }
 func (m *Message) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -365,11 +479,19 @@ type Message_PublicKeySeg struct {
 type Message_SchnorrSig struct {
 	SchnorrSig *SchnorrSig `protobuf:"bytes,4,opt,name=SchnorrSig,proto3,oneof" json:"SchnorrSig,omitempty"`
 }
+type Message_AlphaExpKAndHK struct {
+	AlphaExpKAndHK *AlphaExpKAndHK `protobuf:"bytes,5,opt,name=AlphaExpKAndHK,proto3,oneof" json:"AlphaExpKAndHK,omitempty"`
+}
+type Message_FinalVer struct {
+	FinalVer *FinalVer `protobuf:"bytes,6,opt,name=final_ver,json=finalVer,proto3,oneof" json:"final_ver,omitempty"`
+}
 
-func (*Message_IdentityX) isMessage_Data()    {}
-func (*Message_Fnx) isMessage_Data()          {}
-func (*Message_PublicKeySeg) isMessage_Data() {}
-func (*Message_SchnorrSig) isMessage_Data()   {}
+func (*Message_IdentityX) isMessage_Data()      {}
+func (*Message_Fnx) isMessage_Data()            {}
+func (*Message_PublicKeySeg) isMessage_Data()   {}
+func (*Message_SchnorrSig) isMessage_Data()     {}
+func (*Message_AlphaExpKAndHK) isMessage_Data() {}
+func (*Message_FinalVer) isMessage_Data()       {}
 
 func (m *Message) GetData() isMessage_Data {
 	if m != nil {
@@ -406,6 +528,20 @@ func (m *Message) GetSchnorrSig() *SchnorrSig {
 	return nil
 }
 
+func (m *Message) GetAlphaExpKAndHK() *AlphaExpKAndHK {
+	if x, ok := m.GetData().(*Message_AlphaExpKAndHK); ok {
+		return x.AlphaExpKAndHK
+	}
+	return nil
+}
+
+func (m *Message) GetFinalVer() *FinalVer {
+	if x, ok := m.GetData().(*Message_FinalVer); ok {
+		return x.FinalVer
+	}
+	return nil
+}
+
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*Message) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
@@ -413,6 +549,8 @@ func (*Message) XXX_OneofWrappers() []interface{} {
 		(*Message_Fnx)(nil),
 		(*Message_PublicKeySeg)(nil),
 		(*Message_SchnorrSig)(nil),
+		(*Message_AlphaExpKAndHK)(nil),
+		(*Message_FinalVer)(nil),
 	}
 }
 
@@ -422,44 +560,53 @@ func init() {
 	proto.RegisterType((*FnX)(nil), "pbstch.FnX")
 	proto.RegisterType((*PublicKeySeg)(nil), "pbstch.PublicKeySeg")
 	proto.RegisterType((*SchnorrSig)(nil), "pbstch.SchnorrSig")
+	proto.RegisterType((*AlphaExpKAndHK)(nil), "pbstch.AlphaExpKAndHK")
+	proto.RegisterType((*FinalVer)(nil), "pbstch.FinalVer")
 	proto.RegisterType((*Message)(nil), "pbstch.Message")
 }
 
 func init() { proto.RegisterFile("message.proto", fileDescriptor_33c57e4bae7b9afd) }
 
 var fileDescriptor_33c57e4bae7b9afd = []byte{
-	// 486 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x92, 0xbf, 0x6e, 0xd3, 0x50,
-	0x14, 0xc6, 0x7d, 0x9d, 0x60, 0xc7, 0xc7, 0xa6, 0x2a, 0x57, 0xa8, 0x32, 0x91, 0x70, 0x8d, 0xc5,
-	0x10, 0x21, 0x61, 0x54, 0xb7, 0x13, 0x4c, 0x09, 0x4d, 0x95, 0x88, 0x20, 0x55, 0x37, 0x4b, 0xb7,
-	0xc8, 0xb1, 0x2f, 0xce, 0x55, 0x13, 0xdb, 0xb2, 0x2f, 0x92, 0xf3, 0x06, 0xa8, 0x13, 0x2f, 0xd0,
-	0x09, 0x06, 0x06, 0x1e, 0x84, 0xb1, 0x63, 0x27, 0x84, 0x92, 0x17, 0x41, 0xbe, 0xb6, 0x43, 0x2a,
-	0xb1, 0x9d, 0x3f, 0xdf, 0xf9, 0x7c, 0xcf, 0xef, 0x18, 0x1e, 0xaf, 0x68, 0x9e, 0xfb, 0x11, 0x75,
-	0xd3, 0x2c, 0xe1, 0x09, 0x56, 0xd2, 0x79, 0xce, 0x83, 0x45, 0xf7, 0x65, 0x94, 0x44, 0x89, 0x28,
-	0xbd, 0x3e, 0x71, 0xcf, 0xdc, 0xd3, 0x37, 0xbb, 0x5c, 0x44, 0x95, 0xda, 0x39, 0x01, 0x6d, 0x1c,
-	0xd2, 0x98, 0x33, 0xbe, 0xbe, 0xc2, 0x06, 0xa0, 0xc2, 0x44, 0x36, 0xea, 0x19, 0x04, 0x15, 0xf8,
-	0x08, 0x64, 0x16, 0x9a, 0xb2, 0x8d, 0x7a, 0xda, 0x40, 0xd9, 0xfc, 0x3e, 0x96, 0xc7, 0xe7, 0x44,
-	0x66, 0xa1, 0xf3, 0x0e, 0x5a, 0x17, 0xf1, 0x15, 0xc6, 0xd0, 0xfe, 0x94, 0x25, 0x2b, 0xa1, 0xd7,
-	0x88, 0x88, 0xcb, 0x5a, 0xe8, 0x73, 0x5f, 0x0c, 0x19, 0x44, 0xc4, 0x95, 0x69, 0xab, 0x36, 0x75,
-	0xfa, 0x60, 0x5c, 0x7e, 0x9e, 0x2f, 0x59, 0xf0, 0x81, 0xae, 0xa7, 0x34, 0xfa, 0xaf, 0xcb, 0x73,
-	0x80, 0x54, 0x68, 0x66, 0xd7, 0x74, 0x5d, 0x7b, 0x69, 0x69, 0x33, 0xe5, 0xfc, 0x44, 0x00, 0xd3,
-	0x60, 0x11, 0x27, 0x59, 0x36, 0x65, 0x95, 0xc3, 0xd2, 0x8f, 0x84, 0x43, 0x87, 0x88, 0x18, 0xdb,
-	0xb5, 0x6b, 0x39, 0x7b, 0xe0, 0x19, 0x6e, 0x85, 0xc4, 0xbd, 0xc8, 0x92, 0x55, 0xfd, 0x0d, 0x03,
-	0x50, 0xde, 0xbc, 0x2a, 0x2f, 0xb3, 0xd0, 0x6c, 0x57, 0x59, 0x88, 0x5f, 0x80, 0x31, 0x5f, 0x26,
-	0xc1, 0xf5, 0x6c, 0x41, 0x59, 0xb4, 0xe0, 0xe6, 0x23, 0x1b, 0xf5, 0x5a, 0x44, 0x17, 0xb5, 0x91,
-	0x28, 0xe1, 0x67, 0xd0, 0xe1, 0xc5, 0x8c, 0xc5, 0x21, 0x2d, 0x4c, 0x45, 0xb4, 0x55, 0x5e, 0x8c,
-	0xcb, 0x14, 0x1f, 0x80, 0xcc, 0x0b, 0x53, 0x15, 0x66, 0x32, 0x2f, 0x9c, 0x7b, 0x04, 0xea, 0xc7,
-	0xea, 0x42, 0xd8, 0x03, 0x60, 0x35, 0xed, 0x59, 0x45, 0x5a, 0xf7, 0x9e, 0x34, 0xaf, 0xdb, 0xdd,
-	0x61, 0x24, 0x11, 0x8d, 0xed, 0x8e, 0x72, 0x5c, 0xe2, 0x2e, 0xc4, 0x2a, 0xba, 0xa7, 0xef, 0x56,
-	0x89, 0x4b, 0x59, 0xd9, 0xc1, 0x6f, 0x1f, 0x22, 0x15, 0x5b, 0xe9, 0xde, 0xd3, 0x46, 0xb9, 0xdf,
-	0x1b, 0x49, 0xe4, 0x21, 0xfe, 0xb3, 0x7d, 0x94, 0x82, 0x80, 0xee, 0xe1, 0x66, 0xf2, 0x5f, 0x67,
-	0x24, 0x91, 0x3d, 0xdd, 0x40, 0xa9, 0xce, 0xfc, 0x6a, 0x00, 0xed, 0x12, 0x29, 0x3e, 0x02, 0x65,
-	0x32, 0xec, 0x9f, 0x0f, 0xc9, 0xa1, 0xd4, 0x85, 0x9b, 0x5b, 0x5b, 0x99, 0x50, 0x3f, 0xa4, 0x19,
-	0x36, 0x41, 0x25, 0xc3, 0xcb, 0xc9, 0xf8, 0x7d, 0xff, 0x10, 0x75, 0xf5, 0x9b, 0x5b, 0x5b, 0x25,
-	0x34, 0x5d, 0xb2, 0xc0, 0xef, 0x76, 0xbe, 0x7c, 0xb3, 0xd0, 0x8f, 0xef, 0x16, 0x1a, 0x98, 0xbf,
-	0x36, 0x16, 0xba, 0xdb, 0x58, 0xe8, 0xcf, 0xc6, 0x42, 0x5f, 0xb7, 0x96, 0x74, 0xb7, 0xb5, 0xa4,
-	0xfb, 0xad, 0x25, 0xcd, 0x15, 0xf1, 0x87, 0x9e, 0xfe, 0x0d, 0x00, 0x00, 0xff, 0xff, 0x2d, 0x65,
-	0xfb, 0x62, 0xe0, 0x02, 0x00, 0x00,
+	// 605 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x53, 0x4d, 0x6f, 0xd3, 0x40,
+	0x10, 0xf5, 0x3a, 0xc5, 0x89, 0xc7, 0xa6, 0x0a, 0x2b, 0x54, 0x99, 0x08, 0xdc, 0x60, 0x71, 0xa8,
+	0x90, 0x48, 0x55, 0xb7, 0x27, 0x90, 0x10, 0x09, 0x4d, 0xe5, 0x28, 0x45, 0xaa, 0x36, 0x12, 0xea,
+	0x2d, 0x72, 0xe2, 0x6d, 0x62, 0xd5, 0xb5, 0xad, 0xcd, 0x52, 0xb9, 0xff, 0x00, 0xf5, 0xc4, 0x1f,
+	0xe8, 0x09, 0x0e, 0x1c, 0xf8, 0x21, 0x48, 0x5c, 0x7a, 0xe4, 0x84, 0x50, 0xfa, 0x47, 0xd0, 0xae,
+	0x3f, 0xda, 0x54, 0xdc, 0x66, 0xdf, 0xcc, 0x7b, 0xeb, 0x7d, 0x6f, 0x0c, 0x0f, 0xcf, 0xe8, 0x62,
+	0xe1, 0xcf, 0x68, 0x27, 0x65, 0x09, 0x4f, 0xb0, 0x96, 0x4e, 0x16, 0x7c, 0x3a, 0x6f, 0xbd, 0x98,
+	0x25, 0xb3, 0x44, 0x42, 0xaf, 0x76, 0x3a, 0x7b, 0x9d, 0xdd, 0xed, 0xea, 0x2c, 0xab, 0x7c, 0xda,
+	0xd9, 0x01, 0x7d, 0x10, 0xd0, 0x98, 0x87, 0xfc, 0xe2, 0x18, 0x9b, 0x80, 0x32, 0x0b, 0xb5, 0xd1,
+	0x96, 0x49, 0x50, 0x86, 0x37, 0x40, 0x0d, 0x03, 0x4b, 0x6d, 0xa3, 0x2d, 0xbd, 0xa7, 0x2d, 0xff,
+	0x6c, 0xaa, 0x83, 0x7d, 0xa2, 0x86, 0x81, 0xf3, 0x06, 0x6a, 0x07, 0xf1, 0x31, 0xc6, 0xb0, 0x76,
+	0xc2, 0x92, 0x33, 0x39, 0xaf, 0x13, 0x59, 0x0b, 0x2c, 0xf0, 0xb9, 0x2f, 0x49, 0x26, 0x91, 0x75,
+	0x2e, 0x5a, 0x2b, 0x44, 0x9d, 0x2e, 0x98, 0x47, 0x9f, 0x26, 0x51, 0x38, 0x1d, 0xd2, 0x8b, 0x11,
+	0x9d, 0xfd, 0x57, 0xe5, 0x19, 0x40, 0x2a, 0x67, 0xc6, 0xa7, 0xf4, 0xa2, 0xd0, 0xd2, 0xd3, 0x92,
+	0xe5, 0xfc, 0x40, 0x00, 0xa3, 0xe9, 0x3c, 0x4e, 0x18, 0x1b, 0x85, 0xb9, 0x42, 0xe4, 0xcf, 0xa4,
+	0x42, 0x83, 0xc8, 0x1a, 0xb7, 0x0b, 0x55, 0xc1, 0x5d, 0x77, 0xcd, 0x4e, 0x6e, 0x49, 0xe7, 0x80,
+	0x25, 0x67, 0xc5, 0x1d, 0x26, 0xa0, 0x45, 0xf9, 0x55, 0x0b, 0x71, 0x0a, 0xac, 0xb5, 0xfc, 0x14,
+	0xe0, 0xe7, 0x60, 0x4e, 0xa2, 0x64, 0x7a, 0x3a, 0x9e, 0xd3, 0x70, 0x36, 0xe7, 0xd6, 0x83, 0x36,
+	0xda, 0xaa, 0x11, 0x43, 0x62, 0x9e, 0x84, 0xf0, 0x13, 0x68, 0xf0, 0x6c, 0x1c, 0xc6, 0x01, 0xcd,
+	0x2c, 0x4d, 0xb6, 0xeb, 0x3c, 0x1b, 0x88, 0x23, 0x5e, 0x07, 0x95, 0x67, 0x56, 0x5d, 0x8a, 0xa9,
+	0x3c, 0x73, 0xde, 0xc2, 0x7a, 0x37, 0x4a, 0xe7, 0x7e, 0x3f, 0x4b, 0x87, 0xdd, 0x38, 0xf0, 0x86,
+	0xf8, 0x29, 0xe8, 0x15, 0x52, 0xd8, 0x7d, 0x0b, 0x08, 0xbe, 0x37, 0x2c, 0x5e, 0xad, 0x7a, 0x43,
+	0x67, 0x08, 0x8d, 0x83, 0x30, 0xf6, 0xa3, 0x8f, 0x94, 0xe1, 0x26, 0xd4, 0xce, 0xfd, 0xa8, 0xe0,
+	0x88, 0x52, 0x78, 0xc5, 0x68, 0xe0, 0x4f, 0xf9, 0x78, 0xc1, 0x59, 0x1e, 0x16, 0xd1, 0x73, 0x64,
+	0xc4, 0x99, 0x10, 0x63, 0x6e, 0xf1, 0x4e, 0x95, 0xb9, 0xce, 0x2f, 0x15, 0xea, 0x1f, 0xf2, 0x75,
+	0xc1, 0x2e, 0x40, 0x58, 0x44, 0x3f, 0xce, 0x63, 0x37, 0xdc, 0x47, 0xa5, 0x55, 0xd5, 0x52, 0x78,
+	0x0a, 0xd1, 0xc3, 0x6a, 0x43, 0x36, 0x45, 0xf6, 0x99, 0xbc, 0xc7, 0x70, 0x8d, 0xca, 0xd7, 0x58,
+	0x8c, 0x89, 0x0e, 0x7e, 0xbd, 0x9a, 0xaf, 0xbc, 0xda, 0x70, 0x1f, 0x97, 0x93, 0x77, 0x7b, 0x9e,
+	0x42, 0x56, 0x77, 0x61, 0xef, 0x6e, 0xae, 0x32, 0x0e, 0xc3, 0xc5, 0x25, 0xf3, 0xb6, 0xe3, 0x29,
+	0xe4, 0x6e, 0xfe, 0xef, 0xee, 0xfb, 0x2b, 0xf3, 0x32, 0xdc, 0x8d, 0x92, 0xb9, 0xda, 0xf5, 0x14,
+	0x72, 0x3f, 0x8f, 0x6d, 0xd0, 0x4f, 0x84, 0xc3, 0xe3, 0x73, 0xca, 0x64, 0x9a, 0x86, 0xdb, 0xac,
+	0x9e, 0x56, 0x58, 0xef, 0x29, 0xa4, 0x71, 0x52, 0xd4, 0x3d, 0x2d, 0x5f, 0xf3, 0x97, 0x3d, 0x58,
+	0x13, 0x2b, 0x85, 0x37, 0x40, 0x3b, 0xec, 0x77, 0xf7, 0xfb, 0xa4, 0xa9, 0xb4, 0xe0, 0xf2, 0xaa,
+	0xad, 0x1d, 0x52, 0x3f, 0xa0, 0x0c, 0x5b, 0x50, 0x27, 0xfd, 0xa3, 0xc3, 0xc1, 0xfb, 0x6e, 0x13,
+	0xb5, 0x8c, 0xcb, 0xab, 0x76, 0x9d, 0xd0, 0x34, 0x0a, 0xa7, 0x7e, 0xab, 0xf1, 0xf9, 0xab, 0x8d,
+	0xbe, 0x7f, 0xb3, 0x51, 0xcf, 0xfa, 0xb9, 0xb4, 0xd1, 0xf5, 0xd2, 0x46, 0x7f, 0x97, 0x36, 0xfa,
+	0x72, 0x63, 0x2b, 0xd7, 0x37, 0xb6, 0xf2, 0xfb, 0xc6, 0x56, 0x26, 0x9a, 0xfc, 0x43, 0x77, 0xff,
+	0x05, 0x00, 0x00, 0xff, 0xff, 0xd9, 0x14, 0xee, 0xec, 0xe0, 0x03, 0x00, 0x00,
 }
 
 func (m *IdentityX) Marshal() (dAtA []byte, err error) {
@@ -649,6 +796,87 @@ func (m *SchnorrSig) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *AlphaExpKAndHK) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AlphaExpKAndHK) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AlphaExpKAndHK) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.HK) > 0 {
+		i -= len(m.HK)
+		copy(dAtA[i:], m.HK)
+		i = encodeVarintMessage(dAtA, i, uint64(len(m.HK)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.AlphaExpK) > 0 {
+		i -= len(m.AlphaExpK)
+		copy(dAtA[i:], m.AlphaExpK)
+		i = encodeVarintMessage(dAtA, i, uint64(len(m.AlphaExpK)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *FinalVer) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *FinalVer) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *FinalVer) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.R2) > 0 {
+		i -= len(m.R2)
+		copy(dAtA[i:], m.R2)
+		i = encodeVarintMessage(dAtA, i, uint64(len(m.R2)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.RedactStr) > 0 {
+		i -= len(m.RedactStr)
+		copy(dAtA[i:], m.RedactStr)
+		i = encodeVarintMessage(dAtA, i, uint64(len(m.RedactStr)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Val) > 0 {
+		i -= len(m.Val)
+		copy(dAtA[i:], m.Val)
+		i = encodeVarintMessage(dAtA, i, uint64(len(m.Val)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *Message) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -765,6 +993,48 @@ func (m *Message_SchnorrSig) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
+func (m *Message_AlphaExpKAndHK) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message_AlphaExpKAndHK) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.AlphaExpKAndHK != nil {
+		{
+			size, err := m.AlphaExpKAndHK.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintMessage(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *Message_FinalVer) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Message_FinalVer) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.FinalVer != nil {
+		{
+			size, err := m.FinalVer.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintMessage(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x32
+	}
+	return len(dAtA) - i, nil
+}
 func encodeVarintMessage(dAtA []byte, offset int, v uint64) int {
 	offset -= sovMessage(v)
 	base := offset
@@ -864,6 +1134,44 @@ func (m *SchnorrSig) Size() (n int) {
 	return n
 }
 
+func (m *AlphaExpKAndHK) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.AlphaExpK)
+	if l > 0 {
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	l = len(m.HK)
+	if l > 0 {
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	return n
+}
+
+func (m *FinalVer) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Val)
+	if l > 0 {
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	l = len(m.RedactStr)
+	if l > 0 {
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	l = len(m.R2)
+	if l > 0 {
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	return n
+}
+
 func (m *Message) Size() (n int) {
 	if m == nil {
 		return 0
@@ -920,6 +1228,30 @@ func (m *Message_SchnorrSig) Size() (n int) {
 	_ = l
 	if m.SchnorrSig != nil {
 		l = m.SchnorrSig.Size()
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	return n
+}
+func (m *Message_AlphaExpKAndHK) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.AlphaExpKAndHK != nil {
+		l = m.AlphaExpKAndHK.Size()
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	return n
+}
+func (m *Message_FinalVer) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.FinalVer != nil {
+		l = m.FinalVer.Size()
 		n += 1 + l + sovMessage(uint64(l))
 	}
 	return n
@@ -1542,6 +1874,274 @@ func (m *SchnorrSig) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *AlphaExpKAndHK) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessage
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AlphaExpKAndHK: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AlphaExpKAndHK: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AlphaExpK", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.AlphaExpK = append(m.AlphaExpK[:0], dAtA[iNdEx:postIndex]...)
+			if m.AlphaExpK == nil {
+				m.AlphaExpK = []byte{}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field HK", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.HK = append(m.HK[:0], dAtA[iNdEx:postIndex]...)
+			if m.HK == nil {
+				m.HK = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessage(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *FinalVer) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessage
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: FinalVer: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: FinalVer: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Val", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Val = append(m.Val[:0], dAtA[iNdEx:postIndex]...)
+			if m.Val == nil {
+				m.Val = []byte{}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RedactStr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RedactStr = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field R2", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.R2 = append(m.R2[:0], dAtA[iNdEx:postIndex]...)
+			if m.R2 == nil {
+				m.R2 = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessage(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *Message) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1710,6 +2310,76 @@ func (m *Message) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			m.Data = &Message_SchnorrSig{v}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AlphaExpKAndHK", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &AlphaExpKAndHK{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Data = &Message_AlphaExpKAndHK{v}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FinalVer", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &FinalVer{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Data = &Message_FinalVer{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

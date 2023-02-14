@@ -15,9 +15,10 @@ func NewParticipantSet() *ParticipantSet {
 }
 
 type Participant struct {
-	x        *big.Int
-	fnX      *big.Int
-	fnXForMe *big.Int
-	pk       *big.Int // 节点的公钥
-	peer     *p2p.Peer
+	x         *big.Int
+	fnX       *big.Int
+	fnXForMe  *big.Int
+	pk        *big.Int // 节点的公钥
+	alphaExpK *big.Int
+	peer      *p2p.Peer
 }

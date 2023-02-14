@@ -2,6 +2,8 @@ package stch
 
 import (
 	"crypto/rand"
+	"fmt"
+	"github.com/232425wxy/meta--/crypto/sha256"
 	"math/big"
 )
 
@@ -65,4 +67,11 @@ func mod(a, b *big.Int) *big.Int {
 func div(a, b *big.Int) *big.Int {
 	res := new(big.Int)
 	return res.Div(a, b)
+}
+
+func redactHash(blockHeight int64, txIndex int, newTx []byte) string {
+	h := sha256.New()
+	h.Write([]byte(fmt.Sprintf("%d:%d:%x", blockHeight, txIndex, newTx)))
+	val := h.Sum(nil)
+	return fmt.Sprintf("%x", val)
 }

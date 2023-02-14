@@ -64,7 +64,7 @@ func TestCreateAndStartNode(t *testing.T) {
 	assert.Nil(t, err)
 	//time.Sleep(time.Millisecond * 2)
 
-	//time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 5)
 	//fmt.Println("第二阶段...")
 	//for i := 0; i < 5; i++ {
 	//	tx := []byte(fmt.Sprintf("number=%d", i+1000))
@@ -73,9 +73,21 @@ func TestCreateAndStartNode(t *testing.T) {
 	//	time.Sleep(time.Second * 2)
 	//}
 
+	fmt.Println("修改前")
+	for _, n := range nodes {
+		fmt.Println(n.blockStore.LoadBlockByHeight(1))
+	}
+
 	time.Sleep(time.Second * 3)
 
 	nodes[0].State().RedactBlock(1, 0, []byte("学校"), []byte("信息工程大学"))
+
+	time.Sleep(time.Second * 4)
+
+	fmt.Println("修改后")
+	for _, n := range nodes {
+		fmt.Println(n.blockStore.LoadBlockByHeight(1))
+	}
 
 	//fmt.Println("第三阶段...")
 	//for i := 0; i < 3; i++ {
@@ -94,18 +106,4 @@ func TestCreateAndStartNode(t *testing.T) {
 	//}
 
 	select {}
-}
-
-func TestSelect(t *testing.T) {
-	c := 8 * 7 * 6 * 5
-	c = c % 9
-	t.Log(c)
-
-	c1 := 8 * 7
-	c1 = c1 % 9
-	c1 = c1 * 6
-	c1 = c1 % 9
-	c1 = c1 * 5
-	c1 = c1 % 9
-	t.Log(c1)
 }

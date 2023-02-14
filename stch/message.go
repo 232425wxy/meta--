@@ -97,6 +97,33 @@ func PublicKeySegFromProto(pb *pbstch.PublicKeySeg) *PublicKeySeg {
 
 func (pks *PublicKeySeg) ChameleonFn() {}
 
+type AlphaExpKAndHK struct {
+	AlphaExpK *big.Int
+	HK        *big.Int
+}
+
+func (ah *AlphaExpKAndHK) ToProto() *pbstch.AlphaExpKAndHK {
+	if ah == nil {
+		return nil
+	}
+	return &pbstch.AlphaExpKAndHK{
+		AlphaExpK: ah.AlphaExpK.Bytes(),
+		HK:        ah.HK.Bytes(),
+	}
+}
+
+func AlphaExpKAndHKFromProto(pb *pbstch.AlphaExpKAndHK) *AlphaExpKAndHK {
+	if pb == nil {
+		return nil
+	}
+	return &AlphaExpKAndHK{
+		AlphaExpK: new(big.Int).SetBytes(pb.AlphaExpK),
+		HK:        new(big.Int).SetBytes(pb.HK),
+	}
+}
+
+func (ah *AlphaExpKAndHK) ChameleonFn() {}
+
 type LeaderSchnorrSig struct {
 	Flag        bool // 标志S是否是负数
 	S           *big.Int
@@ -156,6 +183,8 @@ func (ss *ReplicaSchnorrSig) ToProto() *pbstch.SchnorrSig {
 		S:           ss.S.Bytes(),
 		D:           ss.D.Bytes(),
 		BlockHeight: ss.BlockHeight,
+		TxIndex:     int64(ss.TxIndex),
+		Tx:          ss.NewTx,
 	}
 }
 
@@ -168,10 +197,42 @@ func ReplicaSchnorrSigFromProto(pb *pbstch.SchnorrSig) *ReplicaSchnorrSig {
 		S:           new(big.Int).SetBytes(pb.S),
 		D:           new(big.Int).SetBytes(pb.D),
 		BlockHeight: pb.BlockHeight,
+		TxIndex:     int(pb.TxIndex),
+		NewTx:       pb.Tx,
 	}
 }
 
 func (ss *ReplicaSchnorrSig) ChameleonFn() {}
+
+type FinalVer struct {
+	Val       *big.Int
+	RedactStr string
+	R2        *big.Int
+}
+
+func (fv *FinalVer) ToProto() *pbstch.FinalVer {
+	if fv == nil {
+		return nil
+	}
+	return &pbstch.FinalVer{
+		Val:       fv.Val.Bytes(),
+		RedactStr: fv.RedactStr,
+		R2:        fv.R2.Bytes(),
+	}
+}
+
+func FinalVerFromProto(pb *pbstch.FinalVer) *FinalVer {
+	if pb == nil {
+		return nil
+	}
+	return &FinalVer{
+		Val:       new(big.Int).SetBytes(pb.Val),
+		RedactStr: pb.RedactStr,
+		R2:        new(big.Int).SetBytes(pb.R2),
+	}
+}
+
+func (fv *FinalVer) ChameleonFn() {}
 
 ///////////////////////////////////////////////
 
@@ -191,6 +252,10 @@ func MustEncode(message Message) []byte {
 		pb.Data = &pbstch.Message_SchnorrSig{SchnorrSig: msg.ToProto()}
 	case *ReplicaSchnorrSig:
 		pb.Data = &pbstch.Message_SchnorrSig{SchnorrSig: msg.ToProto()}
+	case *AlphaExpKAndHK:
+		pb.Data = &pbstch.Message_AlphaExpKAndHK{AlphaExpKAndHK: msg.ToProto()}
+	case *FinalVer:
+		pb.Data = &pbstch.Message_FinalVer{FinalVer: msg.ToProto()}
 	default:
 		panic(fmt.Sprintf("unknown message type: %T", msg))
 	}
@@ -224,6 +289,10 @@ func MustDecode(bz []byte) (msg Message) {
 		case pbstch.From_Replica:
 			msg = ReplicaSchnorrSigFromProto(data.SchnorrSig)
 		}
+	case *pbstch.Message_AlphaExpKAndHK:
+		msg = AlphaExpKAndHKFromProto(data.AlphaExpKAndHK)
+	case *pbstch.Message_FinalVer:
+		msg = FinalVerFromProto(data.FinalVer)
 	default:
 		panic(fmt.Sprintf("unknown message type: %T", data))
 	}

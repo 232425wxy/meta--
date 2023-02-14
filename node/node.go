@@ -8,6 +8,7 @@ import (
 	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/consensus"
 	state2 "github.com/232425wxy/meta--/consensus/state"
+	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/database"
 	"github.com/232425wxy/meta--/events"
@@ -98,10 +99,10 @@ func DefaultSyncerProvider(stat *state2.State, blockExec *state2.BlockExecutor, 
 	return reactor
 }
 
-type STCHProvider func(participantsNum int, logger log.Logger) *stch.Reactor
+type STCHProvider func(id crypto.ID, participantsNum int, logger log.Logger) *stch.Reactor
 
-func DefaultSTCHProvider(participantsNum int, logger log.Logger) *stch.Reactor {
-	ch := stch.NewChameleon(participantsNum)
+func DefaultSTCHProvider(id crypto.ID, participantsNum int, logger log.Logger) *stch.Reactor {
+	ch := stch.NewChameleon(id, participantsNum)
 	r := stch.NewReactor(ch)
 	r.SetLogger(logger.New("module", "STCH"))
 	return r
@@ -207,7 +208,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 
 	syncerReactor := provider.SyncerProvider(stat, blockExec, blockStore, logger)
 
-	stchReactor := provider.STCHProvider(len(cfg.P2PConfig.NeighboursSlice()), logger)
+	stchReactor := provider.STCHProvider(nodeInfo.ID(), len(cfg.P2PConfig.NeighboursSlice()), logger)
 	stat.SetChameleon(stchReactor.Chameleon())
 	stat.SetBlockStore(blockStore)
 	stchReactor.Chameleon().SetBlockStore(blockStore)

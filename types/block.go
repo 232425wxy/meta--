@@ -101,7 +101,7 @@ func (b *Block) BlockDataHash() []byte {
 	h := sha256.New()
 	h.Write(b.Header.PreviousBlockHash)
 	h.Write([]byte(fmt.Sprintf("%d", b.Header.Height)))
-	h.Write([]byte(b.Header.Timestamp.String()))
+	//h.Write([]byte(b.Header.Timestamp.String()))
 	h.Write([]byte(b.Header.Proposer))
 	_txs := make([][]byte, len(b.Body.Txs))
 	for i, tx := range b.Body.Txs {
@@ -203,7 +203,7 @@ func HeaderFromProto(pb *pbtypes.Header) *Header {
 		PreviousBlockHash: pb.PreviousBlockHash,
 		BlockDataHash:     pb.BlockDataHash,
 		Height:            pb.Height,
-		Timestamp:         pb.Timestamp,
+		Timestamp:         pb.Timestamp.Local(),
 		Proposer:          crypto.ID(pb.Proposer),
 	}
 }
