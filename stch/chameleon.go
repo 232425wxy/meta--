@@ -237,9 +237,8 @@ func (ch *Chameleon) handleRedactTask(task *Task) ([]byte, error) {
 	}
 	redactBlock.Body.RootHash = merkle.ComputeMerkleRoot(_txs)
 	new_msg := redactBlock.BlockDataHash()
-	fmt.Println("leader 原始消息：", old_msg)
-	fmt.Println("leader 修改消息：", new_msg)
 
+	ss := &LeaderSchnorrSig{}
 	e := new(big.Int).Sub(new(big.Int).SetBytes(old_msg), new(big.Int).SetBytes(new_msg))
 	s := new(big.Int).Add(new(big.Int).Mul(ch.sk, e), ch.k)
 	d := new(big.Int)
@@ -248,20 +247,15 @@ func (ch *Chameleon) handleRedactTask(task *Task) ([]byte, error) {
 		inverseAlpha := calcInverseElem(alpha, q)
 		_s := new(big.Int).Neg(s)
 		d = d.Exp(inverseAlpha, _s, q)
+		ss.Flag = true
 	} else {
 		d = d.Exp(alpha, s, q)
 	}
-	ss := &LeaderSchnorrSig{
-		S:           s,
-		D:           d,
-		BlockHeight: task.BlockHeight,
-		TxIndex:     task.TxIndex,
-		NewTx:       []byte(fmt.Sprintf("%x=%x", task.Key, task.Value)),
-	}
-	if s.Cmp(new(big.Int).SetInt64(0)) < 0 {
-		ss.Flag = true
-		fmt.Println("s:", ss.S)
-	}
+	ss.S = s
+	ss.D = d
+	ss.BlockHeight = task.BlockHeight
+	ss.TxIndex = task.TxIndex
+	ss.NewTx = []byte(fmt.Sprintf("%x=%x", task.Key, task.Value))
 	bz := MustEncode(ss)
 	return bz, nil
 }
@@ -269,12 +263,10 @@ func (ch *Chameleon) handleRedactTask(task *Task) ([]byte, error) {
 func (ch *Chameleon) verifyLeaderSchnorrSig(sig *LeaderSchnorrSig, peer *p2p.Peer) {
 	block := ch.blockStore.LoadBlockByHeight(sig.BlockHeight)
 	originBlockDataHash := block.BlockDataHash()
-	fmt.Println("原始消息：", originBlockDataHash)
 
 	redactBlock := block.Copy()
 	redactBlock.Body.Txs[sig.TxIndex] = sig.NewTx
 	redactBlockDataHash := redactBlock.BlockDataHash()
-	fmt.Println("修改消息：", redactBlockDataHash)
 
 	e := new(big.Int).Sub(new(big.Int).SetBytes(redactBlockDataHash), new(big.Int).SetBytes(originBlockDataHash))
 	_e := new(big.Int).Neg(e)
@@ -289,8 +281,6 @@ func (ch *Chameleon) verifyLeaderSchnorrSig(sig *LeaderSchnorrSig, peer *p2p.Pee
 	} else {
 		x_ = new(big.Int).Exp(g, sig.S, q)
 	}
-	fmt.Println("s:", sig.S)
-	fmt.Println("x_:", x_)
 	if e.Cmp(new(big.Int).SetInt64(0)) < 0 {
 		_pk := calcInverseElem(ch.participants.ps[peer.NodeID()].pk, q)
 		x_ = new(big.Int).Mul(x_, new(big.Int).Exp(_pk, _e, q))
