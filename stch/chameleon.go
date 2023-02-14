@@ -418,7 +418,6 @@ func (ch *Chameleon) verifyReplicaSchnorrSig(rss *ReplicaSchnorrSig, peer *p2p.P
 			ch.bag[redactExist] = new(redactBag)
 		}
 		ch.bag[redactExist].add(peer.NodeID(), rss.ToProto())
-		fmt.Println(len(ch.bag[redactExist].bag))
 		if len(ch.bag[redactExist].bag) == ch.n {
 			if err := ch.redact(redactExist, peer.NodeID()); err != nil {
 				return err
@@ -469,7 +468,7 @@ func (ch *Chameleon) redact(redactStr string, peerID crypto.ID) error {
 	rh := new(big.Int).Mul(block.ChameleonHash.GSigma, new(big.Int).Exp(block.ChameleonHash.Alpha, new(big.Int).SetBytes(redactBlockDataHash), q))
 	rh.Mod(rh, q)
 	if rh.Cmp(new(big.Int).SetBytes(block.ChameleonHash.Hash)) != 0 {
-		return errors.New("redact failed !!!")
+		return errors.New("redact failed")
 	} else {
 		ver := &FinalVer{
 			Val:       new(big.Int).Exp(block.ChameleonHash.GSigma, ch.sk, q),

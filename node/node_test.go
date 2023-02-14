@@ -89,6 +89,15 @@ func TestCreateAndStartNode(t *testing.T) {
 		fmt.Println(n.blockStore.LoadBlockByHeight(1))
 	}
 
+	nodes[0].State().RedactBlock(1, 0, []byte("学校"), []byte("西北工业大学"))
+
+	time.Sleep(time.Second * 4)
+
+	fmt.Println("再次修改后")
+	for _, n := range nodes {
+		fmt.Println(n.blockStore.LoadBlockByHeight(1))
+	}
+
 	//fmt.Println("第三阶段...")
 	//for i := 0; i < 3; i++ {
 	//	tx := []byte(fmt.Sprintf("number=%d", i+1005))

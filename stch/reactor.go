@@ -1,7 +1,6 @@
 package stch
 
 import (
-	"fmt"
 	"github.com/232425wxy/meta--/p2p"
 	"math/big"
 	"time"
@@ -55,7 +54,7 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 		switch msg := msg.(type) {
 		case *IdentityX:
 			if err := r.ch.handleIdentityX(src, msg); err != nil {
-				r.Logger.Error("failed to handle IdentityX message", "err", err)
+				r.Logger.Error("Failed to handle IdentityX message", "err", err)
 				return
 			}
 			fnX := r.ch.calculateFnXForPeer(msg, r.Switch.NodeInfo().NodeID, src.NodeID())
@@ -71,7 +70,7 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 				if r.ch.pk != nil {
 					r.ch.calculateHKAndCID(q)
 					r.brodacastAlphaExpKAndHK()
-					r.Logger.Error("计算变色龙公钥", "hk", r.ch.hk.String(), "cid", r.ch.cid.String(), "alpha", r.ch.alpha.String())
+					r.Logger.Info("Distributed chameleon hash function initialization complete", "hk", r.ch.hk.String()[:10], "cid", r.ch.cid.String()[:10], "alpha", r.ch.alpha.String())
 				} else {
 					// 自己的公钥还没制作出来的情况下，需要等待自己的公钥制作出来后再生成变色龙公钥
 					go func() {
@@ -79,7 +78,7 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 							if r.ch.pk != nil {
 								r.ch.calculateHKAndCID(q)
 								r.brodacastAlphaExpKAndHK()
-								r.Logger.Error("计算变色龙公钥", "hk", r.ch.hk.String(), "cid", r.ch.cid.String(), "alpha", r.ch.alpha.String())
+								r.Logger.Error("Distributed chameleon hash function initialization complete", "hk", r.ch.hk.String()[:10], "cid", r.ch.cid.String()[:10], "alpha", r.ch.alpha.String())
 								return
 							}
 							time.Sleep(time.Millisecond * 10)
@@ -89,24 +88,24 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 			}
 		case *AlphaExpKAndHK:
 			if err := r.ch.handleAlphaExpKAndHK(msg, src); err != nil {
-				r.Logger.Error("failed to handle AlphaExpKAndHK message", "err", err)
+				r.Logger.Error("Failed to handle AlphaExpKAndHK message", "err", err)
 			}
 		case *LeaderSchnorrSig:
 			data, err := r.ch.verifyLeaderSchnorrSig(msg, src, r.Switch.NodeInfo().ID())
 			if len(data) > 0 && err == nil {
 				r.Switch.Broadcast(p2p.STCHChannel, data)
 			} else if err != nil {
-				r.Logger.Error("the private key slice information sent by the leader is incorrect", "leader", src.NodeID())
+				r.Logger.Error("The private key slice information sent by the leader is incorrect", "leader", src.NodeID())
 			}
 		case *ReplicaSchnorrSig:
+			r.Logger.Debug("Receive new redact task from leader", "leader", src.NodeID())
 			if err := r.ch.verifyReplicaSchnorrSig(msg, src); err != nil {
-				fmt.Println("rss:", msg.BlockHeight, msg.TxIndex, msg.NewTx)
-				r.Logger.Error("failed to handle replica schnorr signature", "err", err)
+				r.Logger.Error("Failed to handle replica schnorr signature", "err", err)
 			}
 		case *FinalVer:
 			full, err := r.ch.handleFinalVer(msg, src)
 			if full && err != nil {
-				r.Logger.Error("failed to redact block", "err", err)
+				r.Logger.Error("Failed to redact block", "err", err)
 			}
 		}
 	}
@@ -154,6 +153,7 @@ func (r *Reactor) processRedactTaskRoutine() {
 			select {
 			case task := <-r.ch.redactTaskChan:
 				r.ch.redactAvailable = false
+				r.Logger.Debug("A new redact mission arrives")
 				data, err := r.ch.handleRedactTask(task, r.Switch.NodeInfo().ID())
 				if err != nil {
 					r.Logger.Error("failed to handle redact task", "err", err)
