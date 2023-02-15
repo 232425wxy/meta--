@@ -63,7 +63,7 @@ var nonResidue2 = &fe2{
 
 // Scalar Field
 // q = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
-// Size of six words
+// TxsNumInPool of six words
 // qr = 2 ^ 256
 
 var qBig = bigFromHex("0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001")

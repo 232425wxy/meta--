@@ -156,6 +156,8 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 		return nil, err
 	}
 
+	kp := stch.LoadInitConfig(cfg.BasicConfig.ChameleonKeyFilePath())
+
 	eventBus, err := events.CreateAndStartEventBus(logger)
 	if err != nil {
 		return nil, err
@@ -209,6 +211,7 @@ func NewNode(cfg *config.Config, logger log.Logger, provider Provider) (*Node, e
 	syncerReactor := provider.SyncerProvider(stat, blockExec, blockStore, logger)
 
 	stchReactor := provider.STCHProvider(nodeInfo.ID(), len(cfg.P2PConfig.NeighboursSlice()), logger)
+	stchReactor.Chameleon().Init(kp)
 	stat.SetChameleon(stchReactor.Chameleon())
 	stat.SetBlockStore(blockStore)
 	stchReactor.Chameleon().SetBlockStore(blockStore)

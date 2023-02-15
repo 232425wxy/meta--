@@ -59,21 +59,21 @@ func (p *TxsPool) SetLogger(logger log.Logger) {
 	p.logger = logger
 }
 
-// Size ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+// TxsNumInPool ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------
 //
-// Size 返回目前交易池里的交易个数。
-func (p *TxsPool) Size() int {
+// TxsNumInPool 返回目前交易池里的交易个数。
+func (p *TxsPool) TxsNumInPool() int {
 	return p.txs.Size()
 }
 
-// TxsBytes ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
+// AllTxsBytesSize ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨
 //
 //	---------------------------------------------------------
 //
-// TxsBytes 返回目前交易池里所有交易加一起的大小，单位是字节。
-func (p *TxsPool) TxsBytes() int {
+// AllTxsBytesSize 返回目前交易池里所有交易加一起的大小，单位是字节。
+func (p *TxsPool) AllTxsBytesSize() int {
 	return int(atomic.LoadInt64(&p.txsBytes))
 }
 
@@ -135,7 +135,7 @@ func (p *TxsPool) CheckTx(tx types.Tx, sender crypto.ID) error {
 	ptx.senders.Set(string(sender), struct{}{}) // 记录一下是谁发来的这个交易数据
 	p.addTx(ptx)
 	p.notifyTxsAvailable() // 通知其他模块说交易池里有交易数据了
-	p.metrics.Size.Set(float64(p.Size()))
+	p.metrics.Size.Set(float64(p.TxsNumInPool()))
 	return nil
 }
 
@@ -187,10 +187,10 @@ func (p *TxsPool) Update(height int64, txs types.Txs) {
 			p.removeTx(tx, elem.(*clist.Element))
 		}
 	}
-	if p.Size() > 0 {
+	if p.TxsNumInPool() > 0 {
 		p.notifyTxsAvailable()
 	}
-	p.metrics.Size.Set(float64(p.Size()))
+	p.metrics.Size.Set(float64(p.TxsNumInPool()))
 }
 
 func (p *TxsPool) addTx(ptx *poolTx) {
@@ -213,7 +213,7 @@ func (p *TxsPool) removeTx(tx types.Tx, elem *clist.Element) {
 //
 // notifyTxsAvailable 方法通知共识模块交易池里还有数据可以提取。
 func (p *TxsPool) notifyTxsAvailable() {
-	if p.Size() == 0 {
+	if p.TxsNumInPool() == 0 {
 		panic("notified txs available but txs pool is empty")
 	}
 	for p.notifiedAvailable {
@@ -231,7 +231,7 @@ func (p *TxsPool) notifyTxsAvailable() {
 //
 // isFull 判断交易池是否已满。
 func (p *TxsPool) isFull() bool {
-	return p.Size() >= p.cfg.MaxSize
+	return p.TxsNumInPool() >= p.cfg.MaxSize
 }
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/

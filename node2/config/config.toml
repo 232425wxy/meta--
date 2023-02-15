@@ -2,6 +2,7 @@
 [basic]
 home = "node2"
 key_file = "node_key.json"
+chameleon_key_file = "chameleon_key.json"
 genesis_file = "genesis.json"
 db_backend = "goleveldb"
 db_dir = "data"
@@ -17,7 +18,7 @@ send_rate = "5120000"
 recv_rate = "5120000"
 pong_timeout = "45s"
 ping_interval = "1m30s"
-neighbours = "[81da6eddc2a1e3010c90@127.0.0.1:26656 aa3e21546f4d4acc983a@127.0.0.1:26657 9032ac7d29df8f426528@127.0.0.1:26658 8bc7e3744056c6bc0173@127.0.0.1:26659]"
+neighbours = "[a2079175f2c2c82c2a90@127.0.0.1:26656 a480f1082160268e79f1@127.0.0.1:26657 aa0260688112dfc32678@127.0.0.1:26658 a05870ba865a63a11b10@127.0.0.1:26659]"
 
 [txs_pool]
 home = "node2"
@@ -30,3 +31,4 @@ timeout_prepare = "3s"
 timeout_pre_commit = "1s"
 timeout_commit = "1s"
 timeout_decide = "1s"
+timeout_consensus = "10s"

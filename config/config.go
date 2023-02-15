@@ -46,26 +46,32 @@ func (c *Config) SaveAs(file string) {
 //  2. 存放节点密钥文件的地址：KeyFile
 //  3. 存放初始文件的地址：GenesisFile
 type BasicConfig struct {
-	Home        string `mapstructure:"home"`
-	KeyFile     string `mapstructure:"key_file"`
-	GenesisFile string `mapstructure:"genesis_file"`
-	DBBackend   string `mapstructure:"db_backend"`
-	DBDir       string `mapstructure:"db_dir"`
-	App         string `mapstructure:"app"`
+	Home             string `mapstructure:"home"`
+	KeyFile          string `mapstructure:"key_file"`
+	ChameleonKeyFile string `mapstructure:"chameleon_key_file"`
+	GenesisFile      string `mapstructure:"genesis_file"`
+	DBBackend        string `mapstructure:"db_backend"`
+	DBDir            string `mapstructure:"db_dir"`
+	App              string `mapstructure:"app"`
 }
 
 func DefaultBasicConfig() *BasicConfig {
 	return &BasicConfig{
-		KeyFile:     "node_key.json",
-		GenesisFile: "genesis.json",
-		DBBackend:   "goleveldb",
-		DBDir:       "data",
-		App:         "kvstore",
+		KeyFile:          "node_key.json",
+		ChameleonKeyFile: "chameleon_key.json",
+		GenesisFile:      "genesis.json",
+		DBBackend:        "goleveldb",
+		DBDir:            "data",
+		App:              "kvstore",
 	}
 }
 
 func (bc *BasicConfig) KeyFilePath() string {
 	return filepath.Join(bc.Home, bc.KeyFile)
+}
+
+func (bc *BasicConfig) ChameleonKeyFilePath() string {
+	return filepath.Join(bc.Home, bc.ChameleonKeyFile)
 }
 
 func (bc *BasicConfig) GenesisFilePath() string {

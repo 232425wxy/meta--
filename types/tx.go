@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"github.com/232425wxy/meta--/crypto/merkle"
 	"github.com/232425wxy/meta--/crypto/sha256"
@@ -71,6 +72,32 @@ func TxsFromProto(pb pbtypes.Txs) Txs {
 		txs = append(txs, tx)
 	}
 	return txs
+}
+
+func (txs Txs) String() string {
+	str := "[\n\t"
+	for i, tx := range txs {
+		indent := "\t\t\t\t"
+		if i == 0 {
+			indent = "\t\t\t"
+		}
+		kvs := bytes.Split(tx, []byte("="))
+		key, err := hex.DecodeString(string(kvs[0]))
+		if err == nil {
+			str += indent + "[" + string(key)
+		} else {
+			str += indent + "[" + string(kvs[0])
+		}
+		value, err := hex.DecodeString(string(kvs[1]))
+		if err == nil {
+			str += "=" + string(value) + "]\n"
+		} else {
+			str += "=" + string(kvs[1]) + "]\n"
+		}
+
+	}
+	str += "\t\t]"
+	return str
 }
 
 // Proof ♏ | 作者 ⇨ 吴翔宇 | (｡･∀･)ﾉﾞ嗨

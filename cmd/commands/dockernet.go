@@ -5,6 +5,7 @@ import (
 	mos "github.com/232425wxy/meta--/common/os"
 	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/p2p"
+	"github.com/232425wxy/meta--/stch"
 	"github.com/232425wxy/meta--/types"
 	"github.com/spf13/cobra"
 	"net"
@@ -21,7 +22,7 @@ var Port int
 func init() {
 	DockerNetCmd.Flags().IntVar(&NodesNum, "n", 4, "number of nodes to initialize in the docker net")
 	DockerNetCmd.Flags().StringVar(&OutputDir, "o", ".", "root directory to store everything")
-	DockerNetCmd.Flags().StringVar(&IP, "ip", "192.168.11.2", "starting ip address")
+	DockerNetCmd.Flags().StringVar(&IP, "ip", "127.0.0.1", "ip address")
 	DockerNetCmd.Flags().IntVar(&Port, "port", 26656, "p2p listen port")
 }
 
@@ -85,18 +86,23 @@ func dockernetFiles(cmd *cobra.Command, args []string) (err error) {
 			VotingPower:    10,
 			LeaderPriority: 10,
 		}
+
+		kp := stch.NewKP(NodesNum)
+		kp.Save(cfg.BasicConfig.ChameleonKeyFilePath())
+
 		validators = append(validators, validator)
 
 		ip := net.ParseIP(IP)
 		ip = ip.To4()
-		for j := 0; j < i; j++ {
-			ip[3]++
-		}
-		neighbour := p2p.IDAddressString(key.PublicKey.ToID(), fmt.Sprintf("%s:%d", ip.String(), Port))
+		//for j := 0; j < i; j++ {
+		//	ip[3]++
+		//}
+		neighbour := p2p.IDAddressString(key.PublicKey.ToID(), fmt.Sprintf("%s:%d", ip.String(), Port+i))
 		neighbours = append(neighbours, neighbour)
 	}
 
 	for i := 0; i < NodesNum; i++ {
+		cfg.P2PConfig.ListenAddress = fmt.Sprintf("tcp://0.0.0.0:%d", 26656+i)
 		nodeDirName := fmt.Sprintf("node%d", i)
 		nodeDir := filepath.Join(OutputDir, nodeDirName)
 		cfg.SetHome(nodeDir)

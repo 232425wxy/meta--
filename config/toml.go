@@ -9,6 +9,7 @@ const TemplateToml = `
 [basic]
 home = "{{ .BasicConfig.Home }}"
 key_file = "{{ .BasicConfig.KeyFile }}"
+chameleon_key_file = "{{ .BasicConfig.ChameleonKeyFile }}"
 genesis_file = "{{ .BasicConfig.GenesisFile }}"
 db_backend = "{{ .BasicConfig.DBBackend }}"
 db_dir = "{{ .BasicConfig.DBDir }}"

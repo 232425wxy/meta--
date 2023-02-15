@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/232425wxy/meta--/crypto/bls12"
-	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/proto/pbtypes"
 	"time"
 )
@@ -13,12 +12,12 @@ import (
 type Vote struct {
 	VoteType  pbtypes.VoteType
 	Height    int64
-	ValueHash sha256.Hash
+	ValueHash []byte
 	Timestamp time.Time
 	Signature *bls12.Signature
 }
 
-func NewVote(typ pbtypes.VoteType, height int64, valueHash sha256.Hash, privateKey *bls12.PrivateKey) *Vote {
+func NewVote(typ pbtypes.VoteType, height int64, valueHash []byte, privateKey *bls12.PrivateKey) *Vote {
 	v := &Vote{
 		VoteType:  typ,
 		Height:    height,
@@ -79,7 +78,7 @@ func VoteFromProto(pb *pbtypes.Vote) *Vote {
 	if pb == nil {
 		return nil
 	}
-	hash := sha256.Hash{}
+	hash := make([]byte, len(pb.ValueHash))
 	copy(hash[:], pb.ValueHash)
 	return &Vote{
 		VoteType:  pb.VoteType,

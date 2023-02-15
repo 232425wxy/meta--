@@ -4,10 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/232425wxy/meta--/crypto"
-	"github.com/232425wxy/meta--/crypto/merkle"
 	"github.com/232425wxy/meta--/crypto/sha256"
 	"github.com/232425wxy/meta--/p2p"
-	"github.com/232425wxy/meta--/proto/pbstch"
 	"github.com/232425wxy/meta--/store"
 	"github.com/232425wxy/meta--/types"
 	"math/big"
@@ -22,29 +20,18 @@ type Task struct {
 }
 
 type polynomial struct {
-	items map[int]*big.Int
+	Items map[int]*big.Int
 }
 
 // calculate 计算：fn(x) mod q
 func (p *polynomial) calculate(x, q *big.Int) *big.Int {
 	res := new(big.Int).SetInt64(0)
-	for order, item := range p.items {
+	for order, item := range p.Items {
 		e := new(big.Int).Exp(x, new(big.Int).SetInt64(int64(order)), q)
 		e.Mul(e, item)
 		res.Add(res, e)
 	}
 	return res.Mod(res, q)
-}
-
-type redactBag struct {
-	bag map[crypto.ID]*pbstch.SchnorrSig
-}
-
-func (bag *redactBag) add(peerID crypto.ID, ss *pbstch.SchnorrSig) {
-	if bag.bag == nil {
-		bag.bag = make(map[crypto.ID]*pbstch.SchnorrSig)
-	}
-	bag.bag[peerID] = ss
 }
 
 type Chameleon struct {
@@ -61,14 +48,11 @@ type Chameleon struct {
 	cid             *big.Int
 	alpha           *big.Int
 	alphaExpK       *big.Int
+	Alpha           *big.Int
 	redactTaskChan  chan *Task
 	redactAvailable bool
 	blockStore      *store.BlockStore
-	redacts         map[string]struct{}
-	bag             map[string]*redactBag
-	verCh           chan *FinalVer
-	verMap          map[crypto.ID]*FinalVer
-	waitRedactBlock *types.Block
+	redactSteps     *stepInfo
 	mu              sync.Mutex
 }
 
@@ -76,19 +60,24 @@ func NewChameleon(id crypto.ID, n int) *Chameleon {
 	ch := &Chameleon{}
 	ch.id = id
 	ch.k, ch.x = GenerateKAndX()
-	ch.fn = &polynomial{items: make(map[int]*big.Int)}
+	ch.fn = &polynomial{Items: make(map[int]*big.Int)}
 	ch.n = n
 	ch.participants = NewParticipantSet()
 	ch.generateFn(n)
 	ch.fnX = ch.fn.calculate(ch.x, q)
 	ch.hk = new(big.Int).SetInt64(1)
 	ch.cid = new(big.Int).SetInt64(0)
+	ch.Alpha = new(big.Int).SetInt64(1)
 	ch.redactTaskChan = make(chan *Task, 100)
-	ch.redacts = make(map[string]struct{})
-	ch.bag = make(map[string]*redactBag)
-	ch.verCh = make(chan *FinalVer, 1)
-	ch.verMap = make(map[crypto.ID]*FinalVer)
+	ch.redactSteps = newStepInfo()
 	return ch
+}
+
+func (ch *Chameleon) Init(kp *KeyPoly) {
+	ch.k = new(big.Int).Set(kp.K)
+	ch.x = new(big.Int).Exp(g, ch.k, q)
+	ch.fn = kp.Poly
+	ch.fnX = ch.fn.calculate(ch.x, q)
 }
 
 func (ch *Chameleon) SetBlockStore(bs *store.BlockStore) {
@@ -99,7 +88,7 @@ func (ch *Chameleon) generateFn(num int) {
 	ch.mu.Lock()
 	ch.mu.Unlock()
 	for i := 0; i < num; i++ {
-		ch.fn.items[i] = GeneratePolynomialItem()
+		ch.fn.Items[i] = GeneratePolynomialItem()
 	}
 }
 
@@ -217,6 +206,7 @@ func (ch *Chameleon) calculateHKAndCID(q *big.Int) {
 	h := hashFn.Sum(nil)
 	ch.alpha = new(big.Int).SetBytes(h)
 	ch.alphaExpK = new(big.Int).Exp(ch.alpha, ch.k, q)
+	ch.Alpha.Mul(ch.Alpha, ch.alphaExpK)
 }
 
 func (ch *Chameleon) handleAlphaExpKAndHK(ah *AlphaExpKAndHK, peer *p2p.Peer) error {
@@ -228,6 +218,7 @@ func (ch *Chameleon) handleAlphaExpKAndHK(ah *AlphaExpKAndHK, peer *p2p.Peer) er
 		}
 	}
 	ch.participants.ps[peer.NodeID()].alphaExpK = new(big.Int).Set(ah.AlphaExpK)
+	ch.Alpha.Mul(ch.Alpha, ah.AlphaExpK)
 	return nil
 }
 
@@ -262,17 +253,12 @@ func (ch *Chameleon) handleRedactTask(task *Task, myID crypto.ID) ([]byte, error
 	redactBlock := block.Copy()
 	old_msg := redactBlock.BlockDataHash()
 	if task.TxIndex >= len(redactBlock.Body.Txs) {
-		return nil, fmt.Errorf("you can only redact existed tx, origin_txs_num: %d, redact_tx_index: %d", len(redactBlock.Body.Txs), task.TxIndex)
+		return nil, fmt.Errorf("you can only generateNewRandomness existed tx, origin_txs_num: %d, redact_tx_index: %d", len(redactBlock.Body.Txs), task.TxIndex)
 	}
 	if task.TxIndex < len(redactBlock.Body.Txs) {
 		tx := []byte(fmt.Sprintf("%x=%x", task.Key, task.Value))
 		redactBlock.Body.Txs[task.TxIndex] = tx
 	}
-	_txs := make([][]byte, len(redactBlock.Body.Txs))
-	for i, tx := range redactBlock.Body.Txs {
-		_txs[i] = tx
-	}
-	redactBlock.Body.RootHash = merkle.ComputeMerkleRoot(_txs)
 	new_msg := redactBlock.BlockDataHash()
 
 	lss := &LeaderSchnorrSig{}
@@ -293,26 +279,19 @@ func (ch *Chameleon) handleRedactTask(task *Task, myID crypto.ID) ([]byte, error
 	lss.BlockHeight = task.BlockHeight
 	lss.TxIndex = task.TxIndex
 	lss.NewTx = []byte(fmt.Sprintf("%x=%x", task.Key, task.Value))
-	redactExist := redactHash(lss.BlockHeight, lss.TxIndex, lss.NewTx)
-	if ch.bag[redactExist] == nil {
-		ch.bag[redactExist] = new(redactBag)
+	if _, err := ch.redactSteps.addLeaderRedact(myID, lss, ch.n); err != nil {
+		return nil, err
 	}
-	ch.bag[redactExist].add(myID, lss.ToProto())
+
 	bz := MustEncode(lss)
+
 	return bz, nil
 }
 
 func (ch *Chameleon) verifyLeaderSchnorrSig(lss *LeaderSchnorrSig, peer *p2p.Peer, myID crypto.ID) ([]byte, error) {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
-	redactExist := redactHash(lss.BlockHeight, lss.TxIndex, lss.NewTx)
-	if len(ch.redacts) > 0 {
-		if _, ok := ch.redacts[redactExist]; !ok {
-			return nil, errors.New("redact task is not exist")
-		}
-	} else {
-		ch.redacts[redactExist] = struct{}{}
-	}
+
 	block := ch.blockStore.LoadBlockByHeight(lss.BlockHeight)
 	originBlockDataHash := block.BlockDataHash()
 
@@ -360,13 +339,25 @@ func (ch *Chameleon) verifyLeaderSchnorrSig(lss *LeaderSchnorrSig, peer *p2p.Pee
 		rss.TxIndex = lss.TxIndex
 		rss.NewTx = lss.NewTx
 		bz := MustEncode(rss)
-		if ch.bag[redactExist] == nil {
-			ch.bag[redactExist] = new(redactBag)
+
+		isFull, err := ch.redactSteps.addLeaderRedact(peer.NodeID(), lss, ch.n)
+		if err != nil {
+			return nil, err
 		}
-		ch.bag[redactExist].add(peer.NodeID(), lss.ToProto())
-		ch.bag[redactExist].add(myID, rss.ToProto())
-		if len(ch.bag[redactExist].bag) == ch.n {
-			return bz, ch.redact(redactExist, peer.NodeID())
+		if isFull {
+			if err = ch.generateNewRandomness(redactHash(lss.BlockHeight, lss.TxIndex, lss.NewTx)); err != nil {
+				return nil, err
+			}
+		}
+
+		isFull, err = ch.redactSteps.addReplicaRedact(myID, rss, ch.n)
+		if err != nil {
+			return nil, err
+		}
+		if isFull {
+			if err = ch.generateNewRandomness(redactHash(lss.BlockHeight, lss.TxIndex, lss.NewTx)); err != nil {
+				return nil, err
+			}
 		}
 		return bz, nil
 	} else {
@@ -374,17 +365,21 @@ func (ch *Chameleon) verifyLeaderSchnorrSig(lss *LeaderSchnorrSig, peer *p2p.Pee
 	}
 }
 
-func (ch *Chameleon) verifyReplicaSchnorrSig(rss *ReplicaSchnorrSig, peer *p2p.Peer) error {
+func (ch *Chameleon) verifyReplicaSchnorrSig(rss *ReplicaSchnorrSig, peerID crypto.ID) error {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
-	redactExist := redactHash(rss.BlockHeight, rss.TxIndex, rss.NewTx)
-	if len(ch.redacts) > 0 {
-		if _, ok := ch.redacts[redactExist]; !ok {
-			return fmt.Errorf("peer %s may took wrong action when redact block", peer.NodeID())
+
+	redactName := redactHash(rss.BlockHeight, rss.TxIndex, rss.NewTx)
+
+	if ch.redactSteps.redactMission[redactName] == nil {
+		select {
+		case ch.redactSteps.rssChan <- &Rss{id: peerID, rss: rss}:
+		default:
+			go func() { ch.redactSteps.rssChan <- &Rss{id: peerID, rss: rss} }()
 		}
-	} else {
-		ch.redacts[redactExist] = struct{}{}
+		return nil
 	}
+
 	block := ch.blockStore.LoadBlockByHeight(rss.BlockHeight)
 	originBlockDataHash := block.BlockDataHash()
 
@@ -407,33 +402,31 @@ func (ch *Chameleon) verifyReplicaSchnorrSig(rss *ReplicaSchnorrSig, peer *p2p.P
 		x_.Exp(g, rss.S, q)
 	}
 	if e.Cmp(new(big.Int).SetInt64(0)) < 0 {
-		_pk := calcInverseElem(ch.participants.ps[peer.NodeID()].pk, q)
+		_pk := calcInverseElem(ch.participants.ps[peerID].pk, q)
 		x_ = new(big.Int).Mul(x_, new(big.Int).Exp(_pk, _e, q))
 	} else {
-		x_ = new(big.Int).Mul(x_, new(big.Int).Exp(ch.participants.ps[peer.NodeID()].pk, e, q))
+		x_ = new(big.Int).Mul(x_, new(big.Int).Exp(ch.participants.ps[peerID].pk, e, q))
 	}
 	x_.Mod(x_, q)
-	if x_.Cmp(ch.participants.ps[peer.NodeID()].x) == 0 {
-		if ch.bag[redactExist] == nil {
-			ch.bag[redactExist] = new(redactBag)
+	if x_.Cmp(ch.participants.ps[peerID].x) == 0 {
+		isFull, err := ch.redactSteps.addReplicaRedact(peerID, rss, ch.n)
+		if err != nil {
+			return err
 		}
-		ch.bag[redactExist].add(peer.NodeID(), rss.ToProto())
-		if len(ch.bag[redactExist].bag) == ch.n {
-			if err := ch.redact(redactExist, peer.NodeID()); err != nil {
-				return err
-			}
+		if isFull {
+			return ch.generateNewRandomness(redactName)
 		}
-		return nil
 	} else {
-		return fmt.Errorf("peer %s send wrong information", peer.NodeID())
+		return fmt.Errorf("peerID %s send wrong information", peerID)
 	}
+	return nil
 }
 
-func (ch *Chameleon) redact(redactStr string, peerID crypto.ID) error {
-	r := ch.bag[redactStr].bag[peerID]
-	block := ch.blockStore.LoadBlockByHeight(r.BlockHeight)
+func (ch *Chameleon) generateNewRandomness(redactName string) error {
+	mission := ch.redactSteps.redactMission[redactName]
+	block := ch.blockStore.LoadBlockByHeight(mission.BlockHeight)
 	originBlockDataHash := block.BlockDataHash()
-	block.Body.Txs[r.TxIndex] = r.Tx
+	block.Body.Txs[mission.TxIndex] = []byte(fmt.Sprintf("%x=%x", mission.Key, mission.Value))
 	redactBlockDataHash := block.BlockDataHash()
 
 	Alpha := new(big.Int).Set(ch.alphaExpK)
@@ -443,13 +436,6 @@ func (ch *Chameleon) redact(redactStr string, peerID crypto.ID) error {
 	inverseAlpha := calcInverseElem(Alpha, q)
 	e := new(big.Int).Sub(new(big.Int).SetBytes(originBlockDataHash), new(big.Int).SetBytes(redactBlockDataHash))
 	_e := new(big.Int).Neg(e)
-
-	c := new(big.Int).SetInt64(1)
-	for _, seg := range ch.bag[redactStr].bag {
-		di := new(big.Int).SetBytes(seg.D)
-		c.Mul(c, di)
-	}
-	c.Mul(c, inverseAlpha)
 
 	r1 := new(big.Int)
 	if e.Cmp(new(big.Int).SetInt64(0)) < 0 {
@@ -461,6 +447,14 @@ func (ch *Chameleon) redact(redactStr string, peerID crypto.ID) error {
 	r1.Mod(r1, q)
 	block.ChameleonHash.GSigma.Set(r1)
 
+	c := new(big.Int).SetInt64(1)
+	for _, lss := range ch.redactSteps.leaderRedact {
+		c.Mul(c, lss.D)
+	}
+	for _, rss := range ch.redactSteps.replicaRedacts {
+		c.Mul(c, rss.D)
+	}
+	c.Mul(c, inverseAlpha)
 	r2 := new(big.Int).Mul(block.ChameleonHash.HKSigma, c)
 	r2.Mod(r2, q)
 	block.ChameleonHash.HKSigma.Set(r2)
@@ -470,45 +464,62 @@ func (ch *Chameleon) redact(redactStr string, peerID crypto.ID) error {
 	if rh.Cmp(new(big.Int).SetBytes(block.ChameleonHash.Hash)) != 0 {
 		return errors.New("redact failed")
 	} else {
-		ver := &FinalVer{
-			Val:       new(big.Int).Exp(block.ChameleonHash.GSigma, ch.sk, q),
-			RedactStr: redactStr,
-			R2:        new(big.Int).Set(block.ChameleonHash.HKSigma),
+		ch.redactSteps.redactBlock = block
+		rv := &RandomVerification{
+			GSigmaExpSK: new(big.Int).Exp(block.ChameleonHash.GSigma, ch.sk, q),
+			RedactName:  redactName,
+			R2:          new(big.Int).Set(block.ChameleonHash.HKSigma),
 		}
-		ch.verMap[ch.id] = ver
 		select {
-		case ch.verCh <- ver:
+		case ch.redactSteps.randomChan <- rv:
 		default:
-			go func() { ch.verCh <- ver }()
+			go func() { ch.redactSteps.randomChan <- rv }()
 		}
-		ch.waitRedactBlock = block
+		isFull, err := ch.redactSteps.addRandomVerification(ch.id, rv, ch.n)
+		if err != nil {
+			return err
+		}
+		if isFull {
+			if err = ch.doRedact(); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }
 
-func (ch *Chameleon) handleFinalVer(fv *FinalVer, peer *p2p.Peer) (bool, error) {
+func (ch *Chameleon) handleRandomVerification(fv *RandomVerification, peerID crypto.ID) error {
 	ch.mu.Lock()
 	defer ch.mu.Unlock()
-	ch.verMap[peer.NodeID()] = fv
-	if len(ch.verMap) == ch.n {
-		v := new(big.Int).SetInt64(1)
-		for _, ver := range ch.verMap {
-			v.Mul(v, ver.Val)
-		}
-		v.Mod(v, q)
-		if v.Cmp(fv.R2) == 0 {
-			if ch.waitRedactBlock != nil {
-				ch.blockStore.SaveBlock(ch.waitRedactBlock)
-				ch.redacts = make(map[string]struct{})
-				ch.bag = make(map[string]*redactBag)
-				ch.verMap = make(map[crypto.ID]*FinalVer)
-			} else {
-				return true, errors.New("no block to redact")
-			}
-		} else {
-			return true, errors.New("wrong redact information")
-		}
-		ch.waitRedactBlock = nil
+	isFull, err := ch.redactSteps.addRandomVerification(peerID, fv, ch.n)
+	if err != nil {
+		return err
 	}
-	return false, nil
+	if isFull {
+		if err = ch.doRedact(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ch *Chameleon) doRedact() error {
+	v := new(big.Int).SetInt64(1)
+	r2 := new(big.Int).SetInt64(1)
+	for _, random := range ch.redactSteps.randomVerifications {
+		v.Mul(v, random.GSigmaExpSK)
+		if r2.Cmp(new(big.Int).SetInt64(1)) == 0 {
+			r2.Set(random.R2)
+		} else if r2.Cmp(random.R2) != 0 {
+			return fmt.Errorf("some peers sent different randomness to me")
+		}
+	}
+	v.Mod(v, q)
+	if v.Cmp(r2) == 0 {
+		ch.blockStore.SaveBlock(ch.redactSteps.redactBlock)
+		ch.redactSteps.reset()
+		return nil
+	} else {
+		return fmt.Errorf("can not verify randomness")
+	}
 }

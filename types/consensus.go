@@ -61,11 +61,11 @@ func NewPrepare(height int64, block *Block, id crypto.ID, privateKey *bls12.Priv
 		Block:     block,
 		Timestamp: time.Now(),
 	}
-	if len(block.Header.BlockDataHash) == 0 {
+	if len(block.ChameleonHash.Hash) == 0 {
 		panic("block's hash is empty")
 	}
-	hash := sha256.Hash{}
-	copy(hash[:], block.Header.BlockDataHash)
+	hash := make([]byte, len(block.ChameleonHash.Hash))
+	copy(hash[:], block.ChameleonHash.Hash)
 	var err error
 	p.Signature, err = privateKey.Sign(hash)
 	if err != nil {
@@ -117,7 +117,7 @@ type PrepareVote struct {
 	Vote *Vote `json:"vote"`
 }
 
-func NewPrepareVote(height int64, hash sha256.Hash, privateKey *bls12.PrivateKey) *PrepareVote {
+func NewPrepareVote(height int64, hash []byte, privateKey *bls12.PrivateKey) *PrepareVote {
 	vote := &PrepareVote{Vote: &Vote{
 		VoteType:  pbtypes.PrepareVoteType,
 		Height:    height,
@@ -156,12 +156,12 @@ type PreCommit struct {
 	Type               pbtypes.ConsensusMessageType `json:"type"`
 	ID                 crypto.ID                    `json:"ID"`
 	Height             int64                        `json:"height"`
-	ValueHash          sha256.Hash                  `json:"value_hash"`
+	ValueHash          []byte                       `json:"value_hash"`
 	Timestamp          time.Time                    `json:"timestamp"`
 	AggregateSignature *bls12.AggregateSignature    `json:"aggregate_signature"` // 这个签名是对PrepareVote消息的聚合签名
 }
 
-func NewPreCommit(agg *bls12.AggregateSignature, hash sha256.Hash, id crypto.ID, height int64) *PreCommit {
+func NewPreCommit(agg *bls12.AggregateSignature, hash []byte, id crypto.ID, height int64) *PreCommit {
 	return &PreCommit{
 		Type:               pbtypes.PreCommitType,
 		ID:                 id,
@@ -190,7 +190,7 @@ func PreCommitFromProto(pb *pbtypes.PreCommit) *PreCommit {
 	if pb == nil {
 		return nil
 	}
-	hash := sha256.Hash{}
+	hash := make([]byte, len(pb.ValueHash))
 	copy(hash[:], pb.ValueHash)
 	return &PreCommit{
 		Type:               pb.Type,
@@ -210,7 +210,7 @@ type PreCommitVote struct {
 	Vote *Vote `json:"vote"`
 }
 
-func NewPreCommitVote(height int64, hash sha256.Hash, privateKey *bls12.PrivateKey) *PreCommitVote {
+func NewPreCommitVote(height int64, hash []byte, privateKey *bls12.PrivateKey) *PreCommitVote {
 	vote := &PreCommitVote{Vote: &Vote{
 		VoteType:  pbtypes.PreCommitVoteType,
 		Height:    height,
@@ -249,12 +249,12 @@ type Commit struct {
 	Type               pbtypes.ConsensusMessageType `json:"type"`
 	ID                 crypto.ID                    `json:"ID"`
 	Height             int64                        `json:"height"`
-	ValueHash          sha256.Hash                  `json:"value_hash"`
+	ValueHash          []byte                       `json:"value_hash"`
 	Timestamp          time.Time                    `json:"timestamp"`
 	AggregateSignature *bls12.AggregateSignature    `json:"aggregate_signature"`
 }
 
-func NewCommit(agg *bls12.AggregateSignature, hash sha256.Hash, id crypto.ID, height int64) *Commit {
+func NewCommit(agg *bls12.AggregateSignature, hash []byte, id crypto.ID, height int64) *Commit {
 	return &Commit{
 		Type:               pbtypes.CommitType,
 		ID:                 id,
@@ -283,7 +283,7 @@ func CommitFromProto(pb *pbtypes.Commit) *Commit {
 	if pb == nil {
 		return nil
 	}
-	hash := sha256.Hash{}
+	hash := make([]byte, len(pb.ValueHash))
 	copy(hash[:], pb.ValueHash)
 	return &Commit{
 		Type:               pb.Type,
@@ -303,7 +303,7 @@ type CommitVote struct {
 	Vote *Vote `json:"vote"`
 }
 
-func NewCommitVote(height int64, hash sha256.Hash, privateKey *bls12.PrivateKey) *CommitVote {
+func NewCommitVote(height int64, hash []byte, privateKey *bls12.PrivateKey) *CommitVote {
 	vote := &CommitVote{Vote: &Vote{
 		VoteType:  pbtypes.CommitVoteType,
 		Height:    height,
@@ -342,12 +342,12 @@ type Decide struct {
 	Type               pbtypes.ConsensusMessageType `json:"type"`
 	ID                 crypto.ID                    `json:"ID"`
 	Height             int64                        `json:"height"`
-	ValueHash          sha256.Hash                  `json:"value_hash"`
+	ValueHash          []byte                       `json:"value_hash"`
 	Timestamp          time.Time                    `json:"timestamp"`
 	AggregateSignature *bls12.AggregateSignature
 }
 
-func NewDecide(agg *bls12.AggregateSignature, hash sha256.Hash, id crypto.ID, height int64) *Decide {
+func NewDecide(agg *bls12.AggregateSignature, hash []byte, id crypto.ID, height int64) *Decide {
 	return &Decide{
 		Type:               pbtypes.DecideType,
 		ID:                 id,
@@ -376,7 +376,7 @@ func DecideFromProto(pb *pbtypes.Decide) *Decide {
 	if pb == nil {
 		return nil
 	}
-	hash := sha256.Hash{}
+	hash := make([]byte, len(pb.ValueHash))
 	copy(hash[:], pb.ValueHash)
 	return &Decide{
 		Type:               pb.Type,
@@ -392,29 +392,32 @@ func (d *Decide) ValidateBasic() error {
 	return nil
 }
 
-func GeneratePrepareVoteValueHash(blockHash []byte) sha256.Hash {
+func GeneratePrepareVoteValueHash(blockHash []byte) []byte {
 	value := append([]byte("PrepareVote-"), blockHash...)
-	return sha256.Sum(value)
+	h := sha256.Sum(value)
+	return h[:]
 }
 
-func GeneratePreCommitValueHash(blockHash []byte) sha256.Hash {
+func GeneratePreCommitValueHash(blockHash []byte) []byte {
 	return GeneratePrepareVoteValueHash(blockHash)
 }
 
-func GeneratePreCommitVoteValueHash(blockHash []byte) sha256.Hash {
+func GeneratePreCommitVoteValueHash(blockHash []byte) []byte {
 	value := append([]byte("PreCommitVote-"), blockHash...)
-	return sha256.Sum(value)
+	h := sha256.Sum(value)
+	return h[:]
 }
 
-func GenerateCommitValueHash(blockHash []byte) sha256.Hash {
+func GenerateCommitValueHash(blockHash []byte) []byte {
 	return GeneratePreCommitVoteValueHash(blockHash)
 }
 
-func GenerateCommitVoteValueHash(blockHash []byte) sha256.Hash {
+func GenerateCommitVoteValueHash(blockHash []byte) []byte {
 	value := append([]byte("CommitVote-"), blockHash...)
-	return sha256.Sum(value)
+	h := sha256.Sum(value)
+	return h[:]
 }
 
-func GenerateDecideValueHash(blockHash []byte) sha256.Hash {
+func GenerateDecideValueHash(blockHash []byte) []byte {
 	return GenerateCommitVoteValueHash(blockHash)
 }

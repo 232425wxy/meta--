@@ -204,35 +204,35 @@ func ReplicaSchnorrSigFromProto(pb *pbstch.SchnorrSig) *ReplicaSchnorrSig {
 
 func (ss *ReplicaSchnorrSig) ChameleonFn() {}
 
-type FinalVer struct {
-	Val       *big.Int
-	RedactStr string
-	R2        *big.Int
+type RandomVerification struct {
+	GSigmaExpSK *big.Int
+	RedactName  string
+	R2          *big.Int
 }
 
-func (fv *FinalVer) ToProto() *pbstch.FinalVer {
+func (fv *RandomVerification) ToProto() *pbstch.FinalVer {
 	if fv == nil {
 		return nil
 	}
 	return &pbstch.FinalVer{
-		Val:       fv.Val.Bytes(),
-		RedactStr: fv.RedactStr,
+		Val:       fv.GSigmaExpSK.Bytes(),
+		RedactStr: fv.RedactName,
 		R2:        fv.R2.Bytes(),
 	}
 }
 
-func FinalVerFromProto(pb *pbstch.FinalVer) *FinalVer {
+func FinalVerFromProto(pb *pbstch.FinalVer) *RandomVerification {
 	if pb == nil {
 		return nil
 	}
-	return &FinalVer{
-		Val:       new(big.Int).SetBytes(pb.Val),
-		RedactStr: pb.RedactStr,
-		R2:        new(big.Int).SetBytes(pb.R2),
+	return &RandomVerification{
+		GSigmaExpSK: new(big.Int).SetBytes(pb.Val),
+		RedactName:  pb.RedactStr,
+		R2:          new(big.Int).SetBytes(pb.R2),
 	}
 }
 
-func (fv *FinalVer) ChameleonFn() {}
+func (fv *RandomVerification) ChameleonFn() {}
 
 ///////////////////////////////////////////////
 
@@ -254,7 +254,7 @@ func MustEncode(message Message) []byte {
 		pb.Data = &pbstch.Message_SchnorrSig{SchnorrSig: msg.ToProto()}
 	case *AlphaExpKAndHK:
 		pb.Data = &pbstch.Message_AlphaExpKAndHK{AlphaExpKAndHK: msg.ToProto()}
-	case *FinalVer:
+	case *RandomVerification:
 		pb.Data = &pbstch.Message_FinalVer{FinalVer: msg.ToProto()}
 	default:
 		panic(fmt.Sprintf("unknown message type: %T", msg))

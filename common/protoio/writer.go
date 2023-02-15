@@ -65,7 +65,7 @@ func (w *writer) WriteMsg(msg proto.Message) (int, error) {
 			lenOff := binary.PutUvarint(buf, uint64(size))
 			n, err := m.MarshalTo(buf[lenOff:])
 			if n != size {
-				return 0, fmt.Errorf("protoio: get Size %q, but marshal size %q", size, n)
+				return 0, fmt.Errorf("protoio: get TxsNumInPool %q, but marshal size %q", size, n)
 			}
 			if err != nil {
 				return 0, err
@@ -107,7 +107,7 @@ func (w *writer) Close() error {
 //
 //	---------------------------------------------------------
 //
-// getSize 方法接受一个实例对象，如果该对象实现了 Size() int 方法或者 ProtoSize() int 方法，就调用这些
+// getSize 方法接受一个实例对象，如果该对象实现了 TxsNumInPool() int 方法或者 ProtoSize() int 方法，就调用这些
 // 方法，来获得该对象的大小。
 func getSize(v interface{}) (int, bool) {
 	if sz, ok := v.(interface{ Size() int }); ok {

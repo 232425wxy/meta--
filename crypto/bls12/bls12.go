@@ -119,7 +119,7 @@ type PublicKey struct {
 //	---------------------------------------------------------
 //
 // Verify 验证签名。
-func (pub *PublicKey) Verify(sig *Signature, h sha256.Hash) bool {
+func (pub *PublicKey) Verify(sig *Signature, h []byte) bool {
 	p, err := bls12381.NewG2().HashToCurve(h[:], domain)
 	if err != nil {
 		return false
@@ -197,7 +197,7 @@ type PrivateKey struct {
 //	---------------------------------------------------------
 //
 // Sign 生成签名消息。
-func (private *PrivateKey) Sign(h sha256.Hash) (sig *Signature, err error) {
+func (private *PrivateKey) Sign(h []byte) (sig *Signature, err error) {
 	p, err := bls12381.NewG2().HashToCurve(h[:], domain)
 	if err != nil {
 		return nil, fmt.Errorf("bls12: hash to curve failed: %q", err)
@@ -452,7 +452,7 @@ func (cb *CryptoBLS12) Init(private *PrivateKey) {
 //	---------------------------------------------------------
 //
 // Sign 对一个长度为256比特的哈希值进行签名。
-func (cb *CryptoBLS12) Sign(h sha256.Hash) (*Signature, error) {
+func (cb *CryptoBLS12) Sign(h []byte) (*Signature, error) {
 	sig, err := cb.private.Sign(h)
 	return sig, err
 }
@@ -481,7 +481,7 @@ func (cb *CryptoBLS12) aggregateSignatures(signatures map[crypto.ID]*Signature) 
 //	---------------------------------------------------------
 //
 // Verify 给定一个签名，签名中包含签名者的ID，根据这个ID去找到这个签名者的公钥，然后验证这个签名是否合法。
-func (cb *CryptoBLS12) Verify(sig *Signature, h [32]byte) bool {
+func (cb *CryptoBLS12) Verify(sig *Signature, h []byte) bool {
 	signerPubKey := GetBLSPublicKeyFromLib(sig.Signer())
 	if signerPubKey == nil {
 		return false
@@ -494,7 +494,7 @@ func (cb *CryptoBLS12) Verify(sig *Signature, h [32]byte) bool {
 //	---------------------------------------------------------
 //
 // VerifyThresholdSignature 验证聚合签名。
-func (cb *CryptoBLS12) VerifyThresholdSignature(signature *AggregateSignature, h sha256.Hash) bool {
+func (cb *CryptoBLS12) VerifyThresholdSignature(signature *AggregateSignature, h []byte) bool {
 	pubKeys := make([]*PublicKey, 0)
 	for _, participant := range signature.Participants().IDs {
 		pubKey := GetBLSPublicKeyFromLib(participant)

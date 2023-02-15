@@ -5,7 +5,6 @@ import (
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/events"
 	"github.com/232425wxy/meta--/types"
-	"time"
 )
 
 type Step int8
@@ -52,7 +51,6 @@ type StepInfo struct {
 	height          int64
 	round           int16
 	step            Step
-	startTime       time.Time
 	block           *types.Block
 	previousBlock   *types.Block
 	prepare         chan *types.Prepare

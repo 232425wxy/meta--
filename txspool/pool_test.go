@@ -41,5 +41,5 @@ func TestPool(t *testing.T) {
 	//err := pool.CheckTx([]byte(fmt.Sprintf("key:%d=value:%d", 10, 10)), "test-x")
 	//assert.NotNil(t, err)
 	time.Sleep(time.Second * 3)
-	t.Log(pool.Size())
+	t.Log(pool.TxsNumInPool())
 }

@@ -67,6 +67,7 @@ func NewBaseService(logger log.Logger, name string) *BaseService {
 	if logger == nil {
 		logger = log.New()
 	}
+
 	return &BaseService{
 		Logger:  logger,
 		name:    name,

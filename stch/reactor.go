@@ -23,6 +23,7 @@ func NewReactor(ch *Chameleon) *Reactor {
 func (r *Reactor) Start() error {
 	go r.processRedactTaskRoutine()
 	go r.waitForFinalVer()
+	go r.processFormerRSS()
 	return r.BaseService.Start()
 }
 
@@ -91,6 +92,7 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 				r.Logger.Error("Failed to handle AlphaExpKAndHK message", "err", err)
 			}
 		case *LeaderSchnorrSig:
+			r.Logger.Debug("Receive new redact mission from leader", "leader", src.NodeID())
 			data, err := r.ch.verifyLeaderSchnorrSig(msg, src, r.Switch.NodeInfo().ID())
 			if len(data) > 0 && err == nil {
 				r.Switch.Broadcast(p2p.STCHChannel, data)
@@ -98,14 +100,15 @@ func (r *Reactor) Receive(chID byte, src *p2p.Peer, bz []byte) {
 				r.Logger.Error("The private key slice information sent by the leader is incorrect", "leader", src.NodeID())
 			}
 		case *ReplicaSchnorrSig:
-			r.Logger.Debug("Receive new redact task from leader", "leader", src.NodeID())
-			if err := r.ch.verifyReplicaSchnorrSig(msg, src); err != nil {
+			r.Logger.Debug("Receive segment of threshold key", "from", src.NodeID())
+			if err := r.ch.verifyReplicaSchnorrSig(msg, src.NodeID()); err != nil {
 				r.Logger.Error("Failed to handle replica schnorr signature", "err", err)
 			}
-		case *FinalVer:
-			full, err := r.ch.handleFinalVer(msg, src)
-			if full && err != nil {
-				r.Logger.Error("Failed to redact block", "err", err)
+		case *RandomVerification:
+			r.Logger.Debug("Receive new randomness of new block", "from", src.NodeID())
+			err := r.ch.handleRandomVerification(msg, src.NodeID())
+			if err != nil {
+				r.Logger.Error("Failed to handle verification of new randomness", "err", err)
 			}
 		}
 	}
@@ -156,7 +159,7 @@ func (r *Reactor) processRedactTaskRoutine() {
 				r.Logger.Debug("A new redact mission arrives")
 				data, err := r.ch.handleRedactTask(task, r.Switch.NodeInfo().ID())
 				if err != nil {
-					r.Logger.Error("failed to handle redact task", "err", err)
+					r.Logger.Error("failed to handle generateNewRandomness task", "err", err)
 				} else {
 					r.Switch.Broadcast(p2p.STCHChannel, data)
 				}
@@ -168,9 +171,22 @@ func (r *Reactor) processRedactTaskRoutine() {
 func (r *Reactor) waitForFinalVer() {
 	for {
 		select {
-		case ver := <-r.ch.verCh:
-			bz := MustEncode(ver)
+		case rv := <-r.ch.redactSteps.randomChan:
+			bz := MustEncode(rv)
 			r.Switch.Broadcast(p2p.STCHChannel, bz)
+		}
+	}
+}
+
+func (r *Reactor) processFormerRSS() {
+	for {
+		if len(r.ch.redactSteps.redactMission) > 0 {
+			select {
+			case rss := <-r.ch.redactSteps.rssChan:
+				if err := r.ch.verifyReplicaSchnorrSig(rss.rss, rss.id); err != nil {
+					r.Logger.Error("Failed to handle replica schnorr signature", "err", err)
+				}
+			}
 		}
 	}
 }

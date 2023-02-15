@@ -66,7 +66,6 @@ func NewCore(cfg *config.ConsensusConfig, privateKey *bls12.PrivateKey, state *s
 		cryptoBLS12:         cryptoBLS12,
 	}
 	core.stepInfo.height = state.InitialHeight
-	core.stepInfo.startTime = time.Now().Add(time.Second)
 	return core
 }
 
@@ -276,8 +275,8 @@ func (c *Core) handlePrepare(prepare *types.Prepare) error {
 	if prepare.Height != c.stepInfo.height {
 		return nil
 	}
-	hash := sha256.Hash{}
-	copy(hash[:], prepare.Block.Header.BlockDataHash)
+	hash := make([]byte, len(prepare.Block.ChameleonHash.Hash))
+	copy(hash[:], prepare.Block.ChameleonHash.Hash)
 	ok := c.state.Validators.GetLeader(c.stepInfo.round).PublicKey.Verify(prepare.Signature, hash)
 	if !ok {
 		if c.isLeader() {
@@ -308,7 +307,7 @@ func (c *Core) handlePrepareVote(vote *types.PrepareVote) error {
 	if validator == nil {
 		return fmt.Errorf("cannot find this validator: %s", vote.Vote.Signature.Signer())
 	}
-	valueHash := types.GeneratePrepareVoteValueHash(c.stepInfo.block.Header.BlockDataHash)
+	valueHash := types.GeneratePrepareVoteValueHash(c.stepInfo.block.ChameleonHash.Hash)
 	equal := bytes.Equal(valueHash[:], vote.Vote.ValueHash[:])
 	if !equal {
 		return fmt.Errorf("validator %s vote for different block", vote.Vote.Signature.Signer())
@@ -337,7 +336,7 @@ func (c *Core) handlePreCommit(preCommit *types.PreCommit) error {
 	if preCommit.ID != c.state.Validators.GetLeader(c.stepInfo.round).ID {
 		return fmt.Errorf("PreCommit message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.round).ID, c.stepInfo.height)
 	}
-	hash := types.GeneratePreCommitValueHash(c.stepInfo.block.Header.BlockDataHash)
+	hash := types.GeneratePreCommitValueHash(c.stepInfo.block.ChameleonHash.Hash)
 	equal := bytes.Equal(hash[:], preCommit.ValueHash[:])
 	if !equal {
 		return fmt.Errorf("leader %s sent invalid PreCommit message to me", preCommit.ID)
@@ -367,7 +366,7 @@ func (c *Core) handlePreCommitVote(vote *types.PreCommitVote) error {
 	if validator == nil {
 		return fmt.Errorf("cannot find this validator: %s", vote.Vote.Signature.Signer())
 	}
-	valueHash := types.GeneratePreCommitVoteValueHash(c.stepInfo.block.Header.BlockDataHash)
+	valueHash := types.GeneratePreCommitVoteValueHash(c.stepInfo.block.ChameleonHash.Hash)
 	equal := bytes.Equal(valueHash[:], vote.Vote.ValueHash[:])
 	if !equal {
 		return fmt.Errorf("validator %s vote for different block", vote.Vote.Signature.Signer())
@@ -395,7 +394,7 @@ func (c *Core) handleCommit(commit *types.Commit) error {
 	if commit.ID != c.state.Validators.GetLeader(c.stepInfo.round).ID {
 		return fmt.Errorf("Commit message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.round).ID, c.stepInfo.height)
 	}
-	hash := types.GenerateCommitValueHash(c.stepInfo.block.Header.BlockDataHash)
+	hash := types.GenerateCommitValueHash(c.stepInfo.block.ChameleonHash.Hash)
 	equal := bytes.Equal(hash[:], commit.ValueHash[:])
 	if !equal {
 		return fmt.Errorf("leader %s sent invalid Commit message to me", commit.ID)
@@ -425,7 +424,7 @@ func (c *Core) handleCommitVote(vote *types.CommitVote) error {
 	if validator == nil {
 		return fmt.Errorf("cannot find this validator: %s", vote.Vote.Signature.Signer())
 	}
-	valueHash := types.GenerateCommitVoteValueHash(c.stepInfo.block.Header.BlockDataHash)
+	valueHash := types.GenerateCommitVoteValueHash(c.stepInfo.block.ChameleonHash.Hash)
 	equal := bytes.Equal(valueHash[:], vote.Vote.ValueHash[:])
 	if !equal {
 		return fmt.Errorf("validator %s vote for different block", vote.Vote.Signature.Signer())
@@ -452,7 +451,7 @@ func (c *Core) handleDecide(decide *types.Decide) error {
 	if decide.ID != c.state.Validators.GetLeader(c.stepInfo.round).ID {
 		return fmt.Errorf("Decide message is not from leader %s at height %d", c.state.Validators.GetLeader(c.stepInfo.round).ID, c.stepInfo.height)
 	}
-	hash := types.GenerateDecideValueHash(c.stepInfo.block.Header.BlockDataHash)
+	hash := types.GenerateDecideValueHash(c.stepInfo.block.ChameleonHash.Hash)
 	equal := bytes.Equal(hash[:], decide.ValueHash[:])
 	if !equal {
 		return fmt.Errorf("leader %s sent invalid Decide message to me", decide.ID)
@@ -464,7 +463,6 @@ func (c *Core) handleDecide(decide *types.Decide) error {
 	if c.isLeader() {
 		c.stepInfo.decide <- decide
 	}
-	c.stepInfo.startTime = decide.Timestamp
 	if !c.isLeader() {
 		c.stepInfo.step = DecideStep
 		c.newStep()
@@ -545,7 +543,7 @@ func (c *Core) enterPrepareVoteStep(height int64, round int16) {
 		return
 	}
 	//logger.Debug("Prepare message is valid, decide to vote for it")
-	vote := types.NewPrepareVote(height, types.GeneratePrepareVoteValueHash(c.stepInfo.block.Header.BlockDataHash), c.privateKey)
+	vote := types.NewPrepareVote(height, types.GeneratePrepareVoteValueHash(c.stepInfo.block.ChameleonHash.Hash), c.privateKey)
 	if c.isLeader() {
 		c.stepInfo.voteSet.AddPrepareVote(c.stepInfo.round, vote)
 		ok := c.stepInfo.voteSet.CheckPrepareVoteIsComplete(c.stepInfo.round, c.state.Validators)
@@ -570,7 +568,7 @@ func (c *Core) proposePreCommitMsg(height int64, round int16) {
 		c.newStep()
 	}()
 	agg := c.stepInfo.voteSet.CreateThresholdSigForPrepareVote(round, c.cryptoBLS12)
-	preCommit := types.NewPreCommit(agg, types.GeneratePreCommitValueHash(c.stepInfo.block.Header.BlockDataHash), c.publicKey.ToID(), height)
+	preCommit := types.NewPreCommit(agg, types.GeneratePreCommitValueHash(c.stepInfo.block.ChameleonHash.Hash), c.publicKey.ToID(), height)
 	c.sendInternalMessage(MessageInfo{Msg: preCommit, NodeID: ""})
 }
 
@@ -589,7 +587,7 @@ func (c *Core) enterPreCommitVoteStep(height int64, round int16) {
 		c.Logger.Error("PRE_COMMIT_VOTE step: PreCommit message is nil")
 		return
 	}
-	vote := types.NewPreCommitVote(height, types.GeneratePreCommitVoteValueHash(c.stepInfo.block.Header.BlockDataHash), c.privateKey)
+	vote := types.NewPreCommitVote(height, types.GeneratePreCommitVoteValueHash(c.stepInfo.block.ChameleonHash.Hash), c.privateKey)
 	if c.isLeader() {
 		c.stepInfo.voteSet.AddPreCommitVote(c.stepInfo.round, vote)
 		ok := c.stepInfo.voteSet.CheckPreCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
@@ -614,7 +612,7 @@ func (c *Core) proposeCommitMsg(height int64, round int16) {
 		c.newStep()
 	}()
 	agg := c.stepInfo.voteSet.CreateThresholdSigForPreCommitVote(round, c.cryptoBLS12)
-	commit := types.NewCommit(agg, types.GenerateCommitValueHash(c.stepInfo.block.Header.BlockDataHash), c.publicKey.ToID(), height)
+	commit := types.NewCommit(agg, types.GenerateCommitValueHash(c.stepInfo.block.ChameleonHash.Hash), c.publicKey.ToID(), height)
 	c.sendInternalMessage(MessageInfo{Msg: commit, NodeID: ""})
 }
 
@@ -633,7 +631,7 @@ func (c *Core) enterCommitVoteStep(height int64, round int16) {
 		c.Logger.Error("COMMIT_VOTE step: Commit message is nil")
 		return
 	}
-	vote := types.NewCommitVote(height, types.GenerateCommitVoteValueHash(c.stepInfo.block.Header.BlockDataHash), c.privateKey)
+	vote := types.NewCommitVote(height, types.GenerateCommitVoteValueHash(c.stepInfo.block.ChameleonHash.Hash), c.privateKey)
 	if c.isLeader() {
 		c.stepInfo.voteSet.AddCommitVote(c.stepInfo.round, vote)
 		ok := c.stepInfo.voteSet.CheckCommitVoteIsComplete(c.stepInfo.round, c.state.Validators)
@@ -658,7 +656,7 @@ func (c *Core) proposeDecideMsg(height int64, round int16) {
 		c.newStep()
 	}()
 	agg := c.stepInfo.voteSet.CreateThresholdSigForCommitVote(round, c.cryptoBLS12)
-	decide := types.NewDecide(agg, types.GenerateDecideValueHash(c.stepInfo.block.Header.BlockDataHash), c.publicKey.ToID(), height)
+	decide := types.NewDecide(agg, types.GenerateDecideValueHash(c.stepInfo.block.ChameleonHash.Hash), c.publicKey.ToID(), height)
 	c.sendInternalMessage(MessageInfo{Msg: decide, NodeID: ""})
 }
 
@@ -685,7 +683,7 @@ func (c *Core) createBlock() *types.Block {
 		lastBlockHash := sha256.Sum([]byte("first block"))
 		return c.blockExec.CreateBlock(c.stepInfo.height, c.state, c.publicKey.ToID(), lastBlockHash[:])
 	case c.stepInfo.previousBlock != nil:
-		return c.blockExec.CreateBlock(c.stepInfo.height, c.state, c.publicKey.ToID(), c.stepInfo.previousBlock.Header.BlockDataHash)
+		return c.blockExec.CreateBlock(c.stepInfo.height, c.state, c.publicKey.ToID(), c.stepInfo.previousBlock.ChameleonHash.Hash)
 	default:
 		c.Logger.Error("PREPARE step: cannot propose Prepare message")
 		return nil

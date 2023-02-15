@@ -141,8 +141,8 @@ func (b *Block) String() string {
 	if b == nil {
 		return "Block{nil}"
 	}
-	str := fmt.Sprintf("Block{\n\tHeader{\n\t\tPreviousBlockHash: %x\n\t\tHash: %x\n\t\tHeight: %d\n\t\tTimestamp: %s\n\t\tProposer: %s\n\t}\n\tBody{\n\t\tRootHash: %x\n\t\tTxsNum: %d\n\t}\n\tChameleonHash{\n\t\tGSigma: %x\n\t\tHKSigma: %x\n\t\tAlpha: %x\n\t\tHash: %x\n\t}\n}",
-		b.Header.PreviousBlockHash, b.Header.BlockDataHash, b.Header.Height, b.Header.Timestamp.Format(time.RFC3339), b.Header.Proposer, b.Body.RootHash, len(b.Body.Txs), b.ChameleonHash.GSigma.Bytes(), b.ChameleonHash.HKSigma.Bytes(), b.ChameleonHash.Alpha.Bytes(), b.ChameleonHash.Hash)
+	str := fmt.Sprintf("Block{\n\tHeader{\n\t\tPreviousBlockHash: %x\n\t\tHash: %x\n\t\tHeight: %d\n\t\tTimestamp: %s\n\t\tProposer: %s\n\t}\n\tBody{\n\t\tRootHash: %x\n\t\tTxs: %s\n\t}\n\tChameleonHash{\n\t\tGSigma: %x\n\t\tHKSigma: %x\n\t\tAlpha: %x\n\t\tHash: %x\n\t}\n}",
+		b.Header.PreviousBlockHash, b.Header.BlockDataHash, b.Header.Height, b.Header.Timestamp.Format(time.RFC3339), b.Header.Proposer, b.Body.RootHash, b.Body.Txs, b.ChameleonHash.GSigma.Bytes(), b.ChameleonHash.HKSigma.Bytes(), b.ChameleonHash.Alpha.Bytes(), b.ChameleonHash.Hash)
 	return str
 }
 

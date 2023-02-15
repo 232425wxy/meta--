@@ -14,7 +14,7 @@ var G, _ = new(big.Int).SetString("2", 10)
 
 var (
 	hk *big.Int = new(big.Int).SetInt64(1)
-	tk *big.Int = new(big.Int)
+	tk *big.Int = new(big.Int).SetInt64(0)
 )
 
 /*⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓⛓*/
@@ -101,6 +101,12 @@ func TestDistributedChameleonHash(t *testing.T) {
 		cid.Add(cid, pi.x)
 	}
 	hk = new(big.Int).Exp(G, tk, Q)
+	hk_ := new(big.Int).SetInt64(1)
+	for _, p := range ps {
+		hk_.Mul(hk_, p.pki)
+	}
+	hk_.Mod(hk_, Q)
+	fmt.Println("比较一下：", hk_.Cmp(hk))
 	cid.Mod(cid, Q)
 
 	alpha := HashBigInt(cid, hk) // 论文里的alpha
