@@ -19,7 +19,6 @@ type Participant struct {
 	fnX       *big.Int
 	fnXForMe  *big.Int
 	pk        *big.Int // 节点的公钥
-	sk        *big.Int
 	alphaExpK *big.Int
 	peer      *p2p.Peer
 }
