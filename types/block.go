@@ -17,8 +17,8 @@ import (
 // 区块
 
 type ChameleonHash struct {
-	GSigma  *big.Int
-	HKSigma *big.Int
+	R1 *big.Int
+	R2 *big.Int
 
 	Alpha *big.Int
 	Hash  []byte
@@ -29,8 +29,8 @@ func (ch *ChameleonHash) ToProto() *pbtypes.ChameleonHash {
 		return nil
 	}
 	return &pbtypes.ChameleonHash{
-		GSigma:  ch.GSigma.Bytes(),
-		HKSigma: ch.HKSigma.Bytes(),
+		GSigma:  ch.R1.Bytes(),
+		HKSigma: ch.R2.Bytes(),
 		Alpha:   ch.Alpha.Bytes(),
 		Hash:    ch.Hash,
 	}
@@ -41,10 +41,10 @@ func ChameleonHashFromProto(pb *pbtypes.ChameleonHash) *ChameleonHash {
 		return nil
 	}
 	return &ChameleonHash{
-		GSigma:  new(big.Int).SetBytes(pb.GSigma),
-		HKSigma: new(big.Int).SetBytes(pb.HKSigma),
-		Alpha:   new(big.Int).SetBytes(pb.Alpha),
-		Hash:    pb.Hash,
+		R1:    new(big.Int).SetBytes(pb.GSigma),
+		R2:    new(big.Int).SetBytes(pb.HKSigma),
+		Alpha: new(big.Int).SetBytes(pb.Alpha),
+		Hash:  pb.Hash,
 	}
 }
 
@@ -71,10 +71,10 @@ func (b *Block) Copy() *Block {
 			Txs:      make(Txs, len(b.Body.Txs)),
 		},
 		ChameleonHash: &ChameleonHash{
-			GSigma:  new(big.Int).Set(b.ChameleonHash.GSigma),
-			HKSigma: new(big.Int).Set(b.ChameleonHash.HKSigma),
-			Alpha:   new(big.Int).Set(b.ChameleonHash.Alpha),
-			Hash:    b.ChameleonHash.Hash,
+			R1:    new(big.Int).Set(b.ChameleonHash.R1),
+			R2:    new(big.Int).Set(b.ChameleonHash.R2),
+			Alpha: new(big.Int).Set(b.ChameleonHash.Alpha),
+			Hash:  b.ChameleonHash.Hash,
 		},
 	}
 	for i, tx := range b.Body.Txs {
@@ -141,8 +141,14 @@ func (b *Block) String() string {
 	if b == nil {
 		return "Block{nil}"
 	}
-	str := fmt.Sprintf("Block{\n\tHeader{\n\t\tPreviousBlockHash: %x\n\t\tHash: %x\n\t\tHeight: %d\n\t\tTimestamp: %s\n\t\tProposer: %s\n\t}\n\tBody{\n\t\tRootHash: %x\n\t\tTxs: %s\n\t}\n\tChameleonHash{\n\t\tGSigma: %x\n\t\tHKSigma: %x\n\t\tAlpha: %x\n\t\tHash: %x\n\t}\n}",
-		b.Header.PreviousBlockHash, b.Header.BlockDataHash, b.Header.Height, b.Header.Timestamp.Format(time.RFC3339), b.Header.Proposer, b.Body.RootHash, b.Body.Txs, b.ChameleonHash.GSigma.Bytes(), b.ChameleonHash.HKSigma.Bytes(), b.ChameleonHash.Alpha.Bytes(), b.ChameleonHash.Hash)
+	h := sha256.New()
+	h.Write(b.Header.PreviousBlockHash)
+	previousBlockHash := h.Sum(nil)
+	h.Reset()
+	h.Write(b.ChameleonHash.Hash)
+	hash := h.Sum(nil)
+	str := fmt.Sprintf("Block{\n\tHeader{\n\t\tPreviousBlockHash: %x\n\t\tBlockDataHash: %x\n\t\tHeight: %d\n\t\tTimestamp: %s\n\t\tProposer: %s\n\t}\n\tBody{\n\t\tRootHash: %x\n\t\tTxs: %s\n\t}\n\tChameleonHash{\n\t\tR1: %x\n\t\tR2: %x\n\t\tAlpha: %x\n\t\tHash: %x\n\t}\n}",
+		previousBlockHash, b.Header.BlockDataHash, b.Header.Height, b.Header.Timestamp.Format(time.RFC3339), b.Header.Proposer, b.Body.RootHash, b.Body.Txs, b.ChameleonHash.R1.Bytes(), b.ChameleonHash.R2.Bytes(), b.ChameleonHash.Alpha.Bytes(), hash)
 	return str
 }
 
