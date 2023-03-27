@@ -228,10 +228,10 @@ func (ch *Chameleon) Hash(block *types.Block) {
 		block.ChameleonHash = &types.ChameleonHash{}
 	}
 	sigma := new(big.Int).SetBytes(blockDataHash)
-	block.ChameleonHash.GSigma = new(big.Int).Exp(g, sigma, q)
-	block.ChameleonHash.HKSigma = new(big.Int).Exp(ch.hk, sigma, q)
+	block.ChameleonHash.R1 = new(big.Int).Exp(g, sigma, q)
+	block.ChameleonHash.R2 = new(big.Int).Exp(ch.hk, sigma, q)
 	block.ChameleonHash.Alpha = ch.alpha
-	h := new(big.Int).Mul(block.ChameleonHash.GSigma, new(big.Int).Exp(block.ChameleonHash.Alpha, sigma, q))
+	h := new(big.Int).Mul(block.ChameleonHash.R1, new(big.Int).Exp(block.ChameleonHash.Alpha, sigma, q))
 	h.Mod(h, q)
 	block.ChameleonHash.Hash = h.Bytes()
 }
@@ -440,12 +440,12 @@ func (ch *Chameleon) generateNewRandomness(redactName string) error {
 	r1 := new(big.Int)
 	if e.Cmp(new(big.Int).SetInt64(0)) < 0 {
 		_alpha := calcInverseElem(block.ChameleonHash.Alpha, q)
-		r1 = new(big.Int).Mul(block.ChameleonHash.GSigma, new(big.Int).Exp(_alpha, _e, q))
+		r1 = new(big.Int).Mul(block.ChameleonHash.R1, new(big.Int).Exp(_alpha, _e, q))
 	} else {
-		r1 = new(big.Int).Mul(block.ChameleonHash.GSigma, new(big.Int).Exp(block.ChameleonHash.Alpha, e, q))
+		r1 = new(big.Int).Mul(block.ChameleonHash.R1, new(big.Int).Exp(block.ChameleonHash.Alpha, e, q))
 	}
 	r1.Mod(r1, q)
-	block.ChameleonHash.GSigma.Set(r1)
+	block.ChameleonHash.R1.Set(r1)
 
 	c := new(big.Int).SetInt64(1)
 	for _, lss := range ch.redactSteps.leaderRedact {
@@ -455,20 +455,20 @@ func (ch *Chameleon) generateNewRandomness(redactName string) error {
 		c.Mul(c, rss.D)
 	}
 	c.Mul(c, inverseAlpha)
-	r2 := new(big.Int).Mul(block.ChameleonHash.HKSigma, c)
+	r2 := new(big.Int).Mul(block.ChameleonHash.R2, c)
 	r2.Mod(r2, q)
-	block.ChameleonHash.HKSigma.Set(r2)
+	block.ChameleonHash.R2.Set(r2)
 
-	rh := new(big.Int).Mul(block.ChameleonHash.GSigma, new(big.Int).Exp(block.ChameleonHash.Alpha, new(big.Int).SetBytes(redactBlockDataHash), q))
+	rh := new(big.Int).Mul(block.ChameleonHash.R1, new(big.Int).Exp(block.ChameleonHash.Alpha, new(big.Int).SetBytes(redactBlockDataHash), q))
 	rh.Mod(rh, q)
 	if rh.Cmp(new(big.Int).SetBytes(block.ChameleonHash.Hash)) != 0 {
 		return errors.New("redact failed")
 	} else {
 		ch.redactSteps.redactBlock = block
 		rv := &RandomVerification{
-			GSigmaExpSK: new(big.Int).Exp(block.ChameleonHash.GSigma, ch.sk, q),
+			GSigmaExpSK: new(big.Int).Exp(block.ChameleonHash.R1, ch.sk, q),
 			RedactName:  redactName,
-			R2:          new(big.Int).Set(block.ChameleonHash.HKSigma),
+			R2:          new(big.Int).Set(block.ChameleonHash.R2),
 		}
 		select {
 		case ch.redactSteps.randomChan <- rv:
