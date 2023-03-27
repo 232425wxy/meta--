@@ -2,16 +2,17 @@ package p2p
 
 import (
 	"fmt"
+	"net"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/232425wxy/meta--/common/hexbytes"
 	config2 "github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/log"
 	"github.com/stretchr/testify/assert"
-	"net"
-	"os"
-	"testing"
-	"time"
 )
 
 type TestReactor struct {
@@ -115,9 +116,9 @@ func testNodeInfo(privateKey *bls12.PrivateKey) *NodeInfo {
 	listen := fmt.Sprintf("127.0.0.1:%d", getFreePort())
 	fmt.Printf("节点%s监听地址：%s\n", id, listen)
 	return &NodeInfo{
+		PublicKey: privateKey.PublicKey().ToBytes(),
 		NodeID:     id,
 		ListenAddr: listen,
-		ChainID:    "100",
 		Channels:   channels,
 		RPCAddress: fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		TxIndex:    "on",
@@ -140,7 +141,8 @@ func createTransport(privateKey *bls12.PrivateKey) *Transport {
 	nodeInfo := testNodeInfo(privateKey)
 	nodeKey := testNodeKey(privateKey)
 	config := config2.DefaultP2PConfig()
-	transport := NewTransport(nodeInfo, nodeKey, config)
+	address := testNetAddress(nodeInfo.NodeID, nodeInfo.ListenAddr)
+	transport := NewTransport(address, nodeInfo, nodeKey, config)
 	return transport
 }
 
@@ -148,8 +150,7 @@ func TestTransport_Listen(t *testing.T) {
 	privateKey, err := bls12.GeneratePrivateKey()
 	assert.Nil(t, err)
 	transport := createTransport(privateKey)
-	addr := testNetAddress(transport.nodeInfo.NodeID, transport.nodeInfo.ListenAddr)
-	err = transport.Listen(addr)
+	err = transport.Listen()
 	assert.Nil(t, err)
 	err = transport.Close()
 	assert.Nil(t, err)
@@ -159,8 +160,7 @@ func TestTransportWaitForNewConn(t *testing.T) {
 	privateKeyA, err := bls12.GeneratePrivateKey()
 	assert.Nil(t, err)
 	transportA := createTransport(privateKeyA)
-	addrA := testNetAddress(transportA.nodeInfo.NodeID, transportA.nodeInfo.ListenAddr)
-	err = transportA.Listen(addrA)
+	err = transportA.Listen()
 	assert.Nil(t, err)
 	defer func() {
 		_ = transportA.Close()
@@ -170,7 +170,7 @@ func TestTransportWaitForNewConn(t *testing.T) {
 	assert.Nil(t, err)
 	transportB := createTransport(privateKeyB)
 	addrB := testNetAddress(transportB.nodeInfo.NodeID, transportB.nodeInfo.ListenAddr)
-	err = transportB.Listen(addrB)
+	err = transportB.Listen()
 	assert.Nil(t, err)
 	defer func() {
 		_ = transportB.Close()
@@ -188,7 +188,7 @@ func TestPeerToPeer(t *testing.T) {
 	assert.Nil(t, err)
 	transportA := createTransport(privateKeyA)
 	addrA := testNetAddress(transportA.nodeInfo.NodeID, transportA.nodeInfo.ListenAddr)
-	err = transportA.Listen(addrA)
+	err = transportA.Listen()
 	assert.Nil(t, err)
 	defer func() {
 		_ = transportA.Close()
@@ -198,7 +198,7 @@ func TestPeerToPeer(t *testing.T) {
 	assert.Nil(t, err)
 	transportB := createTransport(privateKeyB)
 	addrB := testNetAddress(transportB.nodeInfo.NodeID, transportB.nodeInfo.ListenAddr)
-	err = transportB.Listen(addrB)
+	err = transportB.Listen()
 	assert.Nil(t, err)
 	defer func() {
 		_ = transportB.Close()
@@ -210,6 +210,7 @@ func TestPeerToPeer(t *testing.T) {
 		for {
 			p, err := transportB.Accept(peerCfgB)
 			if err != nil {
+				t.Log(">>>>>>>>>", err)
 				return
 			}
 			peerC <- p
@@ -238,7 +239,7 @@ func TestPeerToPeer(t *testing.T) {
 		close(sent)
 	}()
 	<-sent
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 1000)
 	assert.Equal(t, 1, reactorByChA[0x01].(*TestReactor).counter)
 	assert.Equal(t, msg, reactorByChA[0x01].(*TestReactor).msgReceived[0x01][reactorByChA[0x01].(*TestReactor).counter-1].msg)
 	assert.Equal(t, peerB.nodeInfo.NodeID, reactorByChA[0x01].(*TestReactor).msgReceived[0x01][reactorByChA[0x01].(*TestReactor).counter-1].peerID)

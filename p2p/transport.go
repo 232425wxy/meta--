@@ -3,12 +3,13 @@ package p2p
 import (
 	"errors"
 	"fmt"
+	"net"
+	"time"
+
 	"github.com/232425wxy/meta--/common/protoio"
 	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/proto/pbp2p"
-	"net"
-	"time"
 )
 
 type Transport struct {

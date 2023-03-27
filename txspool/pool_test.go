@@ -13,7 +13,7 @@ import (
 
 func TestPool(t *testing.T) {
 	app := apps.NewKVStoreApp("kvstore", "data", database.GoLevelDBBackend)
-	proxyer := proxy.NewAppConnTxsPool(app)
+	proxyer := proxy.NewAppConnTxsPool(app, nil)
 	pool := NewTxsPool(config.DefaultTxsPoolConfig(), proxyer, 0)
 	txs := make([][]byte, 0)
 	for i := 0; i < 1024; i++ {

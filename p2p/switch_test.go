@@ -2,19 +2,21 @@ package p2p
 
 import (
 	"fmt"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/232425wxy/meta--/common/hexbytes"
 	"github.com/232425wxy/meta--/config"
 	"github.com/232425wxy/meta--/crypto/bls12"
 	"github.com/232425wxy/meta--/log"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
-	"time"
 )
 
 type node struct {
-	info *NodeInfo
-	key  *NodeKey
+	info    *NodeInfo
+	key     *NodeKey
+	address *NetAddress
 }
 
 func testNodeInfo2(privateKey *bls12.PrivateKey) *NodeInfo {
@@ -25,7 +27,6 @@ func testNodeInfo2(privateKey *bls12.PrivateKey) *NodeInfo {
 	return &NodeInfo{
 		NodeID:     id,
 		ListenAddr: listen,
-		ChainID:    "100",
 		Channels:   channels,
 		RPCAddress: fmt.Sprintf("127.0.0.1:%d", getFreePort()),
 		TxIndex:    "on",
@@ -36,7 +37,7 @@ func createTransport2(n *node) *Transport {
 	cfg := config.DefaultP2PConfig()
 	cfg.PongTimeout = 2 * time.Second
 	cfg.PingInterval = 4 * time.Second
-	transport := NewTransport(n.info, n.key, cfg)
+	transport := NewTransport(n.address, n.info, n.key, cfg)
 	return transport
 }
 
@@ -49,18 +50,18 @@ func create2Nodes(t *testing.T) (*node, *node) {
 	nodeB := testNodeInfo2(privateKeyB)
 	keyA := testNodeKey(privateKeyA)
 	keyB := testNodeKey(privateKeyB)
-	return &node{info: nodeA, key: keyA}, &node{info: nodeB, key: keyB}
+	addressA := testNetAddress(nodeA.NodeID, nodeA.ListenAddr)
+	addressB := testNetAddress(nodeB.NodeID, nodeB.ListenAddr)
+	return &node{info: nodeA, key: keyA, address: addressA}, &node{info: nodeB, key: keyB, address: addressB}
 }
 
 func create2Transports(t *testing.T) (*Transport, *Transport) {
 	nodeA, nodeB := create2Nodes(t)
 	transportA := createTransport2(nodeA)
 	transportB := createTransport2(nodeB)
-	addr1 := testNetAddress(nodeA.info.ID(), nodeA.info.ListenAddr)
-	addr2 := testNetAddress(nodeB.info.ID(), nodeB.info.ListenAddr)
-	err := transportA.Listen(addr1)
+	err := transportA.Listen()
 	assert.Nil(t, err)
-	err = transportB.Listen(addr2)
+	err = transportB.Listen()
 	assert.Nil(t, err)
 	return transportA, transportB
 }

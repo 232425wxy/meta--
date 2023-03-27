@@ -82,14 +82,14 @@ func TestCreateAndStartNode(t *testing.T) {
 	fmt.Println("修改后")
 	fmt.Println(nodes[0].blockStore.LoadBlockByHeight(2))
 
-	//nodes[0].State().RedactBlock(2, 0, []byte("学校"), []byte("西北工业大学"))
-	//
-	//time.Sleep(time.Second * 10)
-	//
-	//fmt.Println("再次修改后")
-	//for _, n := range nodes {
-	//	fmt.Println(n.blockStore.LoadBlockByHeight(2))
-	//}
+	nodes[0].State().RedactBlock(2, 0, []byte("学校"), []byte("西北工业大学"))
+	
+	time.Sleep(time.Second * 10)
+	
+	fmt.Println("再次修改后")
+	for _, n := range nodes {
+		fmt.Println(n.blockStore.LoadBlockByHeight(2))
+	}
 
 	//fmt.Println("第三阶段...")
 	//for i := 0; i < 3; i++ {
@@ -107,7 +107,7 @@ func TestCreateAndStartNode(t *testing.T) {
 	//	time.Sleep(time.Second * 4)
 	//}
 
-	select {}
+	time.Sleep(time.Minute)
 }
 
 func TestName(t *testing.T) {

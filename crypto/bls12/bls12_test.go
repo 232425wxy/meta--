@@ -31,7 +31,7 @@ func TestBls12Crypto_Sign(t *testing.T) {
 	msg := []byte("Welcome to China!")
 	h := sha256.Sum(msg)
 
-	sig, err := bc.Sign(h)
+	sig, err := bc.Sign(h[:])
 	assert.Nil(t, err)
 	t.Log("signature:", sig.ToBytes())
 	t.Log("signer:", sig.Signer())
@@ -45,10 +45,10 @@ func TestSignAndVerify(t *testing.T) {
 	msg := []byte("welcome to china!")
 	h := sha256.Sum(msg)
 
-	sig, err := private.Sign(h)
+	sig, err := private.Sign(h[:])
 	assert.Nil(t, err)
 
-	b := public.Verify(sig, h)
+	b := public.Verify(sig, h[:])
 	assert.True(t, b)
 }
 
@@ -85,16 +85,16 @@ func TestThreshold(t *testing.T) {
 	h2 := sha256.Sum(msg2)
 	_ = h2
 
-	sig1, err := private1.Sign(h)
+	sig1, err := private1.Sign(h[:])
 	assert.Nil(t, err)
 
-	sig2, err := private2.Sign(h)
+	sig2, err := private2.Sign(h[:])
 	assert.Nil(t, err)
 
-	sig3, err := private3.Sign(h)
+	sig3, err := private3.Sign(h[:])
 	assert.Nil(t, err)
 
-	sig4, err := private4.Sign(h)
+	sig4, err := private4.Sign(h[:])
 	assert.Nil(t, err)
 
 	sigs := []*Signature{sig1, sig2, sig3, sig4}
@@ -103,7 +103,7 @@ func TestThreshold(t *testing.T) {
 	thresholdSig, err := cb.CreateThresholdSignature(sigs)
 	assert.Nil(t, err)
 
-	assert.True(t, cb.VerifyThresholdSignature(thresholdSig, h))
+	assert.True(t, cb.VerifyThresholdSignature(thresholdSig, h[:]))
 }
 
 func TestAnyThreshold(t *testing.T) {
@@ -141,11 +141,11 @@ func TestAnyThreshold(t *testing.T) {
 	msg := []byte("blockchain")
 	h := sha256.Sum(msg)
 
-	sig1, _ := private1.Sign(h)
-	sig2, _ := private2.Sign(h)
-	sig3, _ := private3.Sign(h)
-	sig4, _ := private4.Sign(h)
-	sig5, _ := private5.Sign(h)
+	sig1, _ := private1.Sign(h[:])
+	sig2, _ := private2.Sign(h[:])
+	sig3, _ := private3.Sign(h[:])
+	sig4, _ := private4.Sign(h[:])
+	sig5, _ := private5.Sign(h[:])
 	_ = sig5
 
 	sig1234 := []*Signature{sig1, sig2, sig3, sig4}
@@ -153,5 +153,5 @@ func TestAnyThreshold(t *testing.T) {
 	cb := NewCryptoBLS12()
 	thresholdSig1234, err := cb.CreateThresholdSignature(sig1234)
 
-	assert.True(t, cb.VerifyThresholdSignature(thresholdSig1234, h))
+	assert.True(t, cb.VerifyThresholdSignature(thresholdSig1234, h[:]))
 }

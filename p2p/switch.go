@@ -46,11 +46,15 @@ func (sw *Switch) Start() error {
 		}
 	}
 	time.Sleep(time.Millisecond * 200)
-	if err := sw.Reactor("STCH").Start(); err != nil {
-		return err
+	if sw.Reactor("STCH") != nil {
+		if err := sw.Reactor("STCH").Start(); err != nil {
+			return err
+		}
 	}
 	go sw.acceptRoutine()
-	sw.addrbook.Start()
+	if sw.addrbook != nil {
+		sw.addrbook.Start()
+	}
 	return sw.BaseService.Start()
 }
 

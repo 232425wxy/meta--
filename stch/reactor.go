@@ -1,9 +1,11 @@
 package stch
 
 import (
-	"github.com/232425wxy/meta--/p2p"
+	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/232425wxy/meta--/p2p"
 )
 
 type Reactor struct {
@@ -174,6 +176,7 @@ func (r *Reactor) waitForFinalVer() {
 		case rv := <-r.ch.redactSteps.randomChan:
 			bz := MustEncode(rv)
 			r.Switch.Broadcast(p2p.STCHChannel, bz)
+			fmt.Println(">>>>> 广播了随机因子")
 		}
 	}
 }
