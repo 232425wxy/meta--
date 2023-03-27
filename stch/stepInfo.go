@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"sync"
+
 	"github.com/232425wxy/meta--/crypto"
 	"github.com/232425wxy/meta--/types"
-	"sync"
 )
 
 const defaultSize = 10
@@ -133,22 +134,20 @@ func (si *stepInfo) addRandomVerification(peerID crypto.ID, rv *RandomVerificati
 	if len(si.redactMission) > 0 && si.redactMission[rv.RedactName] == nil {
 		return false, fmt.Errorf("doesn't have the specified redact mission: %s", rv.RedactName)
 	}
-	
+
 	isExist := si.randomVerifications[peerID]
-	
+
 	if isExist != nil && isExist.GSigmaExpSK.Cmp(rv.GSigmaExpSK) == 0 && isExist.R2.Cmp(rv.R2) == 0 {
 		return false, fmt.Errorf("peer %s has already sent information to me to verify randomness", peerID)
-		} else if isExist != nil {
+	} else if isExist != nil {
 		return false, fmt.Errorf("peer %s has already sent information to me to verify different randomness", peerID)
 	}
 
 	si.randomVerifications[peerID] = rv
 
 	if len(si.randomVerifications) == n {
-		fmt.Println(len(si.randomVerifications), n)
 		return true, nil
 	} else {
-		fmt.Println(len(si.randomVerifications), n)
 		return false, nil
 	}
 }

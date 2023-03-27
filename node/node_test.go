@@ -3,14 +3,15 @@ package node
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/232425wxy/meta--/config"
-	"github.com/232425wxy/meta--/log"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/232425wxy/meta--/config"
+	"github.com/232425wxy/meta--/log"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 )
 
 func ReadConfigFile(path string) *config.Config {
@@ -27,14 +28,15 @@ func ReadConfigFile(path string) *config.Config {
 }
 
 func AdjustHomePath(cfg *config.Config) {
-	cfg.BasicConfig.Home = fmt.Sprintf("/root/lab/code/go/src/meta--/%s", cfg.BasicConfig.Home)
-	cfg.P2PConfig.Home = fmt.Sprintf("/root/lab/code/go/src/meta--/%s", cfg.P2PConfig.Home)
-	cfg.ConsensusConfig.Home = fmt.Sprintf("/root/lab/code/go/src/meta--/%s", cfg.ConsensusConfig.Home)
-	cfg.TxsPoolConfig.Home = fmt.Sprintf("/root/lab/code/go/src/meta--/%s", cfg.TxsPoolConfig.Home)
+	var path = "/home/cosmic/wxy/code/go/src/meta--"
+	cfg.BasicConfig.Home = fmt.Sprintf("%s/cmd/%s", path, cfg.BasicConfig.Home)
+	cfg.P2PConfig.Home = fmt.Sprintf("%s/cmd/%s", path, cfg.P2PConfig.Home)
+	cfg.ConsensusConfig.Home = fmt.Sprintf("%s/cmd/%s", path, cfg.ConsensusConfig.Home)
+	cfg.TxsPoolConfig.Home = fmt.Sprintf("%s/cmd/%s", path, cfg.TxsPoolConfig.Home)
 }
 
 func CreateNode(i int) *Node {
-	dir := fmt.Sprintf("../node%d", i)
+	dir := fmt.Sprintf("../cmd/node%d", i)
 	cfg := ReadConfigFile(dir)
 	AdjustHomePath(cfg)
 	logger := log.New("node", i)
@@ -83,9 +85,9 @@ func TestCreateAndStartNode(t *testing.T) {
 	fmt.Println(nodes[0].blockStore.LoadBlockByHeight(2).String())
 
 	nodes[0].State().RedactBlock(2, 0, []byte("学校"), []byte("西北工业大学"))
-	
+
 	time.Sleep(time.Second * 10)
-	
+
 	fmt.Println("再次修改后")
 	for _, n := range nodes {
 		fmt.Println(n.blockStore.LoadBlockByHeight(2))

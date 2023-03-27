@@ -1,6 +1,6 @@
 
 [basic]
-home = "node3"
+home = "node2"
 key_file = "node_key.json"
 chameleon_key_file = "chameleon_key.json"
 genesis_file = "genesis.json"
@@ -9,8 +9,8 @@ db_dir = "data"
 app = "kvstore"
 
 [p2p]
-home = "node3"
-listen_address = "tcp://0.0.0.0:26659"
+home = "node2"
+listen_address = "tcp://0.0.0.0:26658"
 addr_book = "config/addrbook.json"
 flush_duration = "100ms"
 max_packet_msg_payload_size = "1024"
@@ -18,15 +18,15 @@ send_rate = "5120000"
 recv_rate = "5120000"
 pong_timeout = "45s"
 ping_interval = "1m30s"
-neighbours = "[a2079175f2c2c82c2a90@127.0.0.1:26656 a480f1082160268e79f1@127.0.0.1:26657 aa0260688112dfc32678@127.0.0.1:26658 a05870ba865a63a11b10@127.0.0.1:26659]"
+neighbours = "[996338b3ff6168064fa4@127.0.0.1:26656 81d1359e0f60382cbfce@127.0.0.1:26657 8c2a3c135492f65fcc4c@127.0.0.1:26658 834cee8475cb0be699af@127.0.0.1:26659]"
 
 [txs_pool]
-home = "node3"
+home = "node2"
 max_size = "2000"
 max_tx_bytes = "1024"
 
 [consensus]
-home = "node3"
+home = "node2"
 timeout_prepare = "3s"
 timeout_pre_commit = "1s"
 timeout_commit = "1s"

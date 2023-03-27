@@ -1,7 +1,6 @@
 package stch
 
 import (
-	"fmt"
 	"math/big"
 	"time"
 
@@ -176,7 +175,6 @@ func (r *Reactor) waitForFinalVer() {
 		case rv := <-r.ch.redactSteps.randomChan:
 			bz := MustEncode(rv)
 			r.Switch.Broadcast(p2p.STCHChannel, bz)
-			fmt.Println(">>>>> 广播了随机因子")
 		}
 	}
 }
